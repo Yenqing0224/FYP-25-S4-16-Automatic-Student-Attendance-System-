@@ -6,7 +6,8 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import HomeStack from "./home_stack"
 import TimeTableStack from "./timetable_stack"
 import NotificationStack from "./notification_stack"
-// import NewsEventsStack from "./newsevent_stack"
+import NewsEventsStack from "./newsevent_stack"
+import ProfileStack from "./profile_stack"
 
 // Your placeholder screen
 import PlaceholderScreen from "../screens/place_holder";
@@ -28,8 +29,8 @@ export default function TabNavigator() {
             iconSource = require("../assets/timetable/timetable_icon.png");
           } else if (route.name === "Notifications") {
             iconSource = require("../assets/notifications/notifications_icon.png");
-          } else if (route.name === "News") {
-            iconSource = require("../assets/news/newsevent_icon.png");
+          } else if (route.name === "Newsevent") {
+            iconSource = require("../assets/newsevent/newsevent_icon.png");
           } else if (route.name === "Profile") {
             iconSource = require("../assets/profile/profile_icon.png");
           }
@@ -59,14 +60,10 @@ export default function TabNavigator() {
 
       <Tab.Screen name="Notifications" component={NotificationStack}></Tab.Screen>
 
-      <Tab.Screen name="News">
-        {() => <PlaceholderScreen title="News Screen" />}
-      </Tab.Screen>
+      <Tab.Screen name="Newsevent" component={NewsEventsStack}></Tab.Screen>
 
-      <Tab.Screen name="Profile">
-        {() => <PlaceholderScreen title="Profile Screen" />}
-      </Tab.Screen>
-
+      <Tab.Screen name="Profile" component={ProfileStack}></Tab.Screen>
+      
     </Tab.Navigator>
   );
 }

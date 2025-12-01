@@ -1,118 +1,163 @@
-import React, { useState } from "react";
+import React, { useState } from 'react';
 import {
   View,
   Text,
   TextInput,
   TouchableOpacity,
   StyleSheet,
-} from "react-native";
+  KeyboardAvoidingView,
+  Platform,
+  TouchableWithoutFeedback,
+  Keyboard,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-export default function LoginScreen({ navigation }) {
-  // Dummy state values
-  const [email, setEmail] = useState("test@example.com");
-  const [password, setPassword] = useState("123456");
+const LoginScreen = ({ navigation }) => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
 
+  // ✅ Added the handleLogin function here
   const handleLogin = () => {
-    // Dummy login action
+    // Dummy login action (you can replace this with real logic later)
     console.log("Logging in:", email, password);
 
     // Jump to main tabs
+    // This assumes your Stack Navigator has a screen called "MainTabs"
     navigation.replace("MainTabs");
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Log In</Text>
+    <SafeAreaView style={styles.container}>
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.innerContainer}
+        >
+          
+          <View style={styles.formSection}>
+            <Text style={styles.headerTitle}>Log In</Text>
 
-        
-        {/* EMAIL */}
-        <Text style={styles.label}>Email</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Enter email"
-          value={email}
-          onChangeText={setEmail}
-        />
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Email</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Enter email"
+                placeholderTextColor="#A0A0A0"
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+            </View>
 
-        {/* PASSWORD */}
-        <Text style={styles.label}>Password</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Enter password"
-          secureTextEntry
-          value={password}
-          onChangeText={setPassword}
-        />
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Password</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Enter password"
+                placeholderTextColor="#A0A0A0"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={true}
+              />
+              <TouchableOpacity style={styles.forgotContainer}>
+                <Text style={styles.forgotText}>Forget password?</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
 
-        {/* Forgot Password */}
-        <TouchableOpacity style={styles.forgotContainer}>
-          <Text style={styles.forgotText}>Forget password?</Text>
-        </TouchableOpacity>
+          <View style={styles.bottomSection}>
+            {/* ✅ Connected the onPress to handleLogin */}
+            <TouchableOpacity 
+              style={styles.loginButton} 
+              onPress={handleLogin}
+            >
+              <Text style={styles.loginButtonText}>Log In</Text>
+            </TouchableOpacity>
 
-      {/* Login Button */}
-      <TouchableOpacity style={styles.loginBtn} onPress={handleLogin}>
-        <Text style={styles.loginText}>Log In</Text>
-      </TouchableOpacity>
+            <TouchableOpacity style={styles.contactContainer}>
+              <Text style={styles.contactText}>Unable to Login? Contact Us</Text>
+            </TouchableOpacity>
+          </View>
 
-      {/* Contact Us */}
-      <TouchableOpacity>
-        <Text style={styles.contactText}>
-          Unable to Login? <Text style={styles.contactLink}>Contact Us</Text>
-        </Text>
-      </TouchableOpacity>
-    </View>
+        </KeyboardAvoidingView>
+      </TouchableWithoutFeedback>
+    </SafeAreaView>
   );
-}
+};
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 25,
-    backgroundColor: "#fff",
-    justifyContent: "center",
+    backgroundColor: '#fff',
   },
-  title: {
-    fontSize: 26,
-    fontWeight: "bold",
-    textAlign: "center",
-    marginBottom: 30,
+  innerContainer: {
+    flex: 1,
+    paddingHorizontal: 25,
+    paddingTop: 40,
+    paddingBottom: 20,
+    justifyContent: 'space-between',
+  },
+  formSection: {
+    marginTop: 20,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#000',
+    textAlign: 'center',
+    marginBottom: 40,
+  },
+  inputGroup: {
+    marginBottom: 20,
   },
   label: {
     fontSize: 14,
-    marginBottom: 6,
+    color: '#333',
+    marginBottom: 8,
+    fontWeight: '500',
   },
   input: {
+    height: 50,
     borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 8,
-    padding: 10,
-    marginBottom: 15,
+    borderColor: '#333',
+    borderRadius: 10,
+    paddingHorizontal: 15,
+    fontSize: 16,
+    color: '#000',
   },
   forgotContainer: {
-    alignItems: "flex-end",
-    marginTop: -5,
+    alignSelf: 'flex-end',
+    marginTop: 8,
   },
   forgotText: {
-    fontSize: 13,
+    color: '#333',
+    fontSize: 14,
   },
-  loginBtn: {
-    backgroundColor: "gray",
-    paddingVertical: 15,
-    borderRadius: 15,
-    alignItems: "center",
+  bottomSection: {
     marginBottom: 20,
   },
-  loginText: {
-    color: "#fff",
-    fontWeight: "bold",
-    fontSize: 16,
+  loginButton: {
+    backgroundColor: '#8E8E93',
+    height: 55,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  loginButtonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  contactContainer: {
+    alignItems: 'center',
   },
   contactText: {
-    textAlign: "center",
-    color: "#555",
-  },
-  contactLink: {
-    color: "blue",
-    textDecorationLine: "underline",
+    fontSize: 14,
+    color: '#333',
+    textDecorationLine: 'underline',
   },
 });
+
+export default LoginScreen;

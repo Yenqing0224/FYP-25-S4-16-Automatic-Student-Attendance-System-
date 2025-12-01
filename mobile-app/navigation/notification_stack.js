@@ -5,7 +5,7 @@ import NotificationScreen from "../screens/notifications/notifications_screen";
 
 const Stack = createNativeStackNavigator();
 
-export default function HomeStack() {
+export default function NotificationStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="NotificationsMain" component={NotificationScreen} />
