@@ -1,379 +1,214 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Dimensions,
 } from 'react-native';
-
 import { SafeAreaView } from 'react-native-safe-area-context';
+// 1. Import the library
+import { Calendar } from 'react-native-calendars';
 
 const TimetableScreen = () => {
-  // Mock data to represent the calendar grid in the image
-  // 0 = empty/padding, numbers are days.
-  // We strictly follow the image's layout (Oct 1 on Monday).
-  const calendarRows = [
-    [1, 2, 3, 4, 5, 6, 7],
-    [8, 9, 10, 11, 12, 13, 14],
-    [15, 16, 17, 18, 19, 20, 21],
-    [22, 23, 24, 25, 26, 27, 28],
-    [29, 30, 31, 1, 2, 3, 4], // Last 4 are next month
-  ];
+  const [activeTab, setActiveTab] = useState('Selected');
+  // Track the selected date string
+  const [selectedDate, setSelectedDate] = useState('2025-10-18');
 
-  // Configuration for the dots under dates
-  // type: 'blue' or 'purple'
-  const events = {
-    3:  [{ color: '#90CAF9' }, { color: '#B39DDB' }], // simplified colors for demo
-    6:  [{ color: '#90CAF9' }],
-    9:  [{ color: '#90CAF9' }, { color: '#90CAF9' }],
-    12: [{ color: '#CE93D8' }],
-    18: [{ color: '#fff' }, { color: '#fff' }], // Selected day has white dots
-    19: [{ color: '#90CAF9' }, { color: '#B39DDB' }],
-    24: [{ color: '#90CAF9' }],
-    25: [{ color: '#90CAF9' }],
-    28: [{ color: '#CE93D8' }],
+  // 2. Define your events (Dots)
+  // The library uses a specific format for marking dates
+  const markedDates = {
+    '2025-10-03': { dots: [{ key: '1', color: '#90CAF9' }, { key: '2', color: '#B39DDB' }] },
+    '2025-10-06': { dots: [{ key: '3', color: '#90CAF9' }] },
+    '2025-10-09': { dots: [{ key: '4', color: '#90CAF9' }, { key: '5', color: '#90CAF9' }] },
+    '2025-10-12': { dots: [{ key: '6', color: '#CE93D8' }] },
+    '2025-10-24': { dots: [{ key: '7', color: '#90CAF9' }] },
+    // DYNAMIC: We add the 'selected: true' property to whichever day is clicked
+    [selectedDate]: { 
+      selected: true, 
+      selectedColor: '#3F4E85', 
+      dots: [{ key: 'selectedDot', color: '#fff' }] // White dot on selected day
+    },
   };
 
-  const renderCalendarDay = (day, rowIndex, colIndex) => {
-    // Determine if this is the "Next Month" section (last row, indices > 2)
-    const isNextMonth = rowIndex === 4 && colIndex > 2;
-    const isSelected = day === 18 && !isNextMonth;
-    
-    // Styling logic
-    let dayContainerStyle = styles.dayContainer;
-    let textStyle = styles.dayText;
-
-    if (isSelected) {
-      dayContainerStyle = [styles.dayContainer, styles.selectedDayContainer];
-      textStyle = styles.selectedDayText;
-    } else if (isNextMonth) {
-      dayContainerStyle = [styles.dayContainer, styles.nextMonthDayContainer];
-      textStyle = styles.nextMonthDayText;
-    }
-
-    return (
-      <View key={`${rowIndex}-${colIndex}`} style={styles.dayWrapper}>
-        <View style={dayContainerStyle}>
-          <Text style={textStyle}>{day}</Text>
-          
-          {/* Render Dots */}
-          {!isNextMonth && events[day] && (
-            <View style={styles.dotsContainer}>
-              {events[day].map((dot, index) => (
-                <View 
-                  key={index} 
-                  style={[styles.dot, { backgroundColor: dot.color }]} 
-                />
-              ))}
-            </View>
-          )}
+  // Helper: Content for "Selected" View
+  const renderSelectedContent = () => (
+    <View>
+      <Text style={styles.sectionDateTitle}>{selectedDate}</Text>
+      
+      <View style={[styles.eventCard, styles.cardBlue]}>
+        <View style={styles.cardContent}>
+          <Text style={styles.eventTitle}>CSIT123</Text>
+          <Text style={styles.eventTime}>12.00pm - 3.00pm</Text>
+          <Text style={styles.eventLoc}>Blk.A.1.17</Text>
         </View>
       </View>
-    );
-  };
+
+      <View style={[styles.eventCard, styles.cardPurple]}>
+        <View style={styles.cardContent}>
+          <Text style={styles.eventTitle}>Group Meeting for CSIT123</Text>
+          <Text style={styles.eventTime}>12.00pm - 3.00pm</Text>
+          <Text style={styles.eventLoc}>Online discord</Text>
+        </View>
+        <View style={styles.plusIconCircle}>
+          <Text style={styles.plusIconText}>+</Text>
+        </View>
+      </View>
+    </View>
+  );
+
+  // Helper: Content for "Upcoming" View
+  const renderUpcomingContent = () => (
+    <View>
+      <Text style={styles.sectionDateTitle}>Upcoming Events</Text>
+      <View style={[styles.eventCard, { backgroundColor: '#FFF9C4' }]}>
+        <View style={styles.cardContent}>
+          <Text style={styles.eventTitle}>Final Exam</Text>
+          <Text style={styles.eventTime}>9.00am - 12.00pm</Text>
+          <Text style={styles.eventLoc}>Main Hall</Text>
+        </View>
+      </View>
+    </View>
+  );
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* 1. Header Bar */}
       <View style={styles.header}>
-        <Text style={styles.backArrow}>{'<'}</Text>
         <Text style={styles.headerTitle}>Timetable</Text>
-        <View style={{ width: 20 }} />{/* Spacer to balance center title */}
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
         
-        {/* 2. Calendar Section */}
+        {/* 3. The Real Calendar Component */}
         <View style={styles.calendarCard}>
-          {/* Month Navigation */}
-          <View style={styles.monthNav}>
-            <Text style={styles.navArrow}>{'<'}</Text>
-            <Text style={styles.monthTitle}>Oct 2025</Text>
-            <Text style={styles.navArrow}>{'>'}</Text>
-          </View>
-
-          {/* Weekday Headers */}
-          <View style={styles.weekRow}>
-            {['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'].map((day) => (
-              <Text key={day} style={styles.weekDayText}>{day}</Text>
-            ))}
-          </View>
-
-          {/* Calendar Grid */}
-          <View style={styles.gridContainer}>
-            {calendarRows.map((row, rowIndex) => (
-              <View key={rowIndex} style={styles.row}>
-                {row.map((day, colIndex) => renderCalendarDay(day, rowIndex, colIndex))}
-              </View>
-            ))}
-          </View>
+          <Calendar
+            // Initially visible month
+            current={'2025-10-01'}
+            // Handler when day is pressed
+            onDayPress={day => {
+              setSelectedDate(day.dateString);
+            }}
+            // Enable Multi-dot marking
+            markingType={'multi-dot'}
+            markedDates={markedDates}
+            
+            // Visual Styling to match your design
+            theme={{
+              backgroundColor: '#ffffff',
+              calendarBackground: '#ffffff',
+              textSectionTitleColor: '#000', // Mo, Tu, We color
+              selectedDayBackgroundColor: '#3F4E85',
+              selectedDayTextColor: '#ffffff',
+              todayTextColor: '#3A7AFE',
+              dayTextColor: '#2d4150',
+              textDisabledColor: '#d9e1e8',
+              dotColor: '#00adf5',
+              selectedDotColor: '#ffffff',
+              arrowColor: 'black',
+              monthTextColor: 'black',
+              textDayFontWeight: '300',
+              textMonthFontWeight: 'bold',
+              textDayHeaderFontWeight: '600',
+              textDayFontSize: 16,
+              textMonthFontSize: 16,
+              textDayHeaderFontSize: 14
+            }}
+          />
         </View>
 
-        {/* 3. Toggle Segment (Selected / Upcoming) */}
+        {/* Toggle Buttons */}
         <View style={styles.toggleContainer}>
-          <View style={styles.toggleButtonInactive}>
-            <Text style={styles.toggleTextInactive}>Selected</Text>
-          </View>
-          <View style={styles.toggleButtonActive}>
-            <Text style={styles.toggleTextActive}>Upcoming</Text>
-          </View>
+          <TouchableOpacity 
+            style={[
+              styles.toggleButton, 
+              activeTab === 'Selected' ? styles.activeBtn : styles.inactiveBtn
+            ]}
+            onPress={() => setActiveTab('Selected')}
+          >
+            <Text style={activeTab === 'Selected' ? styles.activeText : styles.inactiveText}>
+              Selected
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={[
+              styles.toggleButton, 
+              activeTab === 'Upcoming' ? styles.activeBtn : styles.inactiveBtn
+            ]}
+            onPress={() => setActiveTab('Upcoming')}
+          >
+            <Text style={activeTab === 'Upcoming' ? styles.activeText : styles.inactiveText}>
+              Upcoming
+            </Text>
+          </TouchableOpacity>
         </View>
 
-        {/* 4. Date Title */}
-        <Text style={styles.sectionDateTitle}>18 Oct 2025</Text>
-
-        {/* 5. Event Cards */}
-        {/* Blue Card */}
-        <View style={[styles.eventCard, styles.cardBlue]}>
-          <View style={styles.cardContent}>
-            <Text style={styles.eventTitle}>CSIT123</Text>
-            <Text style={styles.eventTime}>12.00pm - 3.00pm</Text>
-            <Text style={styles.eventLoc}>Blk.A.1.17</Text>
-          </View>
-        </View>
-
-        {/* Purple Card */}
-        <View style={[styles.eventCard, styles.cardPurple]}>
-          <View style={styles.cardContent}>
-            <Text style={styles.eventTitle}>Group Meeting for CSIT123</Text>
-            <Text style={styles.eventTime}>12.00pm - 3.00pm</Text>
-            <Text style={styles.eventLoc}>Online discord</Text>
-          </View>
-          {/* Plus Icon Circle */}
-          <View style={styles.plusIconCircle}>
-            <Text style={styles.plusIconText}>+</Text>
-          </View>
-        </View>
+        {/* Conditional Content */}
+        {activeTab === 'Selected' ? renderSelectedContent() : renderUpcomingContent()}
         
-        <View style={{height: 30}} />
       </ScrollView>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F5F5F5', // Light gray background for the top area
-  },
-  scrollContent: {
-    paddingBottom: 20,
-  },
+  container: { flex: 1, backgroundColor: '#F5F5F5' },
+  scrollContent: { paddingBottom: 20 },
+  header: { padding: 20, alignItems: 'center' },
+  headerTitle: { fontSize: 18, fontWeight: 'bold' },
   
-  // Header
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-  },
-  backArrow: {
-    fontSize: 24,
-    color: '#333',
-    fontWeight: '300',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#000',
-  },
-
   // Calendar Card
-  calendarCard: {
-    backgroundColor: '#fff',
-    marginHorizontal: 10,
-    borderRadius: 20,
-    paddingBottom: 20,
-    paddingTop: 10,
-    // Add Shadow
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
+  calendarCard: { 
+    backgroundColor: '#fff', 
+    marginHorizontal: 10, 
+    borderRadius: 20, 
+    padding: 10,
+    elevation: 2, // Android shadow
+    shadowColor: '#000', // iOS shadow
+    shadowOpacity: 0.1,
     shadowRadius: 5,
-    elevation: 3,
-  },
-  monthNav: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    marginBottom: 15,
-  },
-  monthTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#000',
-  },
-  navArrow: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#000',
-  },
-  weekRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginBottom: 10,
-    paddingHorizontal: 10,
-  },
-  weekDayText: {
-    width: 30,
-    textAlign: 'center',
-    fontWeight: '600',
-    color: '#000',
-    fontSize: 14,
-  },
-  gridContainer: {
-    paddingHorizontal: 10,
-  },
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginBottom: 10,
-  },
-  dayWrapper: {
-    width: 35,
-    alignItems: 'center',
-  },
-  dayContainer: {
-    width: 32,
-    height: 38,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 8,
-  },
-  dayText: {
-    fontSize: 15,
-    color: '#333',
   },
   
-  // States
-  selectedDayContainer: {
-    backgroundColor: '#3F4E85', // Dark Blue/Purple
-  },
-  selectedDayText: {
-    color: '#fff',
-    fontWeight: 'bold',
-  },
-  nextMonthDayContainer: {
-    backgroundColor: '#F2F4F8', // Light Gray Box
-    width: 48, // The gray boxes in image look wider/connected
-    borderRadius: 0, // Looks like a continuous block in the image row? 
-    // Actually in the image they look like individual light boxes.
-    // Let's keep them distinct but styled.
-  },
-  nextMonthDayText: {
-    color: '#B0B0B0',
-  },
-  
-  // Dots
-  dotsContainer: {
-    flexDirection: 'row',
-    position: 'absolute',
-    bottom: 4,
-  },
-  dot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    marginHorizontal: 1,
-  },
-
-  // Toggle Section
+  // Toggle Styles
   toggleContainer: {
     flexDirection: 'row',
-    backgroundColor: '#fff',
-    marginTop: 20,
+    backgroundColor: '#EAEAEA',
     marginHorizontal: 20,
+    marginTop: 20,
     borderRadius: 30,
-    borderWidth: 1,
-    borderColor: '#000',
+    padding: 2,
     height: 50,
-    overflow: 'hidden',
   },
-  toggleButtonInactive: {
+  toggleButton: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#EAEAEA', // Gray side
+    borderRadius: 28,
   },
-  toggleTextInactive: {
-    color: '#A0A0A0',
-    fontWeight: '700',
-    fontSize: 15,
+  activeBtn: {
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 1,
   },
-  toggleButtonActive: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#fff', // White side
-    borderLeftWidth: 1,
-    borderLeftColor: '#000',
-  },
-  toggleTextActive: {
-    color: '#000',
-    fontWeight: '700',
-    fontSize: 15,
-  },
+  inactiveBtn: { backgroundColor: 'transparent' },
+  activeText: { fontWeight: 'bold', color: '#000' },
+  inactiveText: { fontWeight: 'bold', color: '#999' },
 
-  // Event List
-  sectionDateTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginLeft: 20,
-    marginTop: 20,
-    marginBottom: 10,
-    color: '#000',
-  },
-  eventCard: {
-    marginHorizontal: 20,
-    borderRadius: 12,
-    padding: 20,
-    marginBottom: 15,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  cardBlue: {
-    backgroundColor: '#B3E5FC', // Light Cyan
-  },
-  cardPurple: {
-    backgroundColor: '#E1BEE7', // Light Purple
-  },
-  cardContent: {
-    flex: 1,
-  },
-  eventTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#000',
-    marginBottom: 4,
-  },
-  eventTime: {
-    fontSize: 14,
-    color: '#333',
-    marginBottom: 2,
-  },
-  eventLoc: {
-    fontSize: 14,
-    color: '#333',
-  },
-  plusIconCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(0,0,0,0.3)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  plusIconText: {
-    color: '#fff',
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginTop: -2,
-  },
+  // Content Styles
+  sectionDateTitle: { fontSize: 18, fontWeight: 'bold', margin: 20, marginBottom: 10 },
+  eventCard: { marginHorizontal: 20, borderRadius: 12, padding: 20, marginBottom: 15, flexDirection: 'row', justifyContent: 'space-between' },
+  cardBlue: { backgroundColor: '#B3E5FC' },
+  cardPurple: { backgroundColor: '#E1BEE7' },
+  eventTitle: { fontWeight: 'bold', fontSize: 16 },
+  eventTime: { fontSize: 14, marginTop: 4 },
+  eventLoc: { fontSize: 14, color: '#555', marginTop: 2 },
+  plusIconCircle: { width: 30, height: 30, borderRadius: 15, backgroundColor: 'rgba(0,0,0,0.2)', alignItems: 'center', justifyContent: 'center' },
+  plusIconText: { color: '#fff', fontWeight: 'bold', fontSize: 20, marginTop: -2 },
+  cardContent: { flex: 1 }
 });
 
 export default TimetableScreen;
