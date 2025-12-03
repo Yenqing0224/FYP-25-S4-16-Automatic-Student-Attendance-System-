@@ -1,94 +1,128 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
+  TouchableOpacity,
   StatusBar,
 } from 'react-native';
-
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-const HomeScreen = () => {
+const HomeScreen = ({ navigation }) => {
+  
+  // 1. REAL DATE LOGIC
+  const [currentDate, setCurrentDate] = useState({ dayName: '', dateString: '' });
+
+  useEffect(() => {
+    const now = new Date();
+    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+    const dayName = days[now.getDay()];
+    const day = now.getDate();
+    const month = months[now.getMonth()];
+    const year = now.getFullYear();
+
+    const dateString = `${day}-${month}-${year}`;
+    setCurrentDate({ dayName, dateString });
+  }, []);
+
+  // 2. DATA OBJECT (Mimicking Database)
+  const dashboardData = {
+    user: {
+      name: "Moses Lim",
+      attendanceRate: "83%",
+      semesterRange: "Oct 2025 - Mar 2026",
+    },
+    todayClasses: [
+      { 
+        id: 1, 
+        code: "CSIT123", 
+        time: "12.00pm - 3.00pm", 
+        venue: "Blk.A.1.17", 
+        color: '#FFB6C1' 
+      },
+      { 
+        id: 2, 
+        code: "CSIT131", 
+        time: "3.30pm - 6.30pm", 
+        venue: "Blk.B.4.13", 
+        color: '#FFE4B5' 
+      },
+    ],
+    upcomingClasses: [
+      { id: 101, date: "1 Nov", time: "8.30am - 11.30am", code: "CSIT111" },
+      { id: 102, date: "3 Nov", time: "8.30am - 11.30am", code: "CSIT111" },
+      { id: 103, date: "3 Nov", time: "6.30am - 9.30am", code: "Group Meeting" },
+    ]
+  };
+
   return (
+    // ✅ Reverted to your single WHITE Safe Area
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
       
-      {/* Main Content ScrollView */}
       <ScrollView contentContainerStyle={styles.scrollContent}>
         
-        {/* Top Header Section */}
+        {/* --- HEADER --- */}
         <View style={styles.headerContainer}>
           <View>
             <Text style={styles.greetingLabel}>Hello,</Text>
-            <Text style={styles.greetingName}>Moses Lim!</Text>
+            <Text style={styles.greetingName}>{dashboardData.user.name}!</Text>
           </View>
           <View style={styles.dateContainer}>
-            <Text style={styles.dateText}>Tuesday</Text>
-            <Text style={styles.dateText}>31-Oct-2025</Text>
+            <Text style={styles.dateText}>{currentDate.dayName}</Text>
+            <Text style={styles.dateText}>{currentDate.dateString}</Text>
           </View>
         </View>
 
-        {/* Attendance Section */}
+        {/* --- ATTENDANCE --- */}
         <View style={styles.attendanceContainer}>
           <Text style={styles.attendanceTitle}>Attendance rate</Text>
-          <Text style={styles.attendancePercentage}>83%</Text>
-          <Text style={styles.attendanceSubtitle}>Oct 2025 - Mar 2026</Text>
+          <Text style={styles.attendancePercentage}>{dashboardData.user.attendanceRate}</Text>
+          <Text style={styles.attendanceSubtitle}>{dashboardData.user.semesterRange}</Text>
         </View>
 
-        {/* Today's Classes Section Header */}
+        {/* --- TODAY'S CLASSES --- */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionHeaderText}>Today's Classes</Text>
         </View>
 
-        {/* Today's Classes List */}
         <View style={styles.paddingContainer}>
-          {/* Pink Card */}
-          <View style={[styles.todayCard, styles.cardPink]}>
-            <Text style={styles.cardTitle}>CSIT123</Text>
-            <Text style={styles.cardDetail}>12.00pm - 3.00pm</Text>
-            <Text style={styles.cardDetail}>Blk.A.1.17</Text>
-          </View>
-
-          {/* Yellow Card */}
-          <View style={[styles.todayCard, styles.cardYellow]}>
-            <Text style={styles.cardTitle}>CSIT131</Text>
-            <Text style={styles.cardDetail}>3.30pm - 6.30pm</Text>
-            <Text style={styles.cardDetail}>Blk.B.4.13</Text>
-          </View>
+          {dashboardData.todayClasses.map((item) => (
+            <View 
+              key={item.id} 
+              style={[styles.todayCard, { backgroundColor: item.color }]}
+            >
+              <Text style={styles.cardTitle}>{item.code}</Text>
+              <Text style={styles.cardDetail}>{item.time}</Text>
+              <Text style={styles.cardDetail}>{item.venue}</Text>
+            </View>
+          ))}
         </View>
 
-        {/* Upcoming Classes Section Header */}
+        {/* --- UPCOMING CLASSES --- */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionHeaderText}>Upcoming Classes</Text>
         </View>
 
-        {/* Upcoming Classes Horizontal Scroll */}
         <ScrollView 
           horizontal={true} 
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.horizontalScrollContainer}
         >
-          {/* Upcoming Card 1 */}
-          <View style={styles.upcomingCard}>
-            <Text style={styles.upcomingDate}>1 Nov</Text>
-            <Text style={styles.upcomingDetail}>8.30am - 11.30am</Text>
-            <Text style={styles.upcomingDetail}>CSIT111</Text>
-          </View>
-
-           {/* Upcoming Card 2 */}
-           <View style={styles.upcomingCard}>
-            <Text style={styles.upcomingDate}>3 Nov</Text>
-            <Text style={styles.upcomingDetail}>8.30am - 11.30am</Text>
-            <Text style={styles.upcomingDetail}>CSIT111</Text>
-          </View>
-
-           {/* Upcoming Card 3 */}
-           <View style={styles.upcomingCard}>
-            <Text style={styles.upcomingDate}>3 Nov</Text>
-            <Text style={styles.upcomingDetail}>6.30am - 9.30am</Text>
-            <Text style={styles.upcomingDetail}>Group Meeting</Text>
-          </View>
+          {dashboardData.upcomingClasses.map((item) => (
+            <TouchableOpacity 
+              key={item.id} 
+              style={styles.upcomingCard}
+              onPress={() => navigation.navigate('Timetable')}
+            >
+              <Text style={styles.upcomingDate}>{item.date}</Text>
+              <Text style={styles.upcomingDetail}>{item.time}</Text>
+              <Text style={styles.upcomingDetail}>{item.code}</Text>
+            </TouchableOpacity>
+          ))}
         </ScrollView>
 
         <View style={{ height: 40 }} /> 
@@ -98,8 +132,8 @@ const HomeScreen = () => {
   );
 };
 
-// Styles definition
 const styles = StyleSheet.create({
+  // ✅ Totally White Container
   safeArea: {
     flex: 1,
     backgroundColor: '#fff',
@@ -116,7 +150,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     padding: 20,
-    paddingTop: 20,
+    paddingTop: 20, // Added padding to separate from status bar visually
   },
   greetingLabel: {
     fontSize: 16,
@@ -132,7 +166,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   dateText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
     color: '#000',
   },
@@ -176,12 +210,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 20,
     marginBottom: 15,
-  },
-  cardPink: {
-    backgroundColor: '#FFB6C1', 
-  },
-  cardYellow: {
-    backgroundColor: '#FFE4B5', 
   },
   cardTitle: {
     fontSize: 16,

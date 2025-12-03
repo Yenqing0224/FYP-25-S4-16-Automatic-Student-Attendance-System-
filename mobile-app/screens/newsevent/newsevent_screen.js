@@ -13,7 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 const NewsEventsScreen = ({ navigation }) => {
   const [searchText, setSearchText] = useState('');
   // 1. STATE: Track which tab is active
-  const [activeTab, setActiveTab] = useState('Events'); // Default to Events as per your image
+  const [activeTab, setActiveTab] = useState('News'); // Default to Events as per your image
 
   // DATA: Events List (Matches your image)
   const eventsData = [

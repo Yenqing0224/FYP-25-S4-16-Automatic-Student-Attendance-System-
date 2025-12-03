@@ -5,29 +5,27 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  StatusBar,
 } from 'react-native';
+// ✅ Import SafeAreaView
 import { SafeAreaView } from 'react-native-safe-area-context';
-// 1. Import the library
 import { Calendar } from 'react-native-calendars';
 
-const TimetableScreen = () => {
+const TimetableScreen = ({ navigation }) => {
   const [activeTab, setActiveTab] = useState('Selected');
-  // Track the selected date string
   const [selectedDate, setSelectedDate] = useState('2025-10-18');
 
-  // 2. Define your events (Dots)
-  // The library uses a specific format for marking dates
+  // Define your events (Dots)
   const markedDates = {
     '2025-10-03': { dots: [{ key: '1', color: '#90CAF9' }, { key: '2', color: '#B39DDB' }] },
     '2025-10-06': { dots: [{ key: '3', color: '#90CAF9' }] },
     '2025-10-09': { dots: [{ key: '4', color: '#90CAF9' }, { key: '5', color: '#90CAF9' }] },
     '2025-10-12': { dots: [{ key: '6', color: '#CE93D8' }] },
     '2025-10-24': { dots: [{ key: '7', color: '#90CAF9' }] },
-    // DYNAMIC: We add the 'selected: true' property to whichever day is clicked
     [selectedDate]: { 
       selected: true, 
       selectedColor: '#3F4E85', 
-      dots: [{ key: 'selectedDot', color: '#fff' }] // White dot on selected day
+      dots: [{ key: 'selectedDot', color: '#fff' }] 
     },
   };
 
@@ -50,9 +48,6 @@ const TimetableScreen = () => {
           <Text style={styles.eventTime}>12.00pm - 3.00pm</Text>
           <Text style={styles.eventLoc}>Online discord</Text>
         </View>
-        <View style={styles.plusIconCircle}>
-          <Text style={styles.plusIconText}>+</Text>
-        </View>
       </View>
     </View>
   );
@@ -72,90 +67,120 @@ const TimetableScreen = () => {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Timetable</Text>
+    <View style={styles.mainContainer}>
+      
+      {/* 1. TOP SAFE AREA (Grey) */}
+      <SafeAreaView edges={['top']} style={styles.topSafeArea} />
+
+      {/* 2. MAIN CONTENT (White) */}
+      <View style={styles.contentContainer}>
+        <StatusBar barStyle="dark-content" backgroundColor="#EAEAEA" />
+
+        {/* Header (Grey) */}
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.navigate('Home')}>
+            <Text style={styles.backArrow}>{'<'}</Text>
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Timetable</Text>
+          <View style={{ width: 20 }} />
+        </View>
+
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          
+          {/* Calendar Component */}
+          <View style={styles.calendarCard}>
+            <Calendar
+              current={'2025-10-01'}
+              onDayPress={day => setSelectedDate(day.dateString)}
+              markingType={'multi-dot'}
+              markedDates={markedDates}
+              theme={{
+                backgroundColor: '#ffffff',
+                calendarBackground: '#ffffff',
+                textSectionTitleColor: '#000',
+                selectedDayBackgroundColor: '#3F4E85',
+                selectedDayTextColor: '#ffffff',
+                todayTextColor: '#3A7AFE',
+                dayTextColor: '#2d4150',
+                textDisabledColor: '#d9e1e8',
+                dotColor: '#00adf5',
+                selectedDotColor: '#ffffff',
+                arrowColor: 'black',
+                monthTextColor: 'black',
+                textDayFontWeight: '300',
+                textMonthFontWeight: 'bold',
+                textDayHeaderFontWeight: '600',
+                textDayFontSize: 16,
+                textMonthFontSize: 16,
+                textDayHeaderFontSize: 14
+              }}
+            />
+          </View>
+
+          {/* Toggle Buttons */}
+          <View style={styles.toggleContainer}>
+            <TouchableOpacity 
+              style={[
+                styles.toggleButton, 
+                activeTab === 'Selected' ? styles.activeBtn : styles.inactiveBtn
+              ]}
+              onPress={() => setActiveTab('Selected')}
+            >
+              <Text style={activeTab === 'Selected' ? styles.activeText : styles.inactiveText}>
+                Selected
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={[
+                styles.toggleButton, 
+                activeTab === 'Upcoming' ? styles.activeBtn : styles.inactiveBtn
+              ]}
+              onPress={() => setActiveTab('Upcoming')}
+            >
+              <Text style={activeTab === 'Upcoming' ? styles.activeText : styles.inactiveText}>
+                Upcoming
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Conditional Content */}
+          {activeTab === 'Selected' ? renderSelectedContent() : renderUpcomingContent()}
+          
+        </ScrollView>
       </View>
-
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        
-        {/* 3. The Real Calendar Component */}
-        <View style={styles.calendarCard}>
-          <Calendar
-            // Initially visible month
-            current={'2025-10-01'}
-            // Handler when day is pressed
-            onDayPress={day => {
-              setSelectedDate(day.dateString);
-            }}
-            // Enable Multi-dot marking
-            markingType={'multi-dot'}
-            markedDates={markedDates}
-            
-            // Visual Styling to match your design
-            theme={{
-              backgroundColor: '#ffffff',
-              calendarBackground: '#ffffff',
-              textSectionTitleColor: '#000', // Mo, Tu, We color
-              selectedDayBackgroundColor: '#3F4E85',
-              selectedDayTextColor: '#ffffff',
-              todayTextColor: '#3A7AFE',
-              dayTextColor: '#2d4150',
-              textDisabledColor: '#d9e1e8',
-              dotColor: '#00adf5',
-              selectedDotColor: '#ffffff',
-              arrowColor: 'black',
-              monthTextColor: 'black',
-              textDayFontWeight: '300',
-              textMonthFontWeight: 'bold',
-              textDayHeaderFontWeight: '600',
-              textDayFontSize: 16,
-              textMonthFontSize: 16,
-              textDayHeaderFontSize: 14
-            }}
-          />
-        </View>
-
-        {/* Toggle Buttons */}
-        <View style={styles.toggleContainer}>
-          <TouchableOpacity 
-            style={[
-              styles.toggleButton, 
-              activeTab === 'Selected' ? styles.activeBtn : styles.inactiveBtn
-            ]}
-            onPress={() => setActiveTab('Selected')}
-          >
-            <Text style={activeTab === 'Selected' ? styles.activeText : styles.inactiveText}>
-              Selected
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={[
-              styles.toggleButton, 
-              activeTab === 'Upcoming' ? styles.activeBtn : styles.inactiveBtn
-            ]}
-            onPress={() => setActiveTab('Upcoming')}
-          >
-            <Text style={activeTab === 'Upcoming' ? styles.activeText : styles.inactiveText}>
-              Upcoming
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Conditional Content */}
-        {activeTab === 'Selected' ? renderSelectedContent() : renderUpcomingContent()}
-        
-      </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F5F5' },
+  // ✅ New Safe Area Layout
+  mainContainer: {
+    flex: 1,
+    backgroundColor: '#fff', 
+  },
+  topSafeArea: {
+    flex: 0, 
+    backgroundColor: '#EAEAEA', 
+  },
+  contentContainer: {
+    flex: 1,
+    backgroundColor: '#fff', // Changed from #F5F5F5 to #fff to match other screens
+  },
+
   scrollContent: { paddingBottom: 20 },
-  header: { padding: 20, alignItems: 'center' },
-  headerTitle: { fontSize: 18, fontWeight: 'bold' },
+  
+  // Header Style Update
+  header: { 
+    backgroundColor: '#EAEAEA',
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  backArrow: { fontSize: 24, color: '#333', fontWeight: '300' },
+  headerTitle: { fontSize: 18, fontWeight: '700', color: '#000' },
   
   // Calendar Card
   calendarCard: { 
@@ -163,8 +188,9 @@ const styles = StyleSheet.create({
     marginHorizontal: 10, 
     borderRadius: 20, 
     padding: 10,
-    elevation: 2, // Android shadow
-    shadowColor: '#000', // iOS shadow
+    marginTop: 10,
+    elevation: 2, 
+    shadowColor: '#000', 
     shadowOpacity: 0.1,
     shadowRadius: 5,
   },
