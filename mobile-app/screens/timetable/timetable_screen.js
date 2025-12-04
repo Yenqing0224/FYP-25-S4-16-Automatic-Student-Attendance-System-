@@ -7,76 +7,126 @@ import {
   TouchableOpacity,
   StatusBar,
 } from 'react-native';
-// ✅ Import SafeAreaView
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Calendar } from 'react-native-calendars';
 
 const TimetableScreen = ({ navigation }) => {
   const [activeTab, setActiveTab] = useState('Selected');
-  const [selectedDate, setSelectedDate] = useState('2025-10-18');
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
 
-  // Define your events (Dots)
-  const markedDates = {
-    '2025-10-03': { dots: [{ key: '1', color: '#90CAF9' }, { key: '2', color: '#B39DDB' }] },
-    '2025-10-06': { dots: [{ key: '3', color: '#90CAF9' }] },
-    '2025-10-09': { dots: [{ key: '4', color: '#90CAF9' }, { key: '5', color: '#90CAF9' }] },
-    '2025-10-12': { dots: [{ key: '6', color: '#CE93D8' }] },
-    '2025-10-24': { dots: [{ key: '7', color: '#90CAF9' }] },
-    [selectedDate]: { 
-      selected: true, 
-      selectedColor: '#3F4E85', 
-      dots: [{ key: 'selectedDot', color: '#fff' }] 
-    },
+  // --- 1. DATA: Class Details (The Source of Truth) ---
+  // The dots will now be generated AUTOMATICALLY based on this list.
+  const timetableData = {
+    '2025-12-03': [
+      { id: 103, title: "CSIT111 Lecture", time: "9.00am - 11.00am", location: "Lecture Hall 1", type: "blue" }
+    ],
+    '2025-12-06': [
+      { id: 104, title: "CSIT123 Tutorial", time: "10.00am - 12.00pm", location: "Lab 2", type: "blue" }
+    ],
+    '2025-12-18': [
+      { id: 101, title: "CSIT123", time: "12.00pm - 3.00pm", location: "Blk.A.1.17", type: "blue" },
+      { id: 102, title: "Group Meeting", time: "3.00pm - 5.00pm", location: "Online Discord", type: "purple", hasPlusIcon: true }
+    ],
+    '2025-12-24': [
+       { id: 105, title: "Consultation", time: "2.00pm - 3.00pm", location: "Office", type: "blue" }
+    ]
   };
 
-  // Helper: Content for "Selected" View
-  const renderSelectedContent = () => (
-    <View>
-      <Text style={styles.sectionDateTitle}>{selectedDate}</Text>
-      
-      <View style={[styles.eventCard, styles.cardBlue]}>
-        <View style={styles.cardContent}>
-          <Text style={styles.eventTitle}>CSIT123</Text>
-          <Text style={styles.eventTime}>12.00pm - 3.00pm</Text>
-          <Text style={styles.eventLoc}>Blk.A.1.17</Text>
-        </View>
-      </View>
+  const upcomingData = [
+    { id: 201, title: "Final Exam", time: "9.00am - 12.00pm", location: "Main Hall", color: '#FFF9C4' },
+    { id: 202, title: "Project Submission", time: "11.59pm", location: "Online Portal", color: '#FFB6C1' }
+  ];
 
-      <View style={[styles.eventCard, styles.cardPurple]}>
-        <View style={styles.cardContent}>
-          <Text style={styles.eventTitle}>Group Meeting for CSIT123</Text>
-          <Text style={styles.eventTime}>12.00pm - 3.00pm</Text>
-          <Text style={styles.eventLoc}>Online discord</Text>
-        </View>
-      </View>
-    </View>
-  );
+  // --- 2. LOGIC: Get Today's Date String ---
+  const getTodayDate = () => {
+    const now = new Date();
+    // Returns format "YYYY-MM-DD"
+    return now.toISOString().split('T')[0];
+  };
 
-  // Helper: Content for "Upcoming" View
+  // --- 3. LOGIC: Auto-Generate Dots & Selection ---
+  const getMarkedDates = () => {
+    const marked = {};
+
+    // A. Loop through data to place DOTS
+    Object.keys(timetableData).forEach(date => {
+      marked[date] = {
+        dots: [{ key: 'class', color: '#90CAF9' }] // Default Blue dot for any class
+      };
+    });
+
+    // B. Apply SELECTION style (Blue Box)
+    // If the selected date exists in our map, keep its dot but turn it white.
+    // If it doesn't exist, create a new entry for the blue box.
+    if (marked[selectedDate]) {
+      marked[selectedDate] = {
+        ...marked[selectedDate],
+        selected: true,
+        selectedColor: '#3F4E85',
+        dots: [{ key: 'class', color: '#ffffff' }] // White dot
+      };
+    } else {
+      marked[selectedDate] = {
+        selected: true,
+        selectedColor: '#3F4E85',
+      };
+    }
+    
+    return marked;
+  };
+
+  const renderSelectedContent = () => {
+    const classesForDay = timetableData[selectedDate] || [];
+
+    return (
+      <View>
+        <Text style={styles.sectionDateTitle}>{selectedDate}</Text>
+        {classesForDay.length > 0 ? (
+          classesForDay.map((item) => (
+            <View 
+              key={item.id} 
+              style={[
+                styles.eventCard, 
+                item.type === 'blue' ? styles.cardBlue : styles.cardPurple
+              ]}
+            >
+              <View style={styles.cardContent}>
+                <Text style={styles.eventTitle}>{item.title}</Text>
+                <Text style={styles.eventTime}>{item.time}</Text>
+                <Text style={styles.eventLoc}>{item.location}</Text>
+              </View>
+            </View>
+          ))
+        ) : (
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>No classes scheduled for this day.</Text>
+          </View>
+        )}
+      </View>
+    );
+  };
+
   const renderUpcomingContent = () => (
     <View>
       <Text style={styles.sectionDateTitle}>Upcoming Events</Text>
-      <View style={[styles.eventCard, { backgroundColor: '#FFF9C4' }]}>
-        <View style={styles.cardContent}>
-          <Text style={styles.eventTitle}>Final Exam</Text>
-          <Text style={styles.eventTime}>9.00am - 12.00pm</Text>
-          <Text style={styles.eventLoc}>Main Hall</Text>
+      {upcomingData.map((item) => (
+        <View key={item.id} style={[styles.eventCard, { backgroundColor: item.color }]}>
+          <View style={styles.cardContent}>
+            <Text style={styles.eventTitle}>{item.title}</Text>
+            <Text style={styles.eventTime}>{item.time}</Text>
+            <Text style={styles.eventLoc}>{item.location}</Text>
+          </View>
         </View>
-      </View>
+      ))}
     </View>
   );
 
   return (
     <View style={styles.mainContainer}>
-      
-      {/* 1. TOP SAFE AREA (Grey) */}
       <SafeAreaView edges={['top']} style={styles.topSafeArea} />
-
-      {/* 2. MAIN CONTENT (White) */}
       <View style={styles.contentContainer}>
         <StatusBar barStyle="dark-content" backgroundColor="#EAEAEA" />
 
-        {/* Header (Grey) */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.navigate('Home')}>
             <Text style={styles.backArrow}>{'<'}</Text>
@@ -87,13 +137,16 @@ const TimetableScreen = ({ navigation }) => {
 
         <ScrollView contentContainerStyle={styles.scrollContent}>
           
-          {/* Calendar Component */}
           <View style={styles.calendarCard}>
             <Calendar
-              current={'2025-10-01'}
-              onDayPress={day => setSelectedDate(day.dateString)}
+              // Force calendar to show the month of the selected Date
+              current={selectedDate} 
+              onDayPress={day => {
+                setSelectedDate(day.dateString);
+                setActiveTab('Selected'); 
+              }}
               markingType={'multi-dot'}
-              markedDates={markedDates}
+              markedDates={getMarkedDates()} // Dynamic Function
               theme={{
                 backgroundColor: '#ffffff',
                 calendarBackground: '#ffffff',
@@ -117,7 +170,6 @@ const TimetableScreen = ({ navigation }) => {
             />
           </View>
 
-          {/* Toggle Buttons */}
           <View style={styles.toggleContainer}>
             <TouchableOpacity 
               style={[
@@ -136,7 +188,11 @@ const TimetableScreen = ({ navigation }) => {
                 styles.toggleButton, 
                 activeTab === 'Upcoming' ? styles.activeBtn : styles.inactiveBtn
               ]}
-              onPress={() => setActiveTab('Upcoming')}
+              // ✅ INTERACTION FIX: Pressing Upcoming jumps to TODAY
+              onPress={() => {
+                setActiveTab('Upcoming');
+                setSelectedDate(getTodayDate()); 
+              }}
             >
               <Text style={activeTab === 'Upcoming' ? styles.activeText : styles.inactiveText}>
                 Upcoming
@@ -144,7 +200,6 @@ const TimetableScreen = ({ navigation }) => {
             </TouchableOpacity>
           </View>
 
-          {/* Conditional Content */}
           {activeTab === 'Selected' ? renderSelectedContent() : renderUpcomingContent()}
           
         </ScrollView>
@@ -154,23 +209,10 @@ const TimetableScreen = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  // ✅ New Safe Area Layout
-  mainContainer: {
-    flex: 1,
-    backgroundColor: '#fff', 
-  },
-  topSafeArea: {
-    flex: 0, 
-    backgroundColor: '#EAEAEA', 
-  },
-  contentContainer: {
-    flex: 1,
-    backgroundColor: '#fff', // Changed from #F5F5F5 to #fff to match other screens
-  },
-
+  mainContainer: { flex: 1, backgroundColor: '#fff' },
+  topSafeArea: { flex: 0, backgroundColor: '#EAEAEA' },
+  contentContainer: { flex: 1, backgroundColor: '#fff' },
   scrollContent: { paddingBottom: 20 },
-  
-  // Header Style Update
   header: { 
     backgroundColor: '#EAEAEA',
     paddingVertical: 15,
@@ -181,8 +223,6 @@ const styles = StyleSheet.create({
   },
   backArrow: { fontSize: 24, color: '#333', fontWeight: '300' },
   headerTitle: { fontSize: 18, fontWeight: '700', color: '#000' },
-  
-  // Calendar Card
   calendarCard: { 
     backgroundColor: '#fff', 
     marginHorizontal: 10, 
@@ -194,8 +234,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 5,
   },
-  
-  // Toggle Styles
   toggleContainer: {
     flexDirection: 'row',
     backgroundColor: '#EAEAEA',
@@ -205,36 +243,23 @@ const styles = StyleSheet.create({
     padding: 2,
     height: 50,
   },
-  toggleButton: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 28,
-  },
-  activeBtn: {
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#ddd',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 1,
-  },
+  toggleButton: { flex: 1, alignItems: 'center', justifyContent: 'center', borderRadius: 28 },
+  activeBtn: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#ddd', elevation: 2 },
   inactiveBtn: { backgroundColor: 'transparent' },
   activeText: { fontWeight: 'bold', color: '#000' },
   inactiveText: { fontWeight: 'bold', color: '#999' },
-
-  // Content Styles
   sectionDateTitle: { fontSize: 18, fontWeight: 'bold', margin: 20, marginBottom: 10 },
   eventCard: { marginHorizontal: 20, borderRadius: 12, padding: 20, marginBottom: 15, flexDirection: 'row', justifyContent: 'space-between' },
   cardBlue: { backgroundColor: '#B3E5FC' },
   cardPurple: { backgroundColor: '#E1BEE7' },
+  cardContent: { flex: 1 },
   eventTitle: { fontWeight: 'bold', fontSize: 16 },
   eventTime: { fontSize: 14, marginTop: 4 },
   eventLoc: { fontSize: 14, color: '#555', marginTop: 2 },
   plusIconCircle: { width: 30, height: 30, borderRadius: 15, backgroundColor: 'rgba(0,0,0,0.2)', alignItems: 'center', justifyContent: 'center' },
   plusIconText: { color: '#fff', fontWeight: 'bold', fontSize: 20, marginTop: -2 },
-  cardContent: { flex: 1 }
+  emptyContainer: { alignItems: 'center', padding: 20 },
+  emptyText: { color: '#999', fontSize: 16 }
 });
 
 export default TimetableScreen;

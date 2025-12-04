@@ -9,8 +9,6 @@ import NotificationStack from "./notification_stack"
 import NewsEventsStack from "./newsevent_stack"
 import ProfileStack from "./profile_stack"
 
-// Your placeholder screen
-import PlaceholderScreen from "../screens/place_holder";
 
 const Tab = createBottomTabNavigator();
 
