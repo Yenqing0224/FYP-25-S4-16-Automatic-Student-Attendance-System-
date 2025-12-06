@@ -1,0 +1,94 @@
+from django.db import models
+
+class Semester(models.Model):
+    # Attributes
+    name = models.CharField(max_length=50)
+    start_date = models.DateField()
+    end_date = models.DateField()
+
+    def __str__(self):
+        return self.name
+    
+
+class Module(models.Model):
+    STATUS_CHOICES = [
+        ('active', 'Active'),
+        ('inactive', 'Inactive'),
+    ]
+
+    # Relationships
+    semester = models.ForeignKey('Semester', on_delete=models.CASCADE, related_name='modules')
+    lecturer = models.ForeignKey('core.Lecturer', on_delete=models.SET_NULL, null=True, blank=True, related_name='modules_taught')
+    students = models.ManyToManyField('core.Student', blank=True, related_name='modules_enrolled')
+
+    # Attributes
+    code = models.CharField(max_length=20, unique=True) 
+    name = models.CharField(max_length=100)             
+    credit = models.IntegerField()
+    
+    # Stats
+    student_enrolled = models.IntegerField(default=0)
+    average_attendance = models.FloatField(default=0.0)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active')
+
+    def __str__(self):
+        return f"{self.code} - {self.name}"
+
+
+class ClassSession(models.Model):
+    TYPE_CHOICES = [
+        ('lecture', 'Lecture'),
+        ('tutorial', 'Tutorial'),
+    ]
+    
+    SESSION_STATUS = [
+        ('upcoming', 'Upcoming'),
+        ('in_progress', 'In Progress'),
+        ('completed', 'Completed'),
+        ('cancelled', 'Cancelled'),
+    ]
+
+    # Relationships
+    module = models.ForeignKey('Module', on_delete=models.CASCADE, related_name='sessions')
+
+    # Attributes
+    type = models.CharField(max_length=20, choices=TYPE_CHOICES)
+    name = models.CharField(max_length=100) 
+    date_time = models.DateTimeField()
+    venue = models.CharField(max_length=50)
+    status = models.CharField(max_length=20, choices=SESSION_STATUS, default='upcoming')
+
+    # Stats
+    total_students = models.IntegerField(default=0)
+    present_students = models.IntegerField(default=0)
+    absent_students = models.IntegerField(default=0)
+    attendance_rate = models.FloatField(default=0.0)
+
+    def __str__(self):
+        return f"{self.module.code} - {self.name} ({self.status})"
+    
+
+class AttendanceRecord(models.Model):
+    ATTENDANCE_STATUS = [
+        ('present', 'Present'),
+        ('absent', 'Absent'),
+        ('medical', 'Medical Leave'),
+    ]
+
+    # Relationships
+    session = models.ForeignKey('ClassSession', on_delete=models.CASCADE, related_name='attendance_records')
+    student = models.ForeignKey('core.Student', on_delete=models.CASCADE, related_name='attendance_records')
+
+    # Attributes
+    entry_time = models.DateTimeField(null=True, blank=True)
+    exit_time = models.DateTimeField(null=True, blank=True)
+    recorded_at = models.DateTimeField(auto_now_add=True)
+    status = models.CharField(max_length=20, choices=ATTENDANCE_STATUS, default='absent')
+    remarks = models.CharField(max_length=200, blank=True, null=True)
+
+    class Meta:
+        # Crucial: A student can only have ONE attendance record per session
+        unique_together = ('session', 'student')
+
+    def __str__(self):
+        return f"{self.student.user.username} {self.session.name}: {self.status}"

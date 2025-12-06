@@ -3,15 +3,12 @@ from django.contrib.auth.models import AbstractUser
 from django.conf import settings
 
 class User(AbstractUser):
-
-    # ROLE CHOICES
     ROLE_CHOICES = [
         ('admin', 'Admin'),
         ('lecturer', 'Lecturer'),
         ('student', 'Student'),
     ]
 
-    # STATUS CHOICES (Active/Inactive/Suspended)
     STATUS_CHOICES = [
         ('active', 'Active'),
         ('suspended', 'Suspended'),
@@ -22,7 +19,7 @@ class User(AbstractUser):
         ('female', 'Female'),
     ]
 
-    # Additional fields beyond standard Django User
+    # Additional attributes
     phone_number = models.CharField(max_length=20, blank=True, null=True)
     gender = models.CharField(max_length=10, choices=GENDER_CHOICES, blank=True, null=True)
     address = models.TextField(blank=True, null=True)
