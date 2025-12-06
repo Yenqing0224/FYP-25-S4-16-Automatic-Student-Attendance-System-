@@ -14,9 +14,6 @@ class CustomUserAdmin(UserAdmin):
     fieldsets = UserAdmin.fieldsets + (
         ('Personal Details', {
             'fields': (
-                'first_name', 
-                'last_name', 
-                'email', 
                 'personal_email', 
                 'phone_number', 
                 'gender', 
