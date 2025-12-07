@@ -18,8 +18,13 @@ from django.contrib import admin
 from django.urls import path
 from django.http import JsonResponse
 from django.urls import path, include
+from django.http import HttpResponse
+
+def home_view(request):
+    return HttpResponse("<h1>✅ Attendify API is Running!</h1>")
 
 urlpatterns = [
+    path('', home_view),
     path('admin/', admin.site.urls),
     path('api/', include('core.interface.urls')),
 ]
