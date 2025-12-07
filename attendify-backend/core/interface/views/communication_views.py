@@ -2,10 +2,8 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from django.utils import timezone
-
 from core.models import Notification, News, Event, User
-
-# Import Serializers
+#  Serializers
 from core.interface.serializers.communication_serializers import NotificationSerializer, NewsSerializer, EventSerializer
 
 
