@@ -17,15 +17,9 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path
 from django.http import JsonResponse
-
-def root(request):
-    return JsonResponse({"status": "API is running"})
-
-urlpatterns = [
-    path("", root),
-    ...
-]
+from django.urls import path, include
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('api/', include('core.interface.urls')),
 ]

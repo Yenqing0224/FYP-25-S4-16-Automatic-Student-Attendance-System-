@@ -9,9 +9,14 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-const HomeScreen = ({ navigation }) => {
+// ✅ 1. Added 'route' here to receive data from Login
+const HomeScreen = ({ navigation, route }) => {
   
-  // 1. REAL DATE LOGIC
+  // ✅ 2. Extract user data passed from LoginScreen
+  // If no user data is found (e.g. during testing), default to empty object
+  const { user } = route.params || {}; 
+
+  // REAL DATE LOGIC
   const [currentDate, setCurrentDate] = useState({ dayName: '', dateString: '' });
 
   useEffect(() => {
@@ -28,11 +33,12 @@ const HomeScreen = ({ navigation }) => {
     setCurrentDate({ dayName, dateString });
   }, []);
 
-  // 2. DATA OBJECT (Mimicking Database)
+  // DATA OBJECT (Mimicking Database)
   const dashboardData = {
     user: {
-      name: "Moses Lim",
-      attendanceRate: "83%",
+      // ✅ 3. USE REAL NAME (Fallback to "Guest" if missing)
+      name: user?.username || "Student", 
+      attendanceRate: "83%", // We will fetch this from API later
       semesterRange: "Oct 2025 - Mar 2026",
     },
     todayClasses: [
@@ -59,7 +65,6 @@ const HomeScreen = ({ navigation }) => {
   };
 
   return (
-    // ✅ Reverted to your single WHITE Safe Area
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
       
@@ -69,6 +74,7 @@ const HomeScreen = ({ navigation }) => {
         <View style={styles.headerContainer}>
           <View>
             <Text style={styles.greetingLabel}>Hello,</Text>
+            {/* ✅ This will now show the actual username */}
             <Text style={styles.greetingName}>{dashboardData.user.name}!</Text>
           </View>
           <View style={styles.dateContainer}>
@@ -133,7 +139,6 @@ const HomeScreen = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  // ✅ Totally White Container
   safeArea: {
     flex: 1,
     backgroundColor: '#fff',
@@ -150,7 +155,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     padding: 20,
-    paddingTop: 20, // Added padding to separate from status bar visually
+    paddingTop: 20, 
   },
   greetingLabel: {
     fontSize: 16,
@@ -161,6 +166,8 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     color: '#000',
+    // Added textTransform to make names look nice (e.g. "ali" -> "Ali")
+    textTransform: 'capitalize', 
   },
   dateContainer: {
     alignItems: 'flex-end',

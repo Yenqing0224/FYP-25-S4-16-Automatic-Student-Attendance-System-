@@ -9,21 +9,58 @@ import {
   Platform,
   TouchableWithoutFeedback,
   Keyboard,
+  Alert, 
+  ActivityIndicator
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import axios from 'axios';
 
 const LoginScreen = ({ navigation }) => {
-  const [email, setEmail] = useState('');
+  // ✅ CHANGED: State is now 'username', not 'email'
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  // ✅ Added the handleLogin function here
-  const handleLogin = () => {
-    // Dummy login action (you can replace this with real logic later)
-    console.log("Logging in:", email, password);
+  // YOUR BACKEND URL
+  const API_URL = 'https://attendify.onrender.com/api/login/';
 
-    // Jump to main tabs
-    // This assumes your Stack Navigator has a screen called "MainTabs"
-    navigation.replace("MainTabs");
+  const handleLogin = async () => {
+    if (!username || !password) {
+      Alert.alert("Error", "Please enter both username and password.");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      // ✅ CHANGED: Sending 'username' variable directly
+      const response = await axios.post(API_URL, {
+        username: username, 
+        password: password
+      });
+
+      console.log("Login Success:", response.data);
+      Alert.alert("Success", "Welcome back, " + response.data.user.username);
+      
+      navigation.replace("MainTabs", { 
+        screen: "Home", // Assuming your Tab Navigator has a screen named "Home"
+        params: { user: response.data.user } // Pass the user object here!
+      });
+
+    } catch (error) {
+      console.error("Login Error:", error);
+      let errorMessage = "Something went wrong.";
+      
+      if (error.response) {
+        errorMessage = error.response.data.error || "Invalid Credentials";
+      } else if (error.request) {
+        errorMessage = "Network error. Please check your internet.";
+      }
+
+      Alert.alert("Login Failed", errorMessage);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -37,15 +74,15 @@ const LoginScreen = ({ navigation }) => {
           <View style={styles.formSection}>
             <Text style={styles.headerTitle}>Log In</Text>
 
+            {/* ✅ CHANGED: Label and Placeholder are now Username */}
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Email</Text>
+              <Text style={styles.label}>Username</Text>
               <TextInput
                 style={styles.input}
-                placeholder="Enter email"
+                placeholder="Enter username" 
                 placeholderTextColor="#A0A0A0"
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
+                value={username}
+                onChangeText={setUsername}
                 autoCapitalize="none"
               />
             </View>
@@ -67,12 +104,16 @@ const LoginScreen = ({ navigation }) => {
           </View>
 
           <View style={styles.bottomSection}>
-            {/* ✅ Connected the onPress to handleLogin */}
             <TouchableOpacity 
               style={styles.loginButton} 
               onPress={handleLogin}
+              disabled={loading}
             >
-              <Text style={styles.loginButtonText}>Log In</Text>
+              {loading ? (
+                 <ActivityIndicator color="#fff" />
+              ) : (
+                 <Text style={styles.loginButtonText}>Log In</Text>
+              )}
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.contactContainer}>
