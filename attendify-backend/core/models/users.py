@@ -39,7 +39,7 @@ class Admin(models.Model):
     admin_id = models.CharField(max_length=20, unique=True) 
 
     def __str__(self):
-        return f"Admin: {self.admin_id}"
+        return f"{self.user.username} {self.admin_id}"
 
 
 class Lecturer(models.Model):
@@ -49,7 +49,7 @@ class Lecturer(models.Model):
     staff_id = models.CharField(max_length=20, unique=True) 
 
     def __str__(self):
-        return f"Lecturer: {self.staff_id}"
+        return f"{self.user.username} {self.staff_id}"
 
 
 class Student(models.Model):
@@ -62,4 +62,4 @@ class Student(models.Model):
     attendance_threshold = models.FloatField(default=80.0)
 
     def __str__(self):
-        return f"Student: {self.student_id}"
+        return f"{self.user.username} ({self.student_id})"
