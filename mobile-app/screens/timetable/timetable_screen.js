@@ -1,99 +1,108 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  StatusBar,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, ActivityIndicator
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Calendar } from 'react-native-calendars';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import axios from 'axios';
 
 const TimetableScreen = ({ navigation }) => {
   const [activeTab, setActiveTab] = useState('Selected');
+  // Default to today's date in YYYY-MM-DD format
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  
+  // STATE
+  const [fullSchedule, setFullSchedule] = useState([]); // Raw Data from API
+  const [markedDates, setMarkedDates] = useState({});   // Data formatted for Calendar Dots
+  const [loading, setLoading] = useState(true);
 
-  // --- 1. DATA: Class Details (The Source of Truth) ---
-  // The dots will now be generated AUTOMATICALLY based on this list.
-  const timetableData = {
-    '2025-12-03': [
-      { id: 103, title: "CSIT111 Lecture", time: "9.00am - 11.00am", location: "Lecture Hall 1", type: "blue" }
-    ],
-    '2025-12-06': [
-      { id: 104, title: "CSIT123 Tutorial", time: "10.00am - 12.00pm", location: "Lab 2", type: "blue" }
-    ],
-    '2025-12-18': [
-      { id: 101, title: "CSIT123", time: "12.00pm - 3.00pm", location: "Blk.A.1.17", type: "blue" },
-      { id: 102, title: "Group Meeting", time: "3.00pm - 5.00pm", location: "Online Discord", type: "purple", hasPlusIcon: true }
-    ],
-    '2025-12-24': [
-       { id: 105, title: "Consultation", time: "2.00pm - 3.00pm", location: "Office", type: "blue" }
-    ]
+  const API_URL = 'https://attendify-ekg6.onrender.com/api/timetable/';
+
+  useEffect(() => {
+    fetchTimetable();
+  }, []);
+
+  const fetchTimetable = async () => {
+    try {
+      const storedUser = await AsyncStorage.getItem('userInfo');
+      if (storedUser) {
+        const user = JSON.parse(storedUser);
+        const response = await axios.get(`${API_URL}?user_id=${user.id}`);
+        
+        setFullSchedule(response.data); // Save raw list
+        processCalendarDots(response.data); // Generate dots
+      }
+    } catch (error) {
+      console.error("Timetable Error:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const upcomingData = [
-    { id: 201, title: "Final Exam", time: "9.00am - 12.00pm", location: "Main Hall", color: '#FFF9C4' },
-    { id: 202, title: "Project Submission", time: "11.59pm", location: "Online Portal", color: '#FFB6C1' }
-  ];
+  // --- LOGIC: Convert Django Data to Calendar Dots ---
+  const processCalendarDots = (data) => {
+    const marks = {};
 
-  // --- 2. LOGIC: Get Today's Date String ---
-  const getTodayDate = () => {
-    const now = new Date();
-    // Returns format "YYYY-MM-DD"
-    return now.toISOString().split('T')[0];
-  };
+    data.forEach(session => {
+      // session.date_time is "2025-10-05T14:00:00"
+      // We need just "2025-10-05"
+      const dateKey = session.date_time.split('T')[0];
 
-  // --- 3. LOGIC: Auto-Generate Dots & Selection ---
-  const getMarkedDates = () => {
-    const marked = {};
-
-    // A. Loop through data to place DOTS
-    Object.keys(timetableData).forEach(date => {
-      marked[date] = {
-        dots: [{ key: 'class', color: '#90CAF9' }] // Default Blue dot for any class
+      marks[dateKey] = {
+        dots: [{ key: 'class', color: '#90CAF9' }] // Blue dot
       };
     });
 
-    // B. Apply SELECTION style (Blue Box)
-    // If the selected date exists in our map, keep its dot but turn it white.
-    // If it doesn't exist, create a new entry for the blue box.
-    if (marked[selectedDate]) {
-      marked[selectedDate] = {
-        ...marked[selectedDate],
+    setMarkedDates(marks);
+  };
+
+  // --- LOGIC: Get Dynamic Marked Dates (Dots + Selection) ---
+  const getDisplayMarkedDates = () => {
+    const newMarked = { ...markedDates }; // Copy existing dots
+
+    // Add the "Selected Blue Box" style to the specific day clicked
+    if (newMarked[selectedDate]) {
+      newMarked[selectedDate] = {
+        ...newMarked[selectedDate],
         selected: true,
         selectedColor: '#3F4E85',
-        dots: [{ key: 'class', color: '#ffffff' }] // White dot
+        dots: [{ key: 'class', color: '#ffffff' }] // Turn dot white if selected
       };
     } else {
-      marked[selectedDate] = {
+      newMarked[selectedDate] = {
         selected: true,
         selectedColor: '#3F4E85',
       };
     }
-    
-    return marked;
+    return newMarked;
   };
 
+  // --- LOGIC: Helper Helpers ---
+  const formatTime = (isoString) => {
+    return new Date(isoString).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  };
+
+  // --- RENDER: The List below the calendar ---
   const renderSelectedContent = () => {
-    const classesForDay = timetableData[selectedDate] || [];
+    // FILTER: Find classes that match the selected date string
+    const classesForDay = fullSchedule.filter(item => 
+        item.date_time.startsWith(selectedDate)
+    );
 
     return (
       <View>
-        <Text style={styles.sectionDateTitle}>{selectedDate}</Text>
+        <Text style={styles.sectionDateTitle}>
+            {new Date(selectedDate).toDateString()}
+        </Text>
+        
         {classesForDay.length > 0 ? (
           classesForDay.map((item) => (
-            <View 
-              key={item.id} 
-              style={[
-                styles.eventCard, 
-                item.type === 'blue' ? styles.cardBlue : styles.cardPurple
-              ]}
-            >
+            <View key={item.id} style={[styles.eventCard, styles.cardBlue]}>
               <View style={styles.cardContent}>
-                <Text style={styles.eventTitle}>{item.title}</Text>
-                <Text style={styles.eventTime}>{item.time}</Text>
-                <Text style={styles.eventLoc}>{item.location}</Text>
+                <Text style={styles.eventTitle}>{item.module.code} - {item.module.name}</Text>
+                <Text style={styles.eventTime}>{formatTime(item.date_time)}</Text>
+                <Text style={styles.eventLoc}>{item.venue}</Text>
               </View>
             </View>
           ))
@@ -106,20 +115,32 @@ const TimetableScreen = ({ navigation }) => {
     );
   };
 
-  const renderUpcomingContent = () => (
-    <View>
-      <Text style={styles.sectionDateTitle}>Upcoming Events</Text>
-      {upcomingData.map((item) => (
-        <View key={item.id} style={[styles.eventCard, { backgroundColor: item.color }]}>
-          <View style={styles.cardContent}>
-            <Text style={styles.eventTitle}>{item.title}</Text>
-            <Text style={styles.eventTime}>{item.time}</Text>
-            <Text style={styles.eventLoc}>{item.location}</Text>
-          </View>
-        </View>
-      ))}
-    </View>
-  );
+  const renderUpcomingContent = () => {
+    // FILTER: Find classes in the future
+    const now = new Date();
+    const upcoming = fullSchedule.filter(item => new Date(item.date_time) > now);
+
+    return (
+      <View>
+        <Text style={styles.sectionDateTitle}>Upcoming Events</Text>
+        {upcoming.length === 0 ? (
+             <Text style={{textAlign: 'center', color: '#999'}}>No upcoming classes.</Text>
+        ) : (
+            upcoming.slice(0, 5).map((item) => ( // Show only next 5
+            <View key={item.id} style={[styles.eventCard, { backgroundColor: '#FFF9C4' }]}>
+                <View style={styles.cardContent}>
+                <Text style={styles.eventTitle}>{item.module.code}</Text>
+                <Text style={styles.eventTime}>
+                    {new Date(item.date_time).toDateString()} at {formatTime(item.date_time)}
+                </Text>
+                <Text style={styles.eventLoc}>{item.venue}</Text>
+                </View>
+            </View>
+            ))
+        )}
+      </View>
+    );
+  };
 
   return (
     <View style={styles.mainContainer}>
@@ -135,74 +156,52 @@ const TimetableScreen = ({ navigation }) => {
           <View style={{ width: 20 }} />
         </View>
 
-        <ScrollView contentContainerStyle={styles.scrollContent}>
-          
-          <View style={styles.calendarCard}>
-            <Calendar
-              // Force calendar to show the month of the selected Date
-              current={selectedDate} 
-              onDayPress={day => {
-                setSelectedDate(day.dateString);
-                setActiveTab('Selected'); 
-              }}
-              markingType={'multi-dot'}
-              markedDates={getMarkedDates()} // Dynamic Function
-              theme={{
-                backgroundColor: '#ffffff',
-                calendarBackground: '#ffffff',
-                textSectionTitleColor: '#000',
-                selectedDayBackgroundColor: '#3F4E85',
-                selectedDayTextColor: '#ffffff',
-                todayTextColor: '#3A7AFE',
-                dayTextColor: '#2d4150',
-                textDisabledColor: '#d9e1e8',
-                dotColor: '#00adf5',
-                selectedDotColor: '#ffffff',
-                arrowColor: 'black',
-                monthTextColor: 'black',
-                textDayFontWeight: '300',
-                textMonthFontWeight: 'bold',
-                textDayHeaderFontWeight: '600',
-                textDayFontSize: 16,
-                textMonthFontSize: 16,
-                textDayHeaderFontSize: 14
-              }}
-            />
-          </View>
+        {loading ? (
+            <ActivityIndicator size="large" color="#000" style={{marginTop: 50}} />
+        ) : (
+            <ScrollView contentContainerStyle={styles.scrollContent}>
+            
+            <View style={styles.calendarCard}>
+                <Calendar
+                current={selectedDate}
+                onDayPress={day => {
+                    setSelectedDate(day.dateString);
+                    setActiveTab('Selected'); 
+                }}
+                markingType={'multi-dot'}
+                markedDates={getDisplayMarkedDates()} 
+                theme={{
+                    selectedDayBackgroundColor: '#3F4E85',
+                    todayTextColor: '#3A7AFE',
+                    arrowColor: 'black',
+                    textMonthFontWeight: 'bold',
+                }}
+                />
+            </View>
 
-          <View style={styles.toggleContainer}>
-            <TouchableOpacity 
-              style={[
-                styles.toggleButton, 
-                activeTab === 'Selected' ? styles.activeBtn : styles.inactiveBtn
-              ]}
-              onPress={() => setActiveTab('Selected')}
-            >
-              <Text style={activeTab === 'Selected' ? styles.activeText : styles.inactiveText}>
-                Selected
-              </Text>
-            </TouchableOpacity>
+            <View style={styles.toggleContainer}>
+                <TouchableOpacity 
+                style={[styles.toggleButton, activeTab === 'Selected' ? styles.activeBtn : styles.inactiveBtn]}
+                onPress={() => setActiveTab('Selected')}
+                >
+                <Text style={activeTab === 'Selected' ? styles.activeText : styles.inactiveText}>Selected</Text>
+                </TouchableOpacity>
 
-            <TouchableOpacity 
-              style={[
-                styles.toggleButton, 
-                activeTab === 'Upcoming' ? styles.activeBtn : styles.inactiveBtn
-              ]}
-              // ✅ INTERACTION FIX: Pressing Upcoming jumps to TODAY
-              onPress={() => {
-                setActiveTab('Upcoming');
-                setSelectedDate(getTodayDate()); 
-              }}
-            >
-              <Text style={activeTab === 'Upcoming' ? styles.activeText : styles.inactiveText}>
-                Upcoming
-              </Text>
-            </TouchableOpacity>
-          </View>
+                <TouchableOpacity 
+                style={[styles.toggleButton, activeTab === 'Upcoming' ? styles.activeBtn : styles.inactiveBtn]}
+                onPress={() => {
+                    setActiveTab('Upcoming');
+                    setSelectedDate(new Date().toISOString().split('T')[0]); // Reset to today
+                }}
+                >
+                <Text style={activeTab === 'Upcoming' ? styles.activeText : styles.inactiveText}>Upcoming</Text>
+                </TouchableOpacity>
+            </View>
 
-          {activeTab === 'Selected' ? renderSelectedContent() : renderUpcomingContent()}
-          
-        </ScrollView>
+            {activeTab === 'Selected' ? renderSelectedContent() : renderUpcomingContent()}
+            
+            </ScrollView>
+        )}
       </View>
     </View>
   );
@@ -214,34 +213,18 @@ const styles = StyleSheet.create({
   contentContainer: { flex: 1, backgroundColor: '#fff' },
   scrollContent: { paddingBottom: 20 },
   header: { 
-    backgroundColor: '#EAEAEA',
-    paddingVertical: 15,
-    paddingHorizontal: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    backgroundColor: '#EAEAEA', paddingVertical: 15, paddingHorizontal: 20, 
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
   },
   backArrow: { fontSize: 24, color: '#333', fontWeight: '300' },
   headerTitle: { fontSize: 18, fontWeight: '700', color: '#000' },
   calendarCard: { 
-    backgroundColor: '#fff', 
-    marginHorizontal: 10, 
-    borderRadius: 20, 
-    padding: 10,
-    marginTop: 10,
-    elevation: 2, 
-    shadowColor: '#000', 
-    shadowOpacity: 0.1,
-    shadowRadius: 5,
+    backgroundColor: '#fff', marginHorizontal: 10, borderRadius: 20, padding: 10, marginTop: 10,
+    elevation: 2, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 5,
   },
   toggleContainer: {
-    flexDirection: 'row',
-    backgroundColor: '#EAEAEA',
-    marginHorizontal: 20,
-    marginTop: 20,
-    borderRadius: 30,
-    padding: 2,
-    height: 50,
+    flexDirection: 'row', backgroundColor: '#EAEAEA', marginHorizontal: 20, marginTop: 20,
+    borderRadius: 30, padding: 2, height: 50,
   },
   toggleButton: { flex: 1, alignItems: 'center', justifyContent: 'center', borderRadius: 28 },
   activeBtn: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#ddd', elevation: 2 },
@@ -251,13 +234,10 @@ const styles = StyleSheet.create({
   sectionDateTitle: { fontSize: 18, fontWeight: 'bold', margin: 20, marginBottom: 10 },
   eventCard: { marginHorizontal: 20, borderRadius: 12, padding: 20, marginBottom: 15, flexDirection: 'row', justifyContent: 'space-between' },
   cardBlue: { backgroundColor: '#B3E5FC' },
-  cardPurple: { backgroundColor: '#E1BEE7' },
   cardContent: { flex: 1 },
   eventTitle: { fontWeight: 'bold', fontSize: 16 },
   eventTime: { fontSize: 14, marginTop: 4 },
   eventLoc: { fontSize: 14, color: '#555', marginTop: 2 },
-  plusIconCircle: { width: 30, height: 30, borderRadius: 15, backgroundColor: 'rgba(0,0,0,0.2)', alignItems: 'center', justifyContent: 'center' },
-  plusIconText: { color: '#fff', fontWeight: 'bold', fontSize: 20, marginTop: -2 },
   emptyContainer: { alignItems: 'center', padding: 20 },
   emptyText: { color: '#999', fontSize: 16 }
 });

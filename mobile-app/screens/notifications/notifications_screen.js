@@ -122,8 +122,7 @@ const NotificationScreen = ({ navigation }) => {
                       // Django uses 'is_read', so we check that
                       item.is_read ? styles.cardRead : styles.cardUnread
                     ]}
-                    // Navigate to Detail (if you have one, or just expand)
-                    // onPress={() => navigation.navigate('NotificationDetail', { item: item })}
+                    onPress={() => navigation.navigate('NotificationDetail', { item: item })}
                   >
                     <View style={styles.cardContentRow}>
                       {/* Dot Indicator for Unread */}
