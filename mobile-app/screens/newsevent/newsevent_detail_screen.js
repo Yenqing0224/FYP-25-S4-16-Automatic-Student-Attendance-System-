@@ -6,12 +6,26 @@ import {
   ScrollView,
   TouchableOpacity,
   StatusBar,
+  Image, // Import Image
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const NewsEventDetailScreen = ({ route, navigation }) => {
   // Get the data passed from the previous screen
   const { item } = route.params;
+
+  // Helper to format the specific date string from Django
+  const getFormattedDate = () => {
+    const dateString = item.news_date || item.event_date || item.date_sent;
+    if (!dateString) return "Date not available";
+    
+    // Format: "5 Oct 2025"
+    return new Date(dateString).toLocaleDateString('en-GB', {
+      day: 'numeric', 
+      month: 'short', 
+      year: 'numeric'
+    });
+  };
 
   return (
     <View style={styles.mainContainer}>
@@ -31,19 +45,41 @@ const NewsEventDetailScreen = ({ route, navigation }) => {
 
         <ScrollView contentContainerStyle={styles.scrollContent}>
           
-          {/* Big Image Placeholder */}
-          <View style={styles.imagePlaceholder} />
+          {/* Big Image Section */}
+          {item.image_url ? (
+            <Image 
+              source={{ uri: item.image_url }} 
+              style={styles.heroImage} 
+              resizeMode="cover"
+            />
+          ) : (
+            // Fallback Gray Box if no image
+            <View style={styles.imagePlaceholder} />
+          )}
 
           {/* Title Section */}
           <Text style={styles.title}>{item.title}</Text>
-          <Text style={styles.subtitle}>{item.description}</Text>
           
-          <Text style={styles.date}>{item.fullDate || item.time}</Text>
-
-          {/* Long Body Text */}
-          <Text style={styles.bodyText}>
-            {item.longDescription}
+          {/* Subtitle / Short Description */}
+          <Text style={styles.subtitle}>
+            {item.message || item.description}
           </Text>
+          
+          {/* Date */}
+          <Text style={styles.date}>{getFormattedDate()}</Text>
+
+          {/* Long Body Text (Use description if no separate long_description exists) */}
+          <Text style={styles.bodyText}>
+            {item.description || item.message}
+          </Text>
+
+          {/* Extra Details for Events (Venue/Organizer) */}
+          {item.venue && (
+            <View style={styles.extraDetails}>
+              <Text style={styles.detailLabel}>Venue: {item.venue}</Text>
+              {item.organizer && <Text style={styles.detailLabel}>Organizer: {item.organizer}</Text>}
+            </View>
+          )}
 
         </ScrollView>
       </View>
@@ -73,25 +109,33 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 200,
     backgroundColor: '#757575',
-    borderRadius: 0, // Sharp corners as per image
     marginBottom: 20,
   },
+  heroImage: {
+    width: '100%',
+    height: 200,
+    backgroundColor: '#ccc',
+    marginBottom: 20,
+  },
+  
   title: {
-    fontSize: 20,
+    fontSize: 22, // Slightly larger
     fontWeight: 'bold',
     color: '#000',
     marginBottom: 10,
   },
   subtitle: {
-    fontSize: 14,
-    color: '#555',
-    marginBottom: 15,
-    lineHeight: 20,
+    fontSize: 16,
+    fontWeight: '600', // Semi-bold for emphasis
+    color: '#333',
+    marginBottom: 10,
+    lineHeight: 22,
   },
   date: {
     fontSize: 14,
-    color: '#333',
+    color: '#666',
     marginBottom: 20,
+    fontStyle: 'italic',
   },
   bodyText: {
     fontSize: 15,
@@ -99,6 +143,18 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     textAlign: 'justify',
   },
+  extraDetails: {
+    marginTop: 20,
+    paddingTop: 15,
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+  },
+  detailLabel: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#555',
+    marginBottom: 5,
+  }
 });
 
 export default NewsEventDetailScreen;

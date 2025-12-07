@@ -14,54 +14,42 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const LoginScreen = ({ navigation }) => {
-  // ✅ CHANGED: State is now 'username', not 'email'
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // YOUR BACKEND URL
-  const API_URL = 'https://attendify.onrender.com/api/login/';
+  // BACKEND URL
+  const API_URL = 'https://attendify-ekg6.onrender.com/api/login/';
 
   const handleLogin = async () => {
-    if (!username || !password) {
-      Alert.alert("Error", "Please enter both username and password.");
-      return;
-    }
+  // ... validation ...
+  setLoading(true);
 
-    setLoading(true);
+  try {
+    const response = await axios.post(API_URL, {
+      username: username,
+      password: password
+    });
 
-    try {
-      // ✅ CHANGED: Sending 'username' variable directly
-      const response = await axios.post(API_URL, {
-        username: username, 
-        password: password
-      });
+    // 2. SUCCESS: Save User Data to Hardware
+    // We must turn the object into a String to save it
+    const userData = response.data.user;
+    await AsyncStorage.setItem('userInfo', JSON.stringify(userData));
 
-      console.log("Login Success:", response.data);
-      Alert.alert("Success", "Welcome back, " + response.data.user.username);
-      
-      navigation.replace("MainTabs", { 
-        screen: "Home", // Assuming your Tab Navigator has a screen named "Home"
-        params: { user: response.data.user } // Pass the user object here!
-      });
+    console.log("User saved to storage:", userData.username);
+    
+    // 3. Navigate (No need to pass params anymore!)
+    navigation.replace("MainTabs");
 
-    } catch (error) {
-      console.error("Login Error:", error);
-      let errorMessage = "Something went wrong.";
-      
-      if (error.response) {
-        errorMessage = error.response.data.error || "Invalid Credentials";
-      } else if (error.request) {
-        errorMessage = "Network error. Please check your internet.";
-      }
-
-      Alert.alert("Login Failed", errorMessage);
-    } finally {
-      setLoading(false);
-    }
-  };
+  } catch (error) {
+    // ... error handling ...
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <SafeAreaView style={styles.container}>

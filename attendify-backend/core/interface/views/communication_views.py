@@ -48,3 +48,22 @@ def get_notifications(request):
     except Exception as e:
         print(f"Notification Error: {e}")
         return Response({"error": "Failed to load notifications"}, status=500)
+    
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def mark_notifications_read(request):
+    try:
+        user_id = request.data.get('user_id')
+        
+        if not user_id:
+            return Response({"error": "User ID required"}, status=400)
+
+        # Update all notifications
+        count = Notification.objects.filter(recipient_id=user_id, is_read=False).update(is_read=True)
+        
+        return Response({"message": f"Marked {count} notifications as read"})
+
+    except Exception as e:
+        print(f"Mark Read Error: {e}")
+        return Response({"error": "Failed to update"}, status=500)

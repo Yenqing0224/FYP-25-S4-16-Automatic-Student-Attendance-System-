@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,64 +7,56 @@ import {
   TextInput,
   TouchableOpacity,
   StatusBar,
+  ActivityIndicator,
+  Image
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import axios from 'axios';
 
 const NewsEventsScreen = ({ navigation }) => {
   const [searchText, setSearchText] = useState('');
-  // 1. STATE: Track which tab is active
-  const [activeTab, setActiveTab] = useState('News'); // Default to Events as per your image
+  const [activeTab, setActiveTab] = useState('News');
+  
+  // STATE: Hold the real data from Server
+  const [newsList, setNewsList] = useState([]);
+  const [eventsList, setEventsList] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  // DATA: Events List (Matches your image)
-  const eventsData = [
-    {
-      id: 1,
-      title: "Orientation Week Kicks Off for New Students!",
-      description: "A warm welcome event to help newcomers settle in.",
-      time: "2 hours ago",
-      fullDate: "5 Oct 2025",
-      longDescription: "The annual Orientation Week began today with a vibrant start as new students arrived on campus for the first time. The programme opened with a guided campus tour led by student volunteers, giving newcomers a chance to familiarize themselves with key facilities such as the library, labs, student services, and study hubs.\n\nThroughout the day, club booths lined the central courtyard, showcasing more than 30 CCAs ranging from sports teams to interest groups. Representatives engaged with incoming students, sharing details about training schedules, upcoming events, and membership requirements.",
-    },
-    {
-      id: 2,
-      title: "Mid-Semester Break Schedule Released!",
-      description: "Official holiday dates for students to plan ahead.",
-      time: "8 hours ago",
-      fullDate: "12 Oct 2025",
-      longDescription: "The administration has officially released the schedule for the upcoming Mid-Semester break. Students are advised to check the portal for specific dates related to their faculties. The library will remain open with shortened hours during this period.",
-    },
-    {
-      id: 3,
-      title: "Campus Sustainability Drive Launches Next Monday",
-      description: "A week-long campaign promoting eco-friendly habits",
-      time: "5 Oct 2025",
-      fullDate: "5 Oct 2025",
-      longDescription: "Join us in making our campus greener! The Sustainability Drive will feature workshops on recycling, a zero-waste market, and tree-planting sessions near the sports complex. All students are invited to participate.",
-    },
-  ];
+  // ✅ FIX 1: Use the correct URL endpoint defined in Django urls.py
+  const API_URL = 'https://attendify-ekg6.onrender.com/api/newsevent/';
 
-  // DATA: News List (Dummy data for the other tab)
-  const newsData = [
-    {
-      id: 101,
-      title: "New Science Block Construction Update",
-      description: "Construction is 50% complete.",
-      time: "1 day ago",
-      fullDate: "4 Oct 2025",
-      longDescription: "The new Science Block is progressing well...",
-    },
-    {
-      id: 102,
-      title: "Student Achievements in Hackathon",
-      description: "Our team took 2nd place!",
-      time: "3 days ago",
-      fullDate: "2 Oct 2025",
-      longDescription: "Congratulations to our CS team...",
-    },
-  ];
+  // FETCH DATA ON LOAD
+  useEffect(() => {
+    fetchNewsAndEvents();
+  }, []);
 
-  // Helper to decide which list to show
-  const currentItems = activeTab === 'Events' ? eventsData : newsData;
+  const fetchNewsAndEvents = async () => {
+    try {
+      const response = await axios.get(API_URL);
+      setNewsList(response.data.news);
+      setEventsList(response.data.events);
+    } catch (error) {
+      console.error("Failed to fetch feed:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ✅ FIX 2: Search Filter Logic
+  // First, pick the list based on the tab
+  const rawItems = activeTab === 'Events' ? eventsList : newsList;
+  
+  // Then, filter that list based on the Search Text
+  const currentItems = rawItems.filter(item => 
+    item.title.toLowerCase().includes(searchText.toLowerCase())
+  );
+
+  // Helper to format date
+  const formatDate = (dateString) => {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+  };
 
   return (
     <View style={styles.mainContainer}>
@@ -73,6 +65,7 @@ const NewsEventsScreen = ({ navigation }) => {
       <View style={styles.contentContainer}>
         <StatusBar barStyle="dark-content" backgroundColor="#EAEAEA" />
 
+        {/* --- HEADER --- */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.navigate('Home')}>
             <Text style={styles.backArrow}>{'<'}</Text>
@@ -81,65 +74,97 @@ const NewsEventsScreen = ({ navigation }) => {
           <View style={{ width: 20 }} /> 
         </View>
 
-        <ScrollView contentContainerStyle={styles.scrollContent}>
-          
-          <View style={styles.searchContainer}>
-            <Text style={{ marginRight: 10 }}>🔍</Text>
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search"
-              placeholderTextColor="#999"
-              value={searchText}
-              onChangeText={setSearchText}
-            />
+        {/* --- LOADING STATE --- */}
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#000" />
+            <Text style={{marginTop: 10}}>Loading updates...</Text>
           </View>
-
-          {/* 2. TAB TOGGLES: Now interactive */}
-          <View style={styles.tabContainer}>
-            <TouchableOpacity 
-              style={activeTab === 'News' ? styles.tabActive : styles.tabInactive}
-              onPress={() => setActiveTab('News')}
-            >
-              <Text style={activeTab === 'News' ? styles.tabTextActive : styles.tabTextInactive}>News</Text>
-            </TouchableOpacity>
+        ) : (
+          <ScrollView contentContainerStyle={styles.scrollContent}>
             
-            <TouchableOpacity 
-              style={activeTab === 'Events' ? styles.tabActive : styles.tabInactive}
-              onPress={() => setActiveTab('Events')}
-            >
-              <Text style={activeTab === 'Events' ? styles.tabTextActive : styles.tabTextInactive}>Events</Text>
-            </TouchableOpacity>
-          </View>
+            {/* SEARCH BAR */}
+            <View style={styles.searchContainer}>
+              <Text style={{ marginRight: 10 }}>🔍</Text>
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search"
+                placeholderTextColor="#999"
+                value={searchText}
+                onChangeText={setSearchText}
+              />
+            </View>
 
-          <View style={styles.listContainer}>
-            {currentItems.map((item) => (
+            {/* TAB TOGGLES */}
+            <View style={styles.tabContainer}>
               <TouchableOpacity 
-                key={item.id} 
-                style={styles.card}
-                // 3. NAVIGATION: Go to Detail Screen
-                onPress={() => navigation.navigate('NewseventDetail', { item: item })}
+                style={activeTab === 'News' ? styles.tabActive : styles.tabInactive}
+                onPress={() => {
+                    setActiveTab('News');
+                    setSearchText(''); // Optional: Clear search when switching tabs
+                }}
               >
-                <View style={styles.imagePlaceholder} />
-                <View style={styles.textContainer}>
-                  <Text style={styles.cardTitle}>{item.title}</Text>
-                  <Text style={styles.cardDescription}>{item.description}</Text>
-                  <Text style={styles.cardTime}>{item.time}</Text>
-                </View>
+                <Text style={activeTab === 'News' ? styles.tabTextActive : styles.tabTextInactive}>News</Text>
               </TouchableOpacity>
-            ))}
-          </View>
+              
+              <TouchableOpacity 
+                style={activeTab === 'Events' ? styles.tabActive : styles.tabInactive}
+                onPress={() => {
+                    setActiveTab('Events');
+                    setSearchText('');
+                }}
+              >
+                <Text style={activeTab === 'Events' ? styles.tabTextActive : styles.tabTextInactive}>Events</Text>
+              </TouchableOpacity>
+            </View>
 
-        </ScrollView>
+            {/* LIST CONTENT */}
+            <View style={styles.listContainer}>
+              {currentItems.length === 0 ? (
+                <Text style={styles.emptyText}>
+                    {searchText ? `No results for "${searchText}"` : `No ${activeTab} found.`}
+                </Text>
+              ) : (
+                currentItems.map((item) => (
+                  <TouchableOpacity 
+                    key={item.id} 
+                    style={styles.card}
+                    onPress={() => navigation.navigate('NewseventDetail', { item: item })}
+                  >
+                    {/* Image Handling */}
+                    {item.image_url ? (
+                         <Image source={{ uri: item.image_url }} style={styles.cardImage} />
+                    ) : (
+                         <View style={styles.imagePlaceholder} />
+                    )}
+
+                    <View style={styles.textContainer}>
+                      <Text style={styles.cardTitle}>{item.title}</Text>
+                      <Text style={styles.cardDescription} numberOfLines={2}>
+                        {item.message || item.description}
+                      </Text>
+                      <Text style={styles.cardTime}>
+                        {formatDate(activeTab === 'News' ? item.news_date : item.event_date)}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                ))
+              )}
+            </View>
+
+          </ScrollView>
+        )}
       </View>
     </View>
   );
 };
 
+// ... Styles remain exactly the same as your code ...
 const styles = StyleSheet.create({
   mainContainer: { flex: 1, backgroundColor: '#fff' },
   topSafeArea: { flex: 0, backgroundColor: '#EAEAEA' },
   contentContainer: { flex: 1, backgroundColor: '#fff' },
-  
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   header: {
     backgroundColor: '#EAEAEA',
     paddingVertical: 15,
@@ -150,9 +175,7 @@ const styles = StyleSheet.create({
   },
   backArrow: { fontSize: 24, color: '#333', fontWeight: '300' },
   headerTitle: { fontSize: 18, fontWeight: '700', color: '#000' },
-  
   scrollContent: { paddingBottom: 20 },
-  
   searchContainer: {
     marginHorizontal: 20,
     marginTop: 20,
@@ -166,8 +189,6 @@ const styles = StyleSheet.create({
     height: 45,
   },
   searchInput: { flex: 1, height: 40, color: '#000' },
-  
-  // Tab Styles
   tabContainer: {
     flexDirection: 'row',
     marginHorizontal: 20,
@@ -194,8 +215,8 @@ const styles = StyleSheet.create({
   },
   tabTextInactive: { color: '#999', fontWeight: '700', fontSize: 15 },
   tabTextActive: { color: '#000', fontWeight: '700', fontSize: 15 },
-  
   listContainer: { paddingHorizontal: 20 },
+  emptyText: { textAlign: 'center', marginTop: 20, color: '#777' },
   card: {
     flexDirection: 'row',
     backgroundColor: '#E0E0E0',
@@ -210,6 +231,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#757575',
     borderRadius: 4,
     marginRight: 15,
+  },
+  cardImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 4,
+    marginRight: 15,
+    backgroundColor: '#ccc'
   },
   textContainer: { flex: 1 },
   cardTitle: { fontSize: 14, fontWeight: 'bold', color: '#000', marginBottom: 4 },

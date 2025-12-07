@@ -9,4 +9,5 @@ urlpatterns = [
     # Communication
     path('newsevent/', communication_views.get_newsevent, name='newsevent'),
     path('notifications/', communication_views.get_notifications, name='notifications'),
+    path('notifications/mark-read/', communication_views.mark_notifications_read, name='mark-read'),
 ]

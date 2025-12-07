@@ -8,15 +8,32 @@ import {
   StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage'; // ✅ 1. Import AsyncStorage
 
-// ✅ 1. Added 'route' here to receive data from Login
-const HomeScreen = ({ navigation, route }) => {
+const HomeScreen = ({ navigation }) => {
   
-  // ✅ 2. Extract user data passed from LoginScreen
-  // If no user data is found (e.g. during testing), default to empty object
-  const { user } = route.params || {}; 
+  // ✅ 2. State to hold the User Data
+  const [user, setUser] = useState(null);
 
-  // REAL DATE LOGIC
+  // ✅ 3. Load User Data on Startup
+  useEffect(() => {
+    const loadUserInfo = async () => {
+      try {
+        const storedUser = await AsyncStorage.getItem('userInfo');
+        if (storedUser) {
+          const parsedUser = JSON.parse(storedUser);
+          console.log("HomeScreen loaded user:", parsedUser.username);
+          setUser(parsedUser);
+        }
+      } catch (error) {
+        console.error("Failed to load user info:", error);
+      }
+    };
+
+    loadUserInfo();
+  }, []); // Run once when screen mounts
+
+  // 4. REAL DATE LOGIC
   const [currentDate, setCurrentDate] = useState({ dayName: '', dateString: '' });
 
   useEffect(() => {
@@ -33,12 +50,12 @@ const HomeScreen = ({ navigation, route }) => {
     setCurrentDate({ dayName, dateString });
   }, []);
 
-  // DATA OBJECT (Mimicking Database)
+  // 5. DASHBOARD DATA
   const dashboardData = {
     user: {
-      // ✅ 3. USE REAL NAME (Fallback to "Guest" if missing)
+      // ✅ 6. Use the State (Fallback to "Student" if loading)
       name: user?.username || "Student", 
-      attendanceRate: "83%", // We will fetch this from API later
+      attendanceRate: "83%",
       semesterRange: "Oct 2025 - Mar 2026",
     },
     todayClasses: [
@@ -74,7 +91,7 @@ const HomeScreen = ({ navigation, route }) => {
         <View style={styles.headerContainer}>
           <View>
             <Text style={styles.greetingLabel}>Hello,</Text>
-            {/* ✅ This will now show the actual username */}
+            {/* Display the Name */}
             <Text style={styles.greetingName}>{dashboardData.user.name}!</Text>
           </View>
           <View style={styles.dateContainer}>
@@ -166,8 +183,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     color: '#000',
-    // Added textTransform to make names look nice (e.g. "ali" -> "Ali")
-    textTransform: 'capitalize', 
+    textTransform: 'capitalize', // Makes "ali" look like "Ali"
   },
   dateContainer: {
     alignItems: 'flex-end',
