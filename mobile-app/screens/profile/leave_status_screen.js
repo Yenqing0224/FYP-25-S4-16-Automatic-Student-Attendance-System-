@@ -130,7 +130,7 @@ const LeaveStatusScreen = ({ navigation }) => {
                   <TouchableOpacity
                     key={item.id}
                     style={styles.card}
-                    // onPress logic for details can go here later
+                    onPress={() => navigation.navigate("LeaveDetail", { leave: item })}
                   >
                     <View style={styles.cardHeaderRow}>
                       {/* Reason (Type) */}
@@ -143,8 +143,6 @@ const LeaveStatusScreen = ({ navigation }) => {
                         </Text>
                       </View>
                     </View>
-
-                    {/* ✅ REMOVED Reference No Section */}
 
                     {/* Date Range */}
                     <Text style={styles.label}>
