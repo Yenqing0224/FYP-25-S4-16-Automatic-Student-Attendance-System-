@@ -144,7 +144,8 @@ const ProfileScreen = ({ navigation }) => {
             </TouchableOpacity>
 
             {/* ✅ SPLIT 2: Appeals Module Status */}
-            <TouchableOpacity style={styles.menuItem}>
+            <TouchableOpacity style={styles.menuItem}
+                onPress={() => navigation.navigate('AppealStatus')}>
                 <Text style={styles.menuText}>Appeals Module Status</Text>
                 <Text style={styles.arrow}>{'>'}</Text>
             </TouchableOpacity>

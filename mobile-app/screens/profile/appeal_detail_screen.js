@@ -11,19 +11,19 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const LeaveDetailScreen = ({ navigation, route }) => {
-  const { leave } = route.params || {};
+const AppealDetailScreen = ({ navigation, route }) => {
+  const { appeal } = route.params || {};
 
   const BASE_URL = 'https://attendify-ekg6.onrender.com';
 
-  if (!leave) {
+  if (!appeal) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()}>
             <Text style={styles.backArrow}>{"<"}</Text>
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Leave Details</Text>
+          <Text style={styles.headerTitle}>Appeal Details</Text>
           <View style={{ width: 20 }} />
         </View>
         <View style={styles.errorBox}>
@@ -32,10 +32,6 @@ const LeaveDetailScreen = ({ navigation, route }) => {
       </SafeAreaView>
     );
   }
-
-  // ✅ 1. ROBUST FILE CHECK
-  // We check both keys to be safe. This fixes the "No file attached" bug.
-  const docUrl = leave.document || leave.document_url;
 
   // --- HELPERS ---
   const formatStatus = (status) => {
@@ -52,14 +48,12 @@ const LeaveDetailScreen = ({ navigation, route }) => {
   };
 
   const handleOpenFile = async () => {
+    const docUrl = appeal.document_url; 
     if (!docUrl) {
-      Alert.alert("No file", "There is no file attached to this leave.");
+      Alert.alert("No file", "There is no file attached to this appeal.");
       return;
     }
-
-    // Construct full URL if it's a relative path (starts with /media or just a filename)
     const fullUrl = docUrl.startsWith('http') ? docUrl : `${BASE_URL}${docUrl}`;
-
     try {
       const supported = await Linking.canOpenURL(fullUrl);
       if (supported) {
@@ -83,65 +77,71 @@ const LeaveDetailScreen = ({ navigation, route }) => {
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Text style={styles.backArrow}>{"<"}</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Leave Details</Text>
+        <Text style={styles.headerTitle}>Appeal Details</Text>
         <View style={{ width: 20 }} />
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
         
         {/* 1. REASON (Header) + STATUS */}
-        {/* ✅ Updated to match Appeal Detail layout */}
         <View style={styles.row}>
           <View style={{flex: 1}}>
              <Text style={styles.label}>Reason</Text>
-             <Text style={styles.type}>{leave.reason}</Text>
+             <Text style={styles.type}>{appeal.reason}</Text>
           </View>
 
           <View style={[
               styles.statusBadge, 
-              leave.status.toLowerCase() === 'approved' ? styles.approved :
-              leave.status.toLowerCase() === 'rejected' ? styles.rejected : 
+              appeal.status.toLowerCase() === 'approved' ? styles.approved :
+              appeal.status.toLowerCase() === 'rejected' ? styles.rejected : 
               styles.pending
           ]}>
-            <Text style={styles.statusText}>{formatStatus(leave.status)}</Text>
+            <Text style={styles.statusText}>{formatStatus(appeal.status)}</Text>
           </View>
         </View>
 
-        {/* 2. DATE RANGE */}
+        {/* 2. MODULE (Deep Nested Access) */}
         <View style={styles.item}>
-          <Text style={styles.label}>Date Range</Text>
+          <Text style={styles.label}>Module</Text>
           <Text style={styles.value}>
-            {leave.start_date === leave.end_date 
-                ? formatDate(leave.start_date) 
-                : `${formatDate(leave.start_date)} - ${formatDate(leave.end_date)}`}
+            {/* Check if nested objects exist before accessing properties */}
+            {appeal.class_session?.module 
+                ? `${appeal.class_session.module.code} - ${appeal.class_session.module.name}`
+                : "Unknown Module"}
           </Text>
         </View>
 
-        {/* 3. SUBMITTED ON */}
+        {/* 3. CLASS DATE (Deep Nested Access) */}
+        <View style={styles.item}>
+          <Text style={styles.label}>Class Date</Text>
+          <Text style={styles.value}>
+            {appeal.class_session?.date_time 
+                ? formatDate(appeal.class_session.date_time) 
+                : "N.A."}
+          </Text>
+        </View>
+
+        {/* 4. SUBMITTED ON */}
         <View style={styles.item}>
           <Text style={styles.label}>Submitted On</Text>
-          <Text style={styles.value}>
-             {leave.submitted_on || formatDate(leave.created_at)}
-          </Text>
+          <Text style={styles.value}>{formatDate(appeal.created_at)}</Text>
         </View>
 
-        {/* 4. REMARKS / DESCRIPTION */}
-        {/* Using a box style like Appeal Description */}
-        {leave.remarks ? (
-          <View style={styles.item}>
-            <Text style={styles.label}>Description / Remarks</Text>
+        {/* 5. DESCRIPTION (Separate Section) */}
+        {appeal.description ? (
+            <View style={styles.item}>
+            <Text style={styles.label}>Description</Text>
             <View style={styles.remarksBox}>
-                <Text style={styles.remarksText}>{leave.remarks}</Text>
+                <Text style={styles.remarksText}>{appeal.description}</Text>
             </View>
-          </View>
+            </View>
         ) : null}
 
-        {/* 5. DOCUMENT */}
+        {/* 6. DOCUMENT */}
         <View style={styles.item}>
           <Text style={styles.label}>Attached File</Text>
           
-          {/* ✅ Check docUrl variable instead of just leave.document */}
-          {docUrl ? (
+          {appeal.document_url ? (
             <View>
                 <Text style={styles.fileName}>Document Uploaded</Text>
                 <TouchableOpacity
@@ -181,7 +181,7 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
+    alignItems: "center", // Aligns Status Badge with the text
     marginBottom: 25,
   },
   type: {
@@ -200,7 +200,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 12,
-    alignSelf: 'flex-start',
+    alignSelf: 'flex-start', // Ensures badge doesn't stretch
     marginTop: 10,
   },
   statusText: {
@@ -209,6 +209,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   
+  // Status Colors
   approved: { backgroundColor: "#DFF6E3" },
   pending: { backgroundColor: "#FFF3CC" },
   rejected: { backgroundColor: "#F7D4D4" },
@@ -229,7 +230,11 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     alignSelf: "flex-start",
   },
-  fileButtonText: { fontSize: 14, fontWeight: "600", color: "#000" },
+  fileButtonText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#000"
+  },
 });
 
-export default LeaveDetailScreen;
+export default AppealDetailScreen;
