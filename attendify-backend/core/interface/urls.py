@@ -20,4 +20,5 @@ urlpatterns = [
 
     # Requests
     path('leaves/', requests_views.get_student_leaves, name='leaves'),
+    path('appeals/', requests_views.get_student_appeals, name='appeals'),
 ]  
