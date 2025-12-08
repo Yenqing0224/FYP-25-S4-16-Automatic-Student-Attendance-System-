@@ -41,21 +41,14 @@ def login_view(request):
 def get_student_profile(request):
     try:
         user_id = request.query_params.get('id')
-        
         if not user_id:
-            return Response({"error": "For testing, please send ?id=YOUR_USER_ID"}, status=400)
+            return Response({"error": "User ID required"}, status=400)
 
         student = Student.objects.get(user__id=user_id)
-        student_data = StudentSerializer(student).data
         
-        student_data['email'] = student.user.email
-        student_data['username'] = student.user.username
-        
-        return Response(student_data)
+        return Response(StudentSerializer(student).data)
 
     except Student.DoesNotExist:
-        return Response({"error": "Student profile not found"}, status=404)
-        
+        return Response({"error": "Student not found"}, status=404)
     except Exception as e:
-        print(f"Profile Error: {str(e)}")
-        return Response({"error": "Server error"}, status=500)
+        return Response({"error": str(e)}, status=500)
