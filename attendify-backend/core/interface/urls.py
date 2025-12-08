@@ -2,6 +2,7 @@ from django.urls import path
 from .views import users_views
 from .views import communication_views
 from .views import academics_views
+from .views import requests_views
 
 urlpatterns = [
     # Users
@@ -16,4 +17,7 @@ urlpatterns = [
     path('newsevent/', communication_views.get_newsevent, name='newsevent'),
     path('notifications/', communication_views.get_notifications, name='notifications'),
     path('notifications/mark-read/', communication_views.mark_notifications_read, name='mark-read'),
+
+    # Requests
+    path('leaves/', requests_views.get_student_leaves, name='leaves'),
 ]  
