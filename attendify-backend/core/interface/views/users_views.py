@@ -46,9 +46,12 @@ def get_student_profile(request):
             return Response({"error": "For testing, please send ?id=YOUR_USER_ID"}, status=400)
 
         student = Student.objects.get(user__id=user_id)
-        serializer = StudentSerializer(student)
+        student_data = StudentSerializer(student).data
         
-        return Response(serializer.data)
+        student_data['email'] = student.user.email
+        student_data['username'] = student.user.username
+        
+        return Response(student_data)
 
     except Student.DoesNotExist:
         return Response({"error": "Student profile not found"}, status=404)

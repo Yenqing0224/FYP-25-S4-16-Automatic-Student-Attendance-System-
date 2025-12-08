@@ -6,6 +6,7 @@ from .views import academics_views
 urlpatterns = [
     # Users
     path('login/', users_views.login_view, name='login'),
+    path('profile/', users_views.get_student_profile, name='profile'),
 
     # Academics
     path('dashboard/', academics_views.get_dashboard, name='dashboard-stats'),
