@@ -13,7 +13,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios'; // Import Axios
 
 const HomeScreen = ({ navigation }) => {
-  
+
   // 1. STATE VARIABLES
   const [user, setUser] = useState(null);
   const [semesterRange, setSemesterRange] = useState("Loading...");
@@ -32,7 +32,7 @@ const HomeScreen = ({ navigation }) => {
         if (storedUser) {
           const parsedUser = JSON.parse(storedUser);
           setUser(parsedUser);
-          
+
           // Call Backend with User ID
           fetchDashboardData(parsedUser.id);
         }
@@ -45,16 +45,16 @@ const HomeScreen = ({ navigation }) => {
 
   const fetchDashboardData = async (userId) => {
     try {
-        const response = await axios.get(`${API_URL}?user_id=${userId}`);
-        const data = response.data;
-        
-        setSemesterRange(data.semester_range);
-        setTodayClasses(data.today_classes);
-        setUpcomingClasses(data.upcoming_classes);
+      const response = await axios.get(`${API_URL}?user_id=${userId}`);
+      const data = response.data;
+
+      setSemesterRange(data.semester_range);
+      setTodayClasses(data.today_classes);
+      setUpcomingClasses(data.upcoming_classes);
     } catch (error) {
-        console.error("Dashboard Fetch Error:", error);
+      console.error("Dashboard Fetch Error:", error);
     } finally {
-        setLoading(false);
+      setLoading(false);
     }
   };
 
@@ -72,8 +72,8 @@ const HomeScreen = ({ navigation }) => {
 
   // 5. HELPER: Get Random Pastel Color
   const getCardColor = (index) => {
-      const colors = ['#FFB6C1', '#FFE4B5', '#ADD8E6', '#98FB98', '#E6E6FA'];
-      return colors[index % colors.length];
+    const colors = ['#FFB6C1', '#FFE4B5', '#ADD8E6', '#98FB98', '#E6E6FA'];
+    return colors[index % colors.length];
   };
 
   // DATE LOGIC (For Header)
@@ -83,17 +83,17 @@ const HomeScreen = ({ navigation }) => {
     const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     setCurrentDate({
-        dayName: days[now.getDay()],
-        dateString: `${now.getDate()}-${months[now.getMonth()]}-${now.getFullYear()}`
+      dayName: days[now.getDay()],
+      dateString: `${now.getDate()}-${months[now.getMonth()]}-${now.getFullYear()}`
     });
   }, []);
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
-      
+
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        
+
         {/* --- HEADER --- */}
         <View style={styles.headerContainer}>
           <View>
@@ -120,27 +120,27 @@ const HomeScreen = ({ navigation }) => {
 
         <View style={styles.paddingContainer}>
           {loading ? (
-             <ActivityIndicator color="#000" />
+            <ActivityIndicator color="#000" />
           ) : todayClasses.length === 0 ? (
-             // ✅ EMPTY STATE UI
-             <View style={styles.emptyStateContainer}>
-                <Text style={styles.emptyStateEmoji}>💤</Text>
-                <Text style={styles.emptyStateText}>No classes today.</Text>
-                <Text style={styles.emptyStateSubtext}>Have a good rest!</Text>
-             </View>
+            // ✅ EMPTY STATE UI
+            <View style={styles.emptyStateContainer}>
+              <Text style={styles.emptyStateEmoji}>💤</Text>
+              <Text style={styles.emptyStateText}>No classes today.</Text>
+              <Text style={styles.emptyStateSubtext}>Have a good rest!</Text>
+            </View>
           ) : (
-             todayClasses.map((item, index) => (
-                <View 
-                  key={item.id} 
-                  style={[styles.todayCard, { backgroundColor: getCardColor(index) }]}
-                >
-                  <Text style={styles.cardTitle}>{item.module.code}</Text>
-                  <Text style={styles.cardDetail}>
-                    {formatTime(item.date_time)} - {item.venue}
-                  </Text>
-                  <Text style={styles.cardDetail}>{item.module.name}</Text>
-                </View>
-             ))
+            todayClasses.map((item, index) => (
+              <View
+                key={item.id}
+                style={[styles.todayCard, { backgroundColor: getCardColor(index) }]}
+              >
+                <Text style={styles.cardTitle}>{item.module.code}</Text>
+                <Text style={styles.cardDetail}>
+                  {formatTime(item.date_time)} - {item.venue}
+                </Text>
+                <Text style={styles.cardDetail}>{item.module.name}</Text>
+              </View>
+            ))
           )}
         </View>
 
@@ -149,29 +149,35 @@ const HomeScreen = ({ navigation }) => {
           <Text style={styles.sectionHeaderText}>Upcoming Classes</Text>
         </View>
 
-        <ScrollView 
-          horizontal={true} 
+        <ScrollView
+          horizontal={true}
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.horizontalScrollContainer}
         >
           {upcomingClasses.length === 0 && !loading ? (
-             <Text style={{marginLeft: 20, color: '#777'}}>No upcoming classes found.</Text>
+            <Text style={{ marginLeft: 20, color: '#777' }}>No upcoming classes found.</Text>
           ) : (
-             upcomingClasses.map((item) => (
-                <TouchableOpacity 
-                  key={item.id} 
-                  style={styles.upcomingCard}
-                  onPress={() => navigation.navigate('Timetable')}
-                >
-                  <Text style={styles.upcomingDate}>{formatDate(item.date_time)}</Text>
-                  <Text style={styles.upcomingDetail}>{formatTime(item.date_time)}</Text>
-                  <Text style={styles.upcomingDetail}>{item.module.code}</Text>
-                </TouchableOpacity>
-             ))
+            upcomingClasses.map((item) => (
+              <TouchableOpacity
+                key={item.id}
+                style={styles.upcomingCard}
+                onPress={async () => {
+                  const dateToJump = item.date_time.split('T')[0];
+                  await AsyncStorage.setItem('jumpToDate', dateToJump);
+
+                  // 2. Go to Timetable
+                  navigation.navigate('Timetable');
+                }}
+              >
+                <Text style={styles.upcomingDate}>{formatDate(item.date_time)}</Text>
+                <Text style={styles.upcomingDetail}>{formatTime(item.date_time)}</Text>
+                <Text style={styles.upcomingDetail}>{item.module.code}</Text>
+              </TouchableOpacity>
+            ))
           )}
         </ScrollView>
 
-        <View style={{ height: 40 }} /> 
+        <View style={{ height: 40 }} />
 
       </ScrollView>
     </SafeAreaView>
@@ -182,9 +188,9 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#fff' },
   scrollContent: { paddingBottom: 20 },
   paddingContainer: { paddingHorizontal: 20 },
-  
+
   headerContainer: {
-    flexDirection: 'row', justifyContent: 'space-between', padding: 20, paddingTop: 20, 
+    flexDirection: 'row', justifyContent: 'space-between', padding: 20, paddingTop: 20,
   },
   greetingLabel: { fontSize: 16, fontWeight: '600', color: '#000' },
   greetingName: { fontSize: 18, fontWeight: 'bold', color: '#000', textTransform: 'capitalize' },

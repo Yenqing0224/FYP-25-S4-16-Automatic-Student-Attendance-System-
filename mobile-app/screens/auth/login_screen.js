@@ -17,8 +17,8 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const LoginScreen = ({ navigation }) => {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const [username, setUsername] = useState('alice');
+  const [password, setPassword] = useState('attendify');
   const [loading, setLoading] = useState(false);
 
   // BACKEND URL

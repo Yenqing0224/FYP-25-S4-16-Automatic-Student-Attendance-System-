@@ -39,7 +39,7 @@ export default function TabNavigator() {
               style={{
                 width: 26,
                 height: 26,
-                tintColor: focused ? "black" : "gray", 
+                tintColor: focused ? "blue" : "gray", 
                 resizeMode: "contain",
               }}
             />
@@ -47,7 +47,7 @@ export default function TabNavigator() {
         },
 
         tabBarShowLabel: true,
-        tabBarActiveTintColor: "black",
+        tabBarActiveTintColor: "blue",
         tabBarInactiveTintColor: "gray",
       })}
     >
