@@ -31,6 +31,19 @@ class User(AbstractUser):
     role_type = models.CharField(max_length=10, choices=ROLE_CHOICES)
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='active')
 
+
+    def save(self, *args, **kwargs):
+        if self.is_superuser:
+            self.is_staff = True
+            if not self.role_type: 
+                self.role_type = 'admin'
+        elif self.role_type == 'admin':
+            self.is_staff = True
+        else:
+            self.is_staff = False
+        super().save(*args, **kwargs)
+
+
     def __str__(self):
         return f"{self.username} ({self.get_role_type_display()})"
     
