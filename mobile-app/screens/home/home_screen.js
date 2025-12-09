@@ -98,7 +98,10 @@ const HomeScreen = ({ navigation }) => {
         <View style={styles.headerContainer}>
           <View>
             <Text style={styles.greetingLabel}>Hello,</Text>
-            <Text style={styles.greetingName}>{user?.username || "Student"}!</Text>
+            <Text style={styles.greetingName}>
+                {user
+                ? `${user.first_name}`
+                : "Loading..."}!</Text>
           </View>
           <View style={styles.dateContainer}>
             <Text style={styles.dateText}>{currentDate.dayName}</Text>
