@@ -131,7 +131,8 @@ const ProfileScreen = ({ navigation }) => {
             </View>
 
             {/* Apply Leave */}
-            <TouchableOpacity style={styles.menuItem}>
+            <TouchableOpacity style={styles.menuItem}
+              onPress={() => navigation.navigate('ApplyLeave')}>
                 <Text style={styles.menuText}>Apply Leave of absence</Text>
                 <Text style={styles.arrow}>{'>'}</Text>
             </TouchableOpacity>
