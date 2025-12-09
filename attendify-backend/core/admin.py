@@ -17,7 +17,10 @@ class CustomUserAdmin(UserAdmin):
                 'personal_email', 
                 'phone_number', 
                 'gender', 
-                'address', 
+                'address_street',
+                'address_unit',
+                'address_postal',
+                'address_country',
                 'image_url'
             )
         }),
@@ -36,7 +39,10 @@ class CustomUserAdmin(UserAdmin):
                 'personal_email', 
                 'phone_number', 
                 'gender', 
-                'address', 
+                'address_street',
+                'address_unit',
+                'address_postal',
+                'address_country',
                 'image_url'
             ),
         }),
