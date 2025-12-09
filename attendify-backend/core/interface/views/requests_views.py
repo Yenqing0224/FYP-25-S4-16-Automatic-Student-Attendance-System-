@@ -56,10 +56,8 @@ def apply_leaves(request):
         user_id = request.data.get('user_id')
         start_date = request.data.get('start_date')
         end_date = request.data.get('end_date')
-        
-        reason_val = request.data.get('reason') 
-        
-        description_val = request.data.get('description', reason_val) 
+        reason = request.data.get('reason') 
+        description = request.data.get('description')
 
         if not user_id:
             return Response({"error": "User ID is required"}, status=400)
@@ -70,8 +68,8 @@ def apply_leaves(request):
             student=student,
             start_date=start_date,
             end_date=end_date,
-            reason=reason_val,
-            description=description_val, 
+            reason=reason,
+            description=description, 
             status='pending',
         )
 
