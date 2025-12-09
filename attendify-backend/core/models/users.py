@@ -22,7 +22,10 @@ class User(AbstractUser):
     # Additional attributes
     phone_number = models.CharField(max_length=20, blank=True, null=True)
     gender = models.CharField(max_length=10, choices=GENDER_CHOICES, blank=True, null=True)
-    address = models.TextField(blank=True, null=True)
+    address_street = models.CharField(max_length=255, default="", blank=True)
+    address_unit = models.CharField(max_length=50, default="", blank=True)
+    address_postal = models.CharField(max_length=20, default="", blank=True)
+    address_country = models.CharField(max_length=100, default="Singapore", blank=True)
     personal_email = models.EmailField(blank=True, null=True)
     image_url = models.CharField(max_length=500, blank=True, null=True)
     role_type = models.CharField(max_length=10, choices=ROLE_CHOICES)
