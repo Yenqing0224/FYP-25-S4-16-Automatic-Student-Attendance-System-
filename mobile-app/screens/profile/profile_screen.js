@@ -109,7 +109,8 @@ const ProfileScreen = ({ navigation }) => {
                     {student?.programme || "Bachelor of Computer Science"}
                 </Text>
 
-                <TouchableOpacity style={styles.editButton}>
+                <TouchableOpacity style={styles.editButton}
+                    onPress={() => navigation.navigate('EditProfile')}>
                     <Text style={styles.editButtonText}>Edit Profile</Text>
                 </TouchableOpacity>
             </View>

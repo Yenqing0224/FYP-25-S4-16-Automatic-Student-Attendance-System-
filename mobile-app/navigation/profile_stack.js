@@ -2,6 +2,7 @@ import React from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
 import ProfileScreen from "../screens/profile/profile_screen";
+import EditProfileScreen from "../screens/profile/editProfile_screen";
 import ApplyLeaveScreen from "../screens/profile/applyLeave_screen";      
 import ApplyLeaveSuccessScreen from "../screens/profile/applyLeaveSuccess_screen"; 
 import LeaveStatusScreen from '../screens/profile//leave_status_screen';
@@ -17,6 +18,7 @@ export default function ProfileStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="ProfileMain" component={ProfileScreen} />
+      <Stack.Screen name="EditProfile" component={EditProfileScreen} />
       <Stack.Screen name="ApplyLeave" component={ApplyLeaveScreen} />              
       <Stack.Screen name="ApplyLeaveSuccess" component={ApplyLeaveSuccessScreen} />
       <Stack.Screen name="LeaveStatus" component={LeaveStatusScreen} />
