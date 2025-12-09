@@ -59,9 +59,9 @@ def apply_leaves(request):
         reason = request.data.get('reason') 
         description = request.data.get('description')
 
-        if not user_id:
-            return Response({"error": "User ID is required"}, status=400)
-            
+        if not user_id or not start_date or not end_date:
+            return Response({"error": "Missing required fields"}, status=400)
+
         student = Student.objects.get(user__id=user_id)
 
         leave = LeaveRequest.objects.create(
