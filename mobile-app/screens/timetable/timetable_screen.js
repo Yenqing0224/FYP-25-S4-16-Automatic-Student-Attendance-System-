@@ -167,7 +167,7 @@ const TimetableScreen = ({ navigation }) => {
           upcoming.slice(0, 5).map((item) => (
             <View key={item.id} style={[styles.eventCard, styles.cardUpcoming]}>
               <View style={styles.cardContent}>
-                <Text style={styles.eventTitle}>{item.module.code}</Text>
+                <Text style={styles.eventTitle}>{item.module.code} - {item.module.name}</Text>
 
                 {/* ✅ POLISHED: "11 Dec • 12:00" */}
                 <Text style={styles.eventTime}>
