@@ -8,6 +8,7 @@ urlpatterns = [
     # Users
     path('login/', users_views.login_view, name='login'),
     path('profile/', users_views.get_student_profile, name='profile'),
+    path('edit-profile/', users_views.edit_profile, name='edit-profile'),
 
     # Academics
     path('dashboard/', academics_views.get_dashboard, name='dashboard-stats'),
