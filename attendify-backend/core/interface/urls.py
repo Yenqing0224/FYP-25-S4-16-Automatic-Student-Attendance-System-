@@ -18,7 +18,7 @@ urlpatterns = [
     # Academics
     path('dashboard/', academics_views.get_dashboard, name='dashboard-stats'),
     path('timetable/', academics_views.get_timetable, name='timetable'),
-    path('class-details/', academics_views.get_class_details, name='class-details'),
+    path('class-details/<int:session_id>/', academics_views.get_class_details, name='class-details'),
 
     # Communication
     path('newsevent/', communication_views.get_newsevent, name='newsevent'),

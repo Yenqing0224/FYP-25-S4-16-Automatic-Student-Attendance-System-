@@ -38,9 +38,6 @@ const TimetableScreen = ({ navigation }) => {
             setSelectedDate(jumpDate);
             setActiveTab('Selected');
             await AsyncStorage.removeItem('jumpToDate');
-          } else {
-            const today = new Date().toISOString().split('T')[0];
-            setSelectedDate(today);
           }
         } catch (e) {
           console.error('Jump error:', e);
@@ -143,7 +140,11 @@ const TimetableScreen = ({ navigation }) => {
 
         {classesForDay.length > 0 ? (
           classesForDay.map((item) => (
-            <View key={item.id} style={[styles.eventCard, styles.cardSelected]}>
+            <TouchableOpacity 
+                key={item.id} 
+                style={[styles.eventCard, styles.cardSelected]}
+                onPress={() => navigation.navigate('ClassDetail', { session_id: item.id })}
+            >
               <View style={styles.cardAccent} />
               <View style={styles.cardContent}>
                 <Text style={styles.eventTitle}>
@@ -152,7 +153,7 @@ const TimetableScreen = ({ navigation }) => {
                 <Text style={styles.eventTime}>{formatTime(item.date_time)}</Text>
                 <Text style={styles.eventLoc}>{item.venue}</Text>
               </View>
-            </View>
+            </TouchableOpacity>
           ))
         ) : (
           <View style={styles.emptyContainer}>
@@ -184,7 +185,11 @@ const TimetableScreen = ({ navigation }) => {
             const sessionType = item.session_type || item.type || "Class";
 
             return (
-              <View key={item.id} style={[styles.eventCard, styles.cardUpcoming]}>
+              <TouchableOpacity 
+                key={item.id} 
+                style={[styles.eventCard, styles.cardUpcoming]}
+                onPress={() => navigation.navigate('ClassDetail', { session_id: item.id })}
+              >
                 {/* Top row: module + chip */}
                 <View style={styles.cardHeaderRow}>
                   <Text style={styles.upTitle}>
@@ -222,7 +227,7 @@ const TimetableScreen = ({ navigation }) => {
                     {item.venue}
                   </Text>
                 </View>
-              </View>
+              </TouchableOpacity>
             );
           })
         )}
@@ -481,33 +486,17 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#222',
   },
-
-
+  
   cardAccent: {
     width: 4,
     borderRadius: 999,
     backgroundColor: '#3A7AFE',
     marginRight: 10,
   },
-  cardAccentUpcoming: {
-    width: 4,
-    borderRadius: 999,
-    backgroundColor: '#3A7AFE',
-    marginRight: 10,
-  },
-
-
+  
+  // Reuse existing styles
   emptyContainer: { alignItems: 'center', padding: 24 },
   emptyText: { color: '#9CA3AF', fontSize: 14 },
-
-  noUpcomingText: {
-    textAlign: 'center',
-    color: '#9CA3AF',
-    fontSize: 14,
-    marginTop: 10,
-  },
-
-
 });
 
 export default TimetableScreen;
