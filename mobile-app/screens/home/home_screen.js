@@ -1,3 +1,4 @@
+// mobile-app/screens/home/home_screen.js
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -6,25 +7,33 @@ import {
   ScrollView,
   TouchableOpacity,
   StatusBar,
-  ActivityIndicator
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import axios from 'axios'; // Import Axios
+import axios from 'axios';
+import { Ionicons } from '@expo/vector-icons';
+
+const COLORS = {
+  primary: '#3A7AFE',
+  teal: '#2EC4B6',
+  lilac: '#A6C2FF',
+  background: '#F5F7FB',
+  textDark: '#111827',
+  textMuted: '#6B7280',
+  card: '#FFFFFF',
+};
 
 const HomeScreen = ({ navigation }) => {
-
-  // 1. STATE VARIABLES
   const [user, setUser] = useState(null);
-  const [semesterRange, setSemesterRange] = useState("Loading...");
+  const [semesterRange, setSemesterRange] = useState('Loading...');
   const [todayClasses, setTodayClasses] = useState([]);
   const [upcomingClasses, setUpcomingClasses] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // API URL
   const API_URL = 'https://attendify-ekg6.onrender.com/api/dashboard/';
 
-  // 2. LOAD USER & FETCH DATA
+  // load user + dashboard
   useEffect(() => {
     const initDashboard = async () => {
       try {
@@ -32,12 +41,10 @@ const HomeScreen = ({ navigation }) => {
         if (storedUser) {
           const parsedUser = JSON.parse(storedUser);
           setUser(parsedUser);
-
-          // Call Backend with User ID
           fetchDashboardData(parsedUser.id);
         }
       } catch (error) {
-        console.error("Init Error:", error);
+        console.error('Init Error:', error);
       }
     };
     initDashboard();
@@ -52,31 +59,23 @@ const HomeScreen = ({ navigation }) => {
       setTodayClasses(data.today_classes);
       setUpcomingClasses(data.upcoming_classes);
     } catch (error) {
-      console.error("Dashboard Fetch Error:", error);
+      console.error('Dashboard Fetch Error:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  // 3. HELPER: Format Time (e.g., 2025-10-05T14:00:00 -> 2:00pm)
+  // helpers
   const formatTime = (isoString) => {
     const date = new Date(isoString);
     return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
   };
 
-  // 4. HELPER: Format Date (e.g., 5 Nov)
   const formatDate = (isoString) => {
     const date = new Date(isoString);
     return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
   };
 
-  // 5. HELPER: Get Random Pastel Color
-  const getCardColor = (index) => {
-    const colors = ['#FFB6C1', '#FFE4B5', '#ADD8E6', '#98FB98', '#E6E6FA'];
-    return colors[index % colors.length];
-  };
-
-  // DATE LOGIC (For Header)
   const [currentDate, setCurrentDate] = useState({ dayName: '', dateString: '' });
   useEffect(() => {
     const now = new Date();
@@ -84,81 +83,92 @@ const HomeScreen = ({ navigation }) => {
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     setCurrentDate({
       dayName: days[now.getDay()],
-      dateString: `${now.getDate()}-${months[now.getMonth()]}-${now.getFullYear()}`
+      dateString: `${now.getDate()}-${months[now.getMonth()]}-${now.getFullYear()}`,
     });
   }, []);
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
+      <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
-
-        {/* --- HEADER --- */}
+        {/* HEADER */}
         <View style={styles.headerContainer}>
           <View>
             <Text style={styles.greetingLabel}>Hello,</Text>
-            <Text style={styles.greetingName}>
-                {user
-                ? `${user.first_name}`
-                : "Loading..."}!</Text>
+            <Text style={styles.greetingName}>{user?.username || 'Student'} 👋</Text>
+
+            <View style={styles.chip}>
+              <Text style={styles.chipText}>Dashboard overview</Text>
+            </View>
           </View>
+
           <View style={styles.dateContainer}>
-            <Text style={styles.dateText}>{currentDate.dayName}</Text>
+            <Text style={styles.dateDay}>{currentDate.dayName}</Text>
             <Text style={styles.dateText}>{currentDate.dateString}</Text>
           </View>
         </View>
 
-        {/* --- ATTENDANCE (Placeholder for now) --- */}
-        <View style={styles.attendanceContainer}>
-          <Text style={styles.attendanceTitle}>Attendance rate</Text>
-          <Text style={styles.attendancePercentage}>83%</Text>
+        {/* ATTENDANCE CARD */}
+        <View style={styles.attendanceCard}>
+          <Text style={styles.attendanceLabel}>Attendance rate</Text>
           <Text style={styles.attendanceSubtitle}>{semesterRange}</Text>
+
+          <View style={styles.attendanceCircle}>
+            <Text style={styles.attendancePercentage}>83%</Text>
+          </View>
         </View>
 
-        {/* --- TODAY'S CLASSES --- */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionHeaderText}>Today's Classes</Text>
+        {/* TODAY */}
+        <View style={styles.sectionHeaderRow}>
+          <Text style={styles.sectionHeaderText}>Today&apos;s Classes</Text>
         </View>
 
         <View style={styles.paddingContainer}>
           {loading ? (
-            <ActivityIndicator color="#000" />
+            <ActivityIndicator color={COLORS.primary} />
           ) : todayClasses.length === 0 ? (
-            // ✅ EMPTY STATE UI
             <View style={styles.emptyStateContainer}>
-              <Text style={styles.emptyStateEmoji}>💤</Text>
+              <Ionicons name="moon-outline" size={40} color={COLORS.primary} />
               <Text style={styles.emptyStateText}>No classes today.</Text>
               <Text style={styles.emptyStateSubtext}>Have a good rest!</Text>
             </View>
           ) : (
-            todayClasses.map((item, index) => (
-              <View
-                key={item.id}
-                style={[styles.todayCard, { backgroundColor: getCardColor(index) }]}
-              >
-                <Text style={styles.cardTitle}>{item.module.code}</Text>
-                <Text style={styles.cardDetail}>
-                  {formatTime(item.date_time)} - {item.venue}
-                </Text>
-                <Text style={styles.cardDetail}>{item.module.name}</Text>
+
+            todayClasses.map((item) => (
+              <View key={item.id} style={styles.todayCard}>
+                <View style={styles.todayCardInner}>
+                  <Text style={styles.cardTitle}>{item.module.code}</Text>
+
+                  <View style={styles.row}>
+                    <Ionicons name="time-outline" size={16} color="#1E1B4B" />
+                    <Text style={styles.cardDetail}>{formatTime(item.date_time)}</Text>
+                  </View>
+
+                  <View style={styles.row}>
+                    <Ionicons name="location-outline" size={16} color="#1E1B4B" />
+                    <Text style={styles.cardDetail}>{item.venue}</Text>
+                  </View>
+
+                  <Text style={styles.cardSubtitle}>{item.module.name}</Text>
+                </View>
               </View>
             ))
           )}
         </View>
 
-        {/* --- UPCOMING CLASSES --- */}
-        <View style={styles.sectionHeader}>
+        {/* UPCOMING */}
+        <View style={styles.sectionHeaderRow}>
           <Text style={styles.sectionHeaderText}>Upcoming Classes</Text>
         </View>
 
         <ScrollView
-          horizontal={true}
+          horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.horizontalScrollContainer}
         >
           {upcomingClasses.length === 0 && !loading ? (
-            <Text style={{ marginLeft: 20, color: '#777' }}>No upcoming classes found.</Text>
+            <Text style={styles.noUpcomingText}>No upcoming classes found.</Text>
           ) : (
             upcomingClasses.map((item) => (
               <TouchableOpacity
@@ -167,65 +177,259 @@ const HomeScreen = ({ navigation }) => {
                 onPress={async () => {
                   const dateToJump = item.date_time.split('T')[0];
                   await AsyncStorage.setItem('jumpToDate', dateToJump);
-
-                  // 2. Go to Timetable
                   navigation.navigate('Timetable');
                 }}
               >
-                <Text style={styles.upcomingDate}>{formatDate(item.date_time)}</Text>
-                <Text style={styles.upcomingDetail}>{formatTime(item.date_time)}</Text>
-                <Text style={styles.upcomingDetail}>{item.module.code}</Text>
+                {/* LABEL + VALUE */}
+                <View style={{ marginBottom: 8 }}>
+                  <Text style={styles.upcomingLabel}>Date</Text>
+                  <Text style={styles.upcomingValue}>{formatDate(item.date_time)}</Text>
+                </View>
+
+                <View style={{ marginBottom: 8 }}>
+                  <Text style={styles.upcomingLabel}>Time</Text>
+                  <Text style={styles.upcomingValue}>{formatTime(item.date_time)}</Text>
+                </View>
+
+                <View style={{ marginBottom: 12 }}>
+                  <Text style={styles.upcomingLabel}>Venue</Text>
+                  <Text style={styles.upcomingValue}>{item.venue || 'TBA'}</Text>
+                </View>
+
+             
+                <Text style={styles.upcomingModule}>
+                  {item.module.code} — {item.module.name}
+                </Text>
               </TouchableOpacity>
+
+
             ))
           )}
         </ScrollView>
 
-        <View style={{ height: 40 }} />
-
+        <View style={{ height: 24 }} />
       </ScrollView>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#fff' },
-  scrollContent: { paddingBottom: 20 },
-  paddingContainer: { paddingHorizontal: 20 },
+  safeArea: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+  },
+  scrollContent: {
+    paddingBottom: 24,
+  },
+  paddingContainer: {
+    paddingHorizontal: 20,
+  },
 
+  // HEADER
   headerContainer: {
-    flexDirection: 'row', justifyContent: 'space-between', padding: 20, paddingTop: 20,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 10,
   },
-  greetingLabel: { fontSize: 16, fontWeight: '600', color: '#000' },
-  greetingName: { fontSize: 18, fontWeight: 'bold', color: '#000', textTransform: 'capitalize' },
-  dateContainer: { alignItems: 'flex-end' },
-  dateText: { fontSize: 14, fontWeight: '600', color: '#000' },
-
-  attendanceContainer: { alignItems: 'center', marginBottom: 25 },
-  attendanceTitle: { fontSize: 18, fontWeight: '700', marginBottom: 5 },
-  attendancePercentage: { fontSize: 48, fontWeight: 'bold', color: '#000' },
-  attendanceSubtitle: { fontSize: 14, color: '#555', marginTop: 5 },
-
-  sectionHeader: {
-    backgroundColor: '#E0E0E0', paddingVertical: 10, paddingHorizontal: 20, marginBottom: 15,
+  greetingLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: COLORS.textMuted,
   },
-  sectionHeaderText: { fontSize: 16, fontWeight: '700', color: '#000' },
+  greetingName: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: COLORS.textDark,
+    marginTop: 2,
+    textTransform: 'capitalize',
+  },
+  chip: {
+    marginTop: 8,
+    alignSelf: 'flex-start',
+    backgroundColor: '#E7F0FF',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 999,
+  },
+  chipText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: COLORS.primary,
+  },
+  dateContainer: {
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+  },
+  dateDay: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.primary,
+  },
+  dateText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: COLORS.textMuted,
+    marginTop: 2,
+  },
 
-  todayCard: { borderRadius: 12, padding: 20, marginBottom: 15 },
-  cardTitle: { fontSize: 16, fontWeight: 'bold', marginBottom: 5 },
-  cardDetail: { fontSize: 14, fontWeight: '600', marginBottom: 2 },
+  // ATTENDANCE
+  attendanceCard: {
+    marginHorizontal: 20,
+    marginTop: 12,
+    marginBottom: 22,
+    backgroundColor: COLORS.card,
+    borderRadius: 20,
+    paddingVertical: 26,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowOffset: { width: 0, height: 3 },
+    shadowRadius: 6,
+  },
+  attendanceLabel: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.textDark,
+    marginBottom: 4,
+  },
+  attendanceSubtitle: {
+    fontSize: 14,
+    color: COLORS.textMuted,
+    marginBottom: 20,
+  },
+  attendanceCircle: {
+    width: 95,
+    height: 95,
+    borderRadius: 48,
+    backgroundColor: '#E3EDFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  attendancePercentage: {
+    fontSize: 30,
+    fontWeight: '800',
+    color: COLORS.primary,
+  },
 
-  horizontalScrollContainer: { paddingHorizontal: 20 },
+  // SECTION HEADER
+  sectionHeaderRow: {
+    paddingHorizontal: 20,
+    marginBottom: 8,
+  },
+  sectionHeaderText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.textDark,
+  },
+
+  // TODAY CARDS
+
+  todayCard: {
+    backgroundColor: '#8C99FF',
+    borderRadius: 18,
+    padding: 2,
+    marginBottom: 14,
+    elevation: 3,
+    shadowColor: '#8C99FF',
+    shadowOpacity: 0.12,
+    shadowOffset: { width: 0, height: 3 },
+    shadowRadius: 5,
+  },
+
+  todayCardInner: {
+    borderRadius: 16,
+    padding: 14,
+    backgroundColor: 'rgba(255,255,255,0.95)',
+  },
+
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#1E1B4B',
+    marginBottom: 8,
+  },
+
+  cardDetail: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1E1B4B',
+  },
+
+  cardSubtitle: {
+    marginTop: 10,
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.primary,
+  },
+
+
+  // UPCOMING
+  horizontalScrollContainer: {
+    paddingHorizontal: 20,
+    paddingTop: 6,
+  },
   upcomingCard: {
-    backgroundColor: '#EAEAEA', borderRadius: 10, padding: 15, width: 130, marginRight: 15,
+    backgroundColor: '#3A7AFE',
+    borderRadius: 18,
+    padding: 14,
+    width: 160,
+    marginRight: 12,
+    shadowColor: '#3A7AFE',
+    shadowOpacity: 0.15,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 6,
   },
-  upcomingDate: { fontSize: 16, fontWeight: 'bold', marginBottom: 8 },
-  upcomingDetail: { fontSize: 12, color: '#555', marginBottom: 2 },
 
-  // ✅ New Empty State Styles
-  emptyStateContainer: { alignItems: 'center', paddingVertical: 20, backgroundColor: '#f9f9f9', borderRadius: 10 },
-  emptyStateEmoji: { fontSize: 40, marginBottom: 10 },
-  emptyStateText: { fontSize: 16, fontWeight: 'bold', color: '#333' },
-  emptyStateSubtext: { fontSize: 14, color: '#777' },
+  upcomingLabel: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.75)',
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  upcomingValue: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginBottom: 6,
+  },
+  upcomingCode: {
+    marginTop: 6,
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  noUpcomingText: {
+    marginLeft: 20,
+    color: COLORS.textMuted,
+    fontSize: 13,
+  },
+
+  // EMPTY STATE
+  emptyStateContainer: {
+    alignItems: 'center',
+    paddingVertical: 22,
+    backgroundColor: '#F0F4FF',
+    borderRadius: 18,
+    gap: 8,
+  },
+  emptyStateEmoji: {
+    fontSize: 36,
+    marginBottom: 8,
+  },
+  emptyStateText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: COLORS.textDark,
+  },
+  emptyStateSubtext: {
+    fontSize: 13,
+    color: COLORS.textMuted,
+    marginTop: 2,
+  },
 });
 
 export default HomeScreen;

@@ -1,10 +1,16 @@
-// mobile-app/screens/profile/applyLeaveSuccess_screen.js
 import React from "react";
-import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, StatusBar } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+const COLORS = {
+  primary: "#3A7AFE",
+  background: "#F5F7FB",
+  card: "#FFFFFF",
+  textDark: "#111827",
+  textMuted: "#6B7280",
+};
+
 const ApplyLeaveSuccessScreen = ({ navigation, route }) => {
-  // values passed from ApplyLeaveScreen
   const { startDate, endDate, reason } = route.params || {};
 
   const goToStatus = () => {
@@ -13,6 +19,8 @@ const ApplyLeaveSuccessScreen = ({ navigation, route }) => {
 
   return (
     <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
+
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
@@ -22,32 +30,41 @@ const ApplyLeaveSuccessScreen = ({ navigation, route }) => {
         <View style={{ width: 20 }} />
       </View>
 
-      <View style={styles.content}>
-        {/* big circular placeholder */}
-        <View style={styles.circle} />
+      {/* Content */}
+      <View style={styles.contentWrapper}>
+        <View style={styles.card}>
+          {/* Circle with tick */}
+          <View style={styles.circle}>
+            <Text style={styles.tick}>✓</Text>
+          </View>
 
-        <Text style={styles.title}>
-          Your leave application has been submitted!
-        </Text>
-
-        <Text style={styles.description}>
-          The review process will take 2–3 working days.{"\n"}
-          You may track the status on{" "}
-          <Text style={styles.link}> Leaves Status</Text>.
-        </Text>
-
-        {/* tiny summary if params exist */}
-        {startDate && (
-          <Text style={[styles.description, { marginBottom: 16 }]}>
-            From {startDate} to {endDate}
-            {"\n"}
-            Reason: {reason}
+          <Text style={styles.title}>
+            Your leave application has been submitted!
           </Text>
-        )}
 
-        <TouchableOpacity style={styles.button} onPress={goToStatus}>
-          <Text style={styles.buttonText}>View Application Status</Text>
-        </TouchableOpacity>
+          <Text style={styles.description}>
+            The review process will take 2–3 working days.{"\n"}
+            You may track the status under{" "}
+            <Text style={styles.link}>Leaves Status</Text>.
+          </Text>
+
+          {startDate && (
+            <View style={styles.summaryBox}>
+              <Text style={styles.summaryText}>
+                <Text style={styles.summaryLabel}>Date: </Text>
+                {startDate} – {endDate}
+              </Text>
+              <Text style={styles.summaryText}>
+                <Text style={styles.summaryLabel}>Reason: </Text>
+                {reason}
+              </Text>
+            </View>
+          )}
+
+          <TouchableOpacity style={styles.button} onPress={goToStatus}>
+            <Text style={styles.buttonText}>View Application Status</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </SafeAreaView>
   );
@@ -58,62 +75,114 @@ export default ApplyLeaveSuccessScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: COLORS.background,
   },
+
   header: {
-    backgroundColor: "#EAEAEA",
+    backgroundColor: COLORS.background,
     paddingVertical: 15,
     paddingHorizontal: 20,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "#E5E7EB",
   },
   backArrow: {
     fontSize: 24,
-    color: "#333",
+    color: COLORS.textDark,
     fontWeight: "300",
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: "700",
-    color: "#000",
+    color: COLORS.textDark,
   },
-  content: {
+
+  contentWrapper: {
     flex: 1,
+    justifyContent: "center",
+    paddingHorizontal: 24,
+  },
+
+  card: {
+    backgroundColor: COLORS.card,
+    borderRadius: 20,
+    paddingVertical: 28,
+    paddingHorizontal: 22,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3,
+  },
+
+  circle: {
+    width: 110,
+    height: 110,
+    borderRadius: 55,
+    backgroundColor: "#E0ECFF",
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 30,
+    marginBottom: 18,
   },
-  circle: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: "#D9D9D9",
-    marginBottom: 24,
+  tick: {
+    fontSize: 52,
+    color: COLORS.primary,
+    fontWeight: "800",
   },
+
   title: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: "700",
     textAlign: "center",
-    marginBottom: 12,
+    color: COLORS.textDark,
+    marginBottom: 10,
   },
   description: {
     fontSize: 13,
     textAlign: "center",
-    color: "#555",
-    marginBottom: 24,
+    color: COLORS.textMuted,
+    marginBottom: 18,
+    lineHeight: 20,
   },
   link: {
     textDecorationLine: "underline",
+    color: COLORS.primary,
+    fontWeight: "600",
   },
+
+  summaryBox: {
+    width: "100%",
+    backgroundColor: "#F3F4FF",
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    marginBottom: 18,
+  },
+  summaryText: {
+    fontSize: 13,
+    color: COLORS.textDark,
+    marginBottom: 4,
+  },
+  summaryLabel: {
+    fontWeight: "700",
+  },
+
   button: {
-    backgroundColor: "#D9D9D9",
+    marginTop: 4,
+    backgroundColor: COLORS.primary,
     paddingVertical: 12,
-    paddingHorizontal: 30,
-    borderRadius: 4,
+    paddingHorizontal: 26,
+    borderRadius: 999,
+    alignItems: "center",
+    alignSelf: "stretch",
   },
   buttonText: {
     fontSize: 15,
     fontWeight: "700",
+    color: "#FFFFFF",
+    textAlign: "center",
   },
 });

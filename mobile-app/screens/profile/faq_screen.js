@@ -8,15 +8,26 @@ import {
   LayoutAnimation,
   Platform,
   UIManager,
-  StatusBar
+  StatusBar,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons"; // Ensure you have this installed
+import { Ionicons } from "@expo/vector-icons";
 
 // Enable smooth animation on Android
-if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
+if (Platform.OS === "android") {
+  if (UIManager.setLayoutAnimationEnabledExperimental) {
     UIManager.setLayoutAnimationEnabledExperimental(true);
+  }
 }
+
+const COLORS = {
+  background: "#F5F7FB",
+  card: "#FFFFFF",
+  textDark: "#111827",
+  textMuted: "#6B7280",
+  primary: "#3A7AFE",
+  borderSoft: "#E5E7EB",
+};
 
 // ✅ STATIC DATA (No Database needed)
 const FAQ_CATEGORIES = [
@@ -165,15 +176,22 @@ export default function FAQScreen({ navigation }) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#EAEAEA" />
-      
+      <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
+
       {/* HEADER */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.backArrow}>{'<'}</Text>
+          <Text style={styles.backArrow}>{"<"}</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>FAQ</Text>
+        <Text style={styles.headerTitle}>Help & FAQ</Text>
         <View style={{ width: 26 }} />
+      </View>
+
+      {/* SMALL SUBHEADER */}
+      <View style={styles.subHeader}>
+        <Text style={styles.subHeaderText}>
+          Find answers to common questions about attendance, leave and appeals.
+        </Text>
       </View>
 
       {/* CONTENT */}
@@ -183,20 +201,26 @@ export default function FAQScreen({ navigation }) {
 
           return (
             <View key={catIndex} style={styles.categoryCard}>
-              {/* CATEGORY HEADER (CARD TOP) */}
+              {/* CATEGORY HEADER */}
               <TouchableOpacity
                 style={styles.categoryHeader}
                 onPress={() => toggleCategory(catIndex)}
               >
-                <Text style={styles.categoryTitle}>{cat.title}</Text>
+                <View style={styles.categoryTitleRow}>
+                  <View style={styles.categoryIconCircle}>
+                    <Ionicons name="help-circle-outline" size={16} color={COLORS.primary} />
+                  </View>
+                  <Text style={styles.categoryTitle}>{cat.title}</Text>
+                </View>
+
                 <Ionicons
                   name={catOpen ? "chevron-up" : "chevron-down"}
                   size={20}
-                  color="#444"
+                  color="#4B5563"
                 />
               </TouchableOpacity>
 
-              {/* QUESTIONS INSIDE CARD */}
+              {/* QUESTIONS */}
               {catOpen && (
                 <View style={styles.questionList}>
                   {cat.items.map((item, qIndex) => {
@@ -208,7 +232,7 @@ export default function FAQScreen({ navigation }) {
                         key={qIndex}
                         style={[
                           styles.questionSection,
-                          qIndex !== 0 && styles.questionDivider, // divider line between questions
+                          qIndex !== 0 && styles.questionDivider,
                         ]}
                       >
                         <TouchableOpacity
@@ -219,13 +243,11 @@ export default function FAQScreen({ navigation }) {
                           <Ionicons
                             name={qOpen ? "chevron-up" : "chevron-down"}
                             size={18}
-                            color="#666"
+                            color="#6B7280"
                           />
                         </TouchableOpacity>
 
-                        {qOpen && (
-                          <Text style={styles.answerText}>{item.a}</Text>
-                        )}
+                        {qOpen && <Text style={styles.answerText}>{item.a}</Text>}
                       </View>
                     );
                   })}
@@ -239,21 +261,38 @@ export default function FAQScreen({ navigation }) {
   );
 }
 
-/* --------------------- STYLES ----------------------- */
+
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F3F3F3" },
+  container: { flex: 1, backgroundColor: COLORS.background },
 
   header: {
-    backgroundColor: '#EAEAEA',
-    paddingVertical: 15,
+    backgroundColor: COLORS.background,
+    paddingVertical: 14,
     paddingHorizontal: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: COLORS.borderSoft,
   },
-  backArrow: { fontSize: 24, color: '#333', fontWeight: '300' },
-  headerTitle: { fontSize: 18, fontWeight: '700', color: '#000' },
+  backArrow: { fontSize: 24, color: COLORS.textDark, fontWeight: "300" },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: COLORS.textDark,
+  },
+
+  subHeader: {
+    paddingHorizontal: 20,
+    paddingTop: 6,
+    paddingBottom: 10,
+  },
+  subHeaderText: {
+    fontSize: 13,
+    color: COLORS.textMuted,
+    lineHeight: 18,
+  },
 
   scroll: {
     padding: 16,
@@ -261,14 +300,14 @@ const styles = StyleSheet.create({
   },
 
   categoryCard: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: COLORS.card,
     borderRadius: 16,
     paddingHorizontal: 14,
     paddingTop: 14,
     paddingBottom: 10,
     marginBottom: 16,
     shadowColor: "#000",
-    shadowOpacity: 0.08,
+    shadowOpacity: 0.06,
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 4 },
     elevation: 3,
@@ -278,13 +317,28 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingBottom: 5
+    paddingBottom: 5,
+  },
+
+  categoryTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+
+  categoryIconCircle: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: "#E0ECFF",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 8,
   },
 
   categoryTitle: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: "700",
-    color: "#222",
+    color: COLORS.textDark,
   },
 
   questionList: {
@@ -297,7 +351,7 @@ const styles = StyleSheet.create({
 
   questionDivider: {
     borderTopWidth: 1,
-    borderTopColor: "#E5E5E5", 
+    borderTopColor: COLORS.borderSoft,
   },
 
   questionRow: {
@@ -311,13 +365,13 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     flexShrink: 1,
     marginRight: 10,
-    color: "#333",
+    color: "#111827",
   },
 
   answerText: {
     marginTop: 6,
     fontSize: 14,
-    color: "#555",
+    color: COLORS.textMuted,
     lineHeight: 20,
   },
 });

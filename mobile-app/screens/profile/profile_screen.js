@@ -7,24 +7,31 @@ import {
   Switch,
   ScrollView,
   StatusBar,
+  ActivityIndicator,
   Alert,
-  Image
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 
-const ProfileScreen = ({ navigation }) => {
-  // 1. STATE
-  const [isPushEnabled, setIsPushEnabled] = useState(false);
-  const toggleSwitch = () => setIsPushEnabled(previousState => !previousState);
+const API_URL = 'https://attendify-ekg6.onrender.com/api/profile/';
 
+const COLORS = {
+  primary: '#3A7AFE',
+  background: '#F5F7FB',
+  card: '#FFFFFF',
+  textDark: '#111827',
+  textMuted: '#6B7280',
+  borderSoft: '#E5E7EB',
+};
+
+const ProfileScreen = ({ navigation }) => {
+  const [isPushEnabled, setIsPushEnabled] = useState(false);
   const [student, setStudent] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const API_URL = 'https://attendify-ekg6.onrender.com/api/profile/';
+  const toggleSwitch = () => setIsPushEnabled(prev => !prev);
 
-  // 2. FETCH REAL DATA
   useEffect(() => {
     loadProfile();
   }, []);
@@ -34,9 +41,7 @@ const ProfileScreen = ({ navigation }) => {
       const storedData = await AsyncStorage.getItem('userInfo');
       if (storedData) {
         const basicUser = JSON.parse(storedData);
-        // Fetch full details
         const response = await axios.get(`${API_URL}?id=${basicUser.id}`);
-        
         setStudent(response.data);
       }
     } catch (error) {
@@ -46,7 +51,6 @@ const ProfileScreen = ({ navigation }) => {
     }
   };
 
-  // 3. LOGOUT LOGIC
   const handleLogout = async () => {
     Alert.alert(
       "Log Out",
@@ -75,6 +79,7 @@ const ProfileScreen = ({ navigation }) => {
   return (
     <View style={styles.mainContainer}>
       <SafeAreaView edges={['top']} style={styles.topSafeArea} />
+      <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
 
       {/* HEADER */}
       <View style={styles.header}>
@@ -82,192 +87,287 @@ const ProfileScreen = ({ navigation }) => {
           <Text style={styles.backArrow}>{'<'}</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Profile</Text>
-        <View style={{ width: 20 }} />
+        <View style={{ width: 24 }} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <StatusBar barStyle="dark-content" backgroundColor="#EAEAEA" />
-
-        {/* --- PROFILE CARD SECTION --- */}
-        <View style={styles.profileSection}>
-
-          {/* Avatar Circle */}
-          <View style={styles.avatarContainer}>
-            {student?.user?.image_url ? (
-              <Image
-                source={{ uri: student.user.image_url }}
-                style={styles.avatarImage}
-              />
-            ) : (
-              /* Default Gray Circle if no image */
+      {/* BODY */}
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
+          <Text style={styles.loadingText}>Loading profile...</Text>
+        </View>
+      ) : (
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          {/* PROFILE CARD */}
+          <View style={styles.profileCard}>
+            <View style={styles.avatarContainer}>
               <View style={styles.avatarPlaceholder}>
                 <Text style={styles.avatarLetter}>
-                  {student?.user?.first_name ? student.user.first_name[0].toUpperCase() : ""}
+                  {student?.user?.username
+                    ? student.user.username[0].toUpperCase()
+                    : 'S'}
                 </Text>
               </View>
-            )}
+            </View>
+
+            <View style={styles.textSection}>
+              <Text style={styles.name}>
+                {student?.user?.username || "Student"}
+              </Text>
+
+              <Text style={styles.degree}>
+                {student?.programme || "Bachelor of Computer Science"}
+              </Text>
+
+              <Text style={styles.emailText}>
+                {student?.user?.email || "student@uow.edu.au"}
+              </Text>
+
+              <TouchableOpacity
+                style={styles.editButton}
+                onPress={() => navigation.navigate('EditProfile')}
+              >
+                <Text style={styles.editButtonText}>Edit Profile</Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
-          {/* Text & Button Column */}
-          <View style={styles.textSection}>
-            <Text style={styles.name}>
-              {student?.user
-                ? `${student.user.first_name} ${student.user.last_name}`
-                : "Loading..."}
-            </Text>
+          {/* SETTINGS CARD */}
+          <View style={styles.settingsCard}>
+            {/* Push Notification */}
+            <View style={[styles.menuItem, styles.menuItemBorder]}>
+              <View>
+                <Text style={styles.menuText}>Push notification</Text>
+                <Text style={styles.menuSubText}>
+                  Receive important alerts about attendance and modules.
+                </Text>
+              </View>
+              <Switch
+                trackColor={{ false: "#E5E7EB", true: COLORS.primary }}
+                thumbColor={"#fff"}
+                ios_backgroundColor="#E5E7EB"
+                onValueChange={toggleSwitch}
+                value={isPushEnabled}
+              />
+            </View>
 
-            <Text style={styles.degree}>
-              {student?.programme || "Loading..."}
-            </Text>
+            {/* Apply Leave */}
+            <TouchableOpacity
+              style={[styles.menuItem, styles.menuItemBorder]}
+              onPress={() => navigation.navigate('ApplyLeave')}
+            >
+              <View>
+                <Text style={styles.menuText}>Apply Leave of Absence</Text>
+                <Text style={styles.menuSubText}>
+                  Submit leave requests for upcoming classes.
+                </Text>
+              </View>
+              <Text style={styles.arrow}>{'>'}</Text>
+            </TouchableOpacity>
 
-            <TouchableOpacity style={styles.editButton}
-              onPress={() => navigation.navigate('EditProfile')}>
-              <Text style={styles.editButtonText}>Edit Profile</Text>
+            {/* Leave Status */}
+            <TouchableOpacity
+              style={[styles.menuItem, styles.menuItemBorder]}
+              onPress={() => navigation.navigate('LeaveStatus')}
+            >
+              <View>
+                <Text style={styles.menuText}>Leaves Status</Text>
+                <Text style={styles.menuSubText}>
+                  Track approval status for your leave submissions.
+                </Text>
+              </View>
+              <Text style={styles.arrow}>{'>'}</Text>
+            </TouchableOpacity>
+
+            {/* Appeals Status */}
+            <TouchableOpacity
+              style={[styles.menuItem, styles.menuItemBorder]}
+              onPress={() => navigation.navigate('AppealStatus')}
+            >
+              <View>
+                <Text style={styles.menuText}>Appeals Module Status</Text>
+                <Text style={styles.menuSubText}>
+                  View updates on your module appeals.
+                </Text>
+              </View>
+              <Text style={styles.arrow}>{'>'}</Text>
+            </TouchableOpacity>
+
+            {/* FAQ */}
+            <TouchableOpacity
+              style={[styles.menuItem, styles.menuItemBorder]}
+              onPress={() => navigation.navigate('FAQ')}
+            >
+              <View>
+                <Text style={styles.menuText}>FAQ</Text>
+                <Text style={styles.menuSubText}>
+                  Find answers to common questions.
+                </Text>
+              </View>
+              <Text style={styles.arrow}>{'>'}</Text>
+            </TouchableOpacity>
+
+            {/* Logout */}
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={handleLogout}
+            >
+              <Text style={[styles.menuText, { color: '#B91C1C' }]}>
+                Log out
+              </Text>
+              <Text style={[styles.arrow, { color: '#B91C1C' }]}>{'>'}</Text>
             </TouchableOpacity>
           </View>
-        </View>
-
-        {/* --- MENU LIST --- */}
-        <View style={styles.menuContainer}>
-
-          {/* Push Notification Toggle */}
-          <View style={styles.menuItem}>
-            <Text style={styles.menuText}>Push notification</Text>
-            <Switch
-              trackColor={{ false: "#E0E0E0", true: "#3A7AFE" }}
-              thumbColor={"#fff"}
-              ios_backgroundColor="#E0E0E0"
-              onValueChange={toggleSwitch}
-              value={isPushEnabled}
-            />
-          </View>
-
-          {/* Apply Leave */}
-          <TouchableOpacity style={styles.menuItem}
-            onPress={() => navigation.navigate('ApplyLeave')}>
-            <Text style={styles.menuText}>Apply Leave of absence</Text>
-            <Text style={styles.arrow}>{'>'}</Text>
-          </TouchableOpacity>
-
-          {/* ✅ SPLIT 1: Leaves Status */}
-          <TouchableOpacity style={styles.menuItem}
-            onPress={() => navigation.navigate('LeaveStatus')}>
-            <Text style={styles.menuText}>Leaves Status</Text>
-            <Text style={styles.arrow}>{'>'}</Text>
-          </TouchableOpacity>
-
-          {/* ✅ SPLIT 2: Appeals Module Status */}
-          <TouchableOpacity style={styles.menuItem}
-            onPress={() => navigation.navigate('AppealStatus')}>
-            <Text style={styles.menuText}>Appeals Module Status</Text>
-            <Text style={styles.arrow}>{'>'}</Text>
-          </TouchableOpacity>
-
-          {/* FAQ */}
-          <TouchableOpacity style={styles.menuItem}
-            onPress={() => navigation.navigate('FAQ')}>
-            <Text style={styles.menuText}>FAQ</Text>
-            <Text style={styles.arrow}>{'>'}</Text>
-          </TouchableOpacity>
-
-          {/* Logout Item */}
-          <TouchableOpacity
-            style={[styles.menuItem, { borderBottomWidth: 0 }]}
-            onPress={handleLogout}
-          >
-            <Text style={styles.menuText}>Log out</Text>
-            <Text style={styles.arrow}>{'>'}</Text>
-          </TouchableOpacity>
-
-        </View>
-
-      </ScrollView>
+        </ScrollView>
+      )}
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  mainContainer: { flex: 1, backgroundColor: '#fff' },
-  topSafeArea: { flex: 0, backgroundColor: '#EAEAEA' },
+  mainContainer: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+  },
+  topSafeArea: {
+    flex: 0,
+    backgroundColor: COLORS.background,
+  },
 
   header: {
-    backgroundColor: '#EAEAEA',
-    paddingVertical: 15,
+    backgroundColor: COLORS.background,
+    paddingVertical: 14,
     paddingHorizontal: 20,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: COLORS.borderSoft,
   },
-  backArrow: { fontSize: 24, color: '#333', fontWeight: '300' },
-  headerTitle: { fontSize: 17, fontWeight: '700', color: '#000' },
-
-  scrollContent: { paddingBottom: 20 },
-
-  profileSection: {
-    flexDirection: 'row',
-    padding: 30,
-    paddingBottom: 20,
-    alignItems: 'flex-start',
+  backArrow: { fontSize: 24, color: COLORS.textDark, fontWeight: '300' },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: COLORS.textDark,
   },
-  avatarContainer: { marginRight: 20 },
-  avatarPlaceholder: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-    backgroundColor: '#D9D9D9',
+
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingBottom: 24,
+    paddingTop: 16,
+  },
+
+  loadingContainer: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  avatarImage: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-    backgroundColor: '#D9D9D9',
+  loadingText: {
+    marginTop: 8,
+    color: COLORS.textMuted,
   },
 
-  textSection: { flex: 1, justifyContent: 'center', paddingTop: 5 },
+  // PROFILE CARD
+  profileCard: {
+    flexDirection: 'row',
+    padding: 18,
+    borderRadius: 18,
+    backgroundColor: COLORS.card,
+    marginBottom: 20,
+
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowOffset: { width: 0, height: 3 },
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  avatarContainer: {
+    marginRight: 16,
+  },
+  avatarPlaceholder: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#CBD5F5',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarLetter: {
+    fontSize: 34,
+    color: '#1E1B4B',
+    fontWeight: '800',
+  },
+  textSection: {
+    flex: 1,
+    justifyContent: 'center',
+  },
   name: {
     fontSize: 20,
     fontWeight: '800',
-    color: '#000',
+    color: COLORS.textDark,
     marginBottom: 4,
   },
   degree: {
     fontSize: 13,
-    color: '#333',
-    fontWeight: '400',
-    lineHeight: 18,
+    color: COLORS.textMuted,
+    marginBottom: 4,
   },
-
+  emailText: {
+    fontSize: 12,
+    color: COLORS.textMuted,
+  },
   editButton: {
-    marginTop: 12,
-    backgroundColor: '#8E8E8E',
-    paddingVertical: 6,
-    paddingHorizontal: 15,
-    borderRadius: 20,
+    marginTop: 10,
+    backgroundColor: COLORS.primary,
+    paddingVertical: 7,
+    paddingHorizontal: 16,
+    borderRadius: 999,
     alignSelf: 'flex-start',
   },
   editButtonText: {
     color: '#fff',
     fontSize: 12,
-    fontWeight: 'bold',
+    fontWeight: '700',
   },
 
-  menuContainer: { paddingHorizontal: 30, marginTop: 10 },
+  // SETTINGS CARD
+  settingsCard: {
+    backgroundColor: COLORS.card,
+    borderRadius: 18,
+    paddingHorizontal: 16,
+    paddingVertical: 4,
+
+    shadowColor: '#000',
+    shadowOpacity: 0.03,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    elevation: 1,
+  },
+
   menuItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 18,
+    paddingVertical: 14,
+  },
+  menuItemBorder: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: COLORS.borderSoft,
   },
   menuText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
-    color: '#000',
+    color: COLORS.textDark,
+  },
+  menuSubText: {
+    fontSize: 12,
+    color: COLORS.textMuted,
+    marginTop: 2,
+    maxWidth: 220,
   },
   arrow: {
     fontSize: 18,
-    color: '#333',
+    color: COLORS.textMuted,
     fontWeight: '300',
   },
 });

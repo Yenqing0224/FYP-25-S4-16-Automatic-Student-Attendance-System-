@@ -12,30 +12,34 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
+import { Ionicons } from '@expo/vector-icons';
+
+const COLORS = {
+  primary: '#3A7AFE',
+  background: '#F5F7FB',
+  textDark: '#111827',
+  textMuted: '#6B7280',
+  card: '#FFFFFF',
+};
 
 const NotificationScreen = ({ navigation }) => {
-  
-  // 1. STATE Management
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState(null);
 
   const API_URL = 'https://attendify-ekg6.onrender.com/api/notifications/';
 
-  // 2. FETCH DATA on Load
   useEffect(() => {
     fetchNotifications();
   }, []);
 
   const fetchNotifications = async () => {
     try {
-      // Get User ID from Storage
       const storedData = await AsyncStorage.getItem('userInfo');
       if (storedData) {
         const user = JSON.parse(storedData);
-        setUserId(user.id); // Save ID for later use
+        setUserId(user.id);
 
-        // Call API
         const response = await axios.get(`${API_URL}?user_id=${user.id}`);
         setNotifications(response.data);
       }
@@ -46,103 +50,112 @@ const NotificationScreen = ({ navigation }) => {
     }
   };
 
-  // 3. MARK ALL AS READ FUNCTION
   const handleMarkAllRead = async () => {
     if (!userId) return;
 
-    // A. Optimistic Update (Update UI immediately so it feels fast)
     const updatedList = notifications.map(item => ({ ...item, is_read: true }));
     setNotifications(updatedList);
 
     try {
-      // B. Send Request to Backend
       await axios.post(`${API_URL}mark-read/`, { user_id: userId });
-      console.log("All marked as read on server");
     } catch (error) {
       console.error("Failed to mark read:", error);
       Alert.alert("Error", "Could not sync with server");
-      // Optional: Revert changes if failed, but for FYP this is fine
     }
   };
 
-  // Helper to format date nicely
   const formatDate = (dateString) => {
     if (!dateString) return "";
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    return date.toLocaleDateString('en-GB', { 
+      day: 'numeric', 
+      month: 'short', 
+      year: 'numeric' 
+    });
   };
 
   return (
     <View style={styles.mainContainer}>
-      
-      {/* 1. TOP STRIP */}
-      <SafeAreaView edges={['top']} style={styles.topSafeArea} />
+      <SafeAreaView edges={['top']} style={styles.safeTop} />
+      <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
 
-      {/* 2. BODY */}
+      {/* HEADER (beautified) */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.navigate('Home')} style={styles.headerIconBox}>
+          <Ionicons name="chevron-back" size={24} color={COLORS.primary} />
+        </TouchableOpacity>
+
+        <Text style={styles.headerTitle}>Notifications</Text>
+
+        {/* placeholder for alignment */}
+        <View style={styles.headerIconBox} />
+      </View>
+
       <View style={styles.contentContainer}>
-        <StatusBar barStyle="dark-content" backgroundColor="#EAEAEA" />
-
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.navigate('Home')}>
-            <Text style={styles.backArrow}>{'<'}</Text>
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Notifications</Text>
-          <View style={{ width: 20 }} />
-        </View>
-
-        {/* Loading State */}
         {loading ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#000" />
-            <Text>Checking alerts...</Text>
+            <ActivityIndicator size="large" color={COLORS.primary} />
+            <Text style={styles.loadingText}>Checking alerts...</Text>
           </View>
         ) : (
           <ScrollView contentContainerStyle={styles.scrollContent}>
             
-            {/* Mark Read Button */}
+            {/* MARK ALL READ */}
             <View style={styles.actionContainer}>
-              <TouchableOpacity onPress={handleMarkAllRead}>
+              <TouchableOpacity style={styles.markReadButton} onPress={handleMarkAllRead}>
+                <Ionicons name="checkmark-done-outline" size={16} color={COLORS.primary} />
                 <Text style={styles.markReadText}>Mark all as read</Text>
               </TouchableOpacity>
             </View>
 
-            {/* List */}
+            {/* LIST */}
             <View style={styles.listContainer}>
               {notifications.length === 0 ? (
-                 <Text style={{textAlign: 'center', marginTop: 20, color: '#777'}}>
-                    No new notifications.
-                 </Text>
+                <View style={styles.emptyState}>
+                  <Ionicons name="notifications-off-outline" size={40} color={COLORS.primary} />
+                  <Text style={styles.emptyTitle}>All caught up</Text>
+                  <Text style={styles.emptySubtitle}>No new notifications right now.</Text>
+                </View>
               ) : (
                 notifications.map((item) => (
-                  <TouchableOpacity 
-                    key={item.id} 
+                  <TouchableOpacity
+                    key={item.id}
                     style={[
-                      styles.card, 
-                      // Django uses 'is_read', so we check that
-                      item.is_read ? styles.cardRead : styles.cardUnread
+                      styles.card,
+                      item.is_read ? styles.cardRead : styles.cardUnread,
                     ]}
-                    onPress={() => navigation.navigate('NotificationDetail', { item: item })}
+                    onPress={() => navigation.navigate('NotificationDetail', { item })}
                   >
-                    <View style={styles.cardContentRow}>
-                      {/* Dot Indicator for Unread */}
-                      {item.is_read === false ? (
-                          <View style={styles.dotIndicator} />
-                      ) : null}
-                      
-                      <View style={styles.textContainer}>
-                        <Text style={styles.messageText} numberOfLines={2}>
-                          {item.message || item.title} 
-                        </Text>
-                        <Text style={styles.dateText}>
-                          {formatDate(item.date_sent)}
+                    <View style={styles.cardTopRow}>
+                      <View style={styles.cardTitleRow}>
+                        {!item.is_read && <View style={styles.dotIndicator} />}
+                        <Text
+                          style={[
+                            styles.messageText,
+                            !item.is_read && styles.messageTextUnread,
+                          ]}
+                          numberOfLines={2}
+                        >
+                          {item.message || item.title}
                         </Text>
                       </View>
+
+                      <Text style={styles.dateText}>
+                        {formatDate(item.date_sent)}
+                      </Text>
                     </View>
+
+                    {!item.is_read && (
+                      <View style={styles.unreadBadge}>
+                        <Text style={styles.unreadBadgeText}>New</Text>
+                      </View>
+                    )}
                   </TouchableOpacity>
                 ))
               )}
             </View>
+
+            <View style={{ height: 30 }} />
           </ScrollView>
         )}
       </View>
@@ -153,46 +166,165 @@ const NotificationScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   mainContainer: {
     flex: 1,
-    backgroundColor: '#ffffffff', 
+    backgroundColor: COLORS.background,
   },
-  topSafeArea: {
-    flex: 0, 
-    backgroundColor: '#EAEAEA', 
+  safeTop: {
+    flex: 0,
+    backgroundColor: COLORS.background,
   },
-  contentContainer: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  loadingContainer: {
-    flex: 1, 
-    justifyContent: 'center', 
-    alignItems: 'center'
-  },
-  scrollContent: { paddingBottom: 20 },
+
   header: {
-    backgroundColor: '#EAEAEA',
-    paddingVertical: 15,
+    backgroundColor: COLORS.background,
+    paddingVertical: 14,
     paddingHorizontal: 20,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    elevation: 2,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E6E6E6',
   },
-  backArrow: { fontSize: 24, color: '#333', fontWeight: '300' },
-  headerTitle: { fontSize: 18, fontWeight: '700', color: '#000' },
-  actionContainer: { paddingHorizontal: 20, paddingTop: 15, paddingBottom: 10, alignItems: 'flex-end' },
-  markReadText: { fontWeight: 'bold', fontSize: 14, color: '#000' },
-  listContainer: { paddingHorizontal: 20 },
-  card: { borderRadius: 10, paddingVertical: 20, paddingHorizontal: 15, marginBottom: 15 },
-  
-  // Styles for Read/Unread
-  cardUnread: { backgroundColor: '#E0E0E0', borderWidth: 0 },
-  cardRead: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#E0E0E0' },
-  
-  cardContentRow: { flexDirection: 'row', alignItems: 'flex-start' },
-  dotIndicator: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#757575', marginTop: 6, marginRight: 10 },
-  textContainer: { flex: 1 },
-  messageText: { fontSize: 15, fontWeight: '700', color: '#000', marginBottom: 8, lineHeight: 20 },
-  dateText: { fontSize: 12, color: '#555' },
+  headerIconBox: {
+    width: 32,
+    alignItems: 'flex-start',
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: COLORS.textDark,
+  },
+
+  contentContainer: {
+    flex: 1,
+  },
+
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 10,
+    color: COLORS.textMuted,
+  },
+
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 24,
+  },
+
+  actionContainer: {
+    alignItems: 'flex-end',
+    marginBottom: 10,
+  },
+  markReadButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E8F0FF',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+  },
+  markReadText: {
+    marginLeft: 6,
+    fontWeight: '600',
+    fontSize: 13,
+    color: COLORS.primary,
+  },
+
+  listContainer: {
+    marginTop: 4,
+  },
+
+  card: {
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    marginBottom: 12,
+  },
+  cardUnread: {
+    backgroundColor: '#E0ECFF',
+  },
+  cardRead: {
+    backgroundColor: COLORS.card,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+
+  cardTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+
+  cardTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    flex: 1,
+    marginRight: 12,
+  },
+
+  dotIndicator: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: COLORS.primary,
+    marginTop: 6,
+    marginRight: 8,
+  },
+
+  messageText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.textDark,
+    lineHeight: 20,
+  },
+  messageTextUnread: {
+    color: '#1D2A5B',
+  },
+
+  dateText: {
+    fontSize: 11,
+    color: COLORS.textMuted,
+    marginTop: 2,
+  },
+
+  unreadBadge: {
+    marginTop: 10,
+    alignSelf: 'flex-start',
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 999,
+  },
+  unreadBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+
+  // EMPTY STATE
+  emptyState: {
+    marginTop: 40,
+    alignItems: 'center',
+    gap: 6,
+  },
+  emptyTitle: {
+    marginTop: 8,
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.textDark,
+  },
+  emptySubtitle: {
+    fontSize: 13,
+    color: COLORS.textMuted,
+  },
 });
 
 export default NotificationScreen;

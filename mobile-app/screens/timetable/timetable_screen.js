@@ -1,6 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, ActivityIndicator
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  StatusBar,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Calendar } from 'react-native-calendars';
@@ -9,9 +15,10 @@ import axios from 'axios';
 import { useFocusEffect } from '@react-navigation/native';
 
 const TimetableScreen = ({ navigation }) => {
-
   const [activeTab, setActiveTab] = useState('Selected');
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState(
+    new Date().toISOString().split('T')[0]
+  );
 
   const [fullSchedule, setFullSchedule] = useState([]);
   const [markedDates, setMarkedDates] = useState({});
@@ -27,20 +34,16 @@ const TimetableScreen = ({ navigation }) => {
           const jumpDate = await AsyncStorage.getItem('jumpToDate');
 
           if (jumpDate) {
-            console.log("📍 FOUND DATE (From Home):", jumpDate);
-
-            // Case A: Coming from Home Screen -> Jump to specific date
+            console.log('📍 FOUND DATE (From Home):', jumpDate);
             setSelectedDate(jumpDate);
             setActiveTab('Selected');
-
-            // Clear it so it doesn't get stuck
             await AsyncStorage.removeItem('jumpToDate');
           } else {
             const today = new Date().toISOString().split('T')[0];
             setSelectedDate(today);
           }
         } catch (e) {
-          console.error("Jump error:", e);
+          console.error('Jump error:', e);
         }
       };
 
@@ -63,41 +66,45 @@ const TimetableScreen = ({ navigation }) => {
         processCalendarDots(response.data);
       }
     } catch (error) {
-      console.error("Timetable Error:", error);
+      console.error('Timetable Error:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  // --- 3. FORMATTING HELPERS (New) ---
+  // --- 3. FORMATTING HELPERS ---
 
-  // Format: "12:00"
   const formatTime = (isoString) => {
     return new Date(isoString).toLocaleTimeString([], {
       hour: '2-digit',
       minute: '2-digit',
-      hour12: false // Set to true if you want 12:00 pm
+      hour12: false,
     });
   };
 
-  // Format: "08 Dec 2025"
   const formatDateHeader = (dateString) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    return date.toLocaleDateString('en-GB', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    });
   };
 
-  // Format: "11 Dec"
   const formatDateShort = (isoString) => {
     const date = new Date(isoString);
-    return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+    return date.toLocaleDateString('en-GB', {
+      day: '2-digit',
+      month: 'short',
+    });
   };
 
   const processCalendarDots = (data) => {
     const marks = {};
-    data.forEach(session => {
+    data.forEach((session) => {
       const dateKey = session.date_time.split('T')[0];
       marks[dateKey] = {
-        dots: [{ key: 'class', color: '#90CAF9' }]
+        dots: [{ key: 'class', color: '#90CAF9' }],
       };
     });
     setMarkedDates(marks);
@@ -110,7 +117,7 @@ const TimetableScreen = ({ navigation }) => {
         ...newMarked[selectedDate],
         selected: true,
         selectedColor: '#3F4E85',
-        dots: [{ key: 'class', color: '#ffffff' }]
+        dots: [{ key: 'class', color: '#ffffff' }],
       };
     } else {
       newMarked[selectedDate] = {
@@ -124,22 +131,24 @@ const TimetableScreen = ({ navigation }) => {
   // --- 4. RENDER SECTIONS ---
 
   const renderSelectedContent = () => {
-    const classesForDay = fullSchedule.filter(item =>
+    const classesForDay = fullSchedule.filter((item) =>
       item.date_time.startsWith(selectedDate)
     );
 
     return (
       <View>
-        {/* ✅ POLISHED: "08 Dec 2025" */}
         <Text style={styles.sectionDateTitle}>
           {formatDateHeader(selectedDate)}
         </Text>
 
         {classesForDay.length > 0 ? (
           classesForDay.map((item) => (
-            <View key={item.id} style={[styles.eventCard, styles.cardBlue]}>
+            <View key={item.id} style={[styles.eventCard, styles.cardSelected]}>
+              <View style={styles.cardAccent} />
               <View style={styles.cardContent}>
-                <Text style={styles.eventTitle}>{item.module.code} - {item.module.name}</Text>
+                <Text style={styles.eventTitle}>
+                  {item.module.code} · {item.module.name}
+                </Text>
                 <Text style={styles.eventTime}>{formatTime(item.date_time)}</Text>
                 <Text style={styles.eventLoc}>{item.venue}</Text>
               </View>
@@ -147,7 +156,9 @@ const TimetableScreen = ({ navigation }) => {
           ))
         ) : (
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No classes scheduled for this day.</Text>
+            <Text style={styles.emptyText}>
+              No classes scheduled for this day.
+            </Text>
           </View>
         )}
       </View>
@@ -156,38 +167,75 @@ const TimetableScreen = ({ navigation }) => {
 
   const renderUpcomingContent = () => {
     const now = new Date();
-    const upcoming = fullSchedule.filter(item => new Date(item.date_time) > now);
+    const upcoming = fullSchedule
+      .filter(item => new Date(item.date_time) > now)
+      .sort((a, b) => new Date(a.date_time) - new Date(b.date_time));
 
     return (
       <View>
-        <Text style={styles.sectionDateTitle}>Upcoming Events</Text>
+        <Text style={styles.sectionDateTitle}>Upcoming Classes</Text>
+
         {upcoming.length === 0 ? (
-          <Text style={{ textAlign: 'center', color: '#999' }}>No upcoming classes.</Text>
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>No upcoming classes.</Text>
+          </View>
         ) : (
-          upcoming.slice(0, 5).map((item) => (
-            <View key={item.id} style={[styles.eventCard, styles.cardUpcoming]}>
-              <View style={styles.cardContent}>
-                <Text style={styles.eventTitle}>{item.module.code} - {item.module.name}</Text>
+          upcoming.slice(0, 5).map((item) => {
+            const sessionType = item.session_type || item.type || "Class";
 
-                {/* ✅ POLISHED: "11 Dec • 12:00" */}
-                <Text style={styles.eventTime}>
-                  {formatDateShort(item.date_time)} • {formatTime(item.date_time)}
-                </Text>
+            return (
+              <View key={item.id} style={[styles.eventCard, styles.cardUpcoming]}>
+                {/* Top row: module + chip */}
+                <View style={styles.cardHeaderRow}>
+                  <Text style={styles.upTitle}>
+                    {item.module.code} • {item.module.name}
+                  </Text>
 
-                <Text style={styles.eventLoc}>{item.venue}</Text>
+                  <View style={styles.chip}>
+                    <Text style={styles.chipText}>{sessionType}</Text>
+                  </View>
+                </View>
+
+                {/* Date row */}
+                <View style={styles.upRow}>
+                  <Text style={styles.upIcon}>🗓</Text>
+                  <Text style={styles.upLabel}>Date</Text>
+                  <Text style={styles.upValue}>
+                    {formatDateShort(item.date_time)}
+                  </Text>
+                </View>
+
+                {/* Time row */}
+                <View style={styles.upRow}>
+                  <Text style={styles.upIcon}>⏰</Text>
+                  <Text style={styles.upLabel}>Time</Text>
+                  <Text style={styles.upValue}>
+                    {formatTime(item.date_time)}
+                  </Text>
+                </View>
+
+                {/* Location row */}
+                <View style={styles.upRow}>
+                  <Text style={styles.upIcon}>📍</Text>
+                  <Text style={styles.upLabel}>Location</Text>
+                  <Text style={styles.upValue}>
+                    {item.venue}
+                  </Text>
+                </View>
               </View>
-            </View>
-          ))
+            );
+          })
         )}
       </View>
     );
   };
 
+
   return (
     <View style={styles.mainContainer}>
       <SafeAreaView edges={['top']} style={styles.topSafeArea} />
       <View style={styles.contentContainer}>
-        <StatusBar barStyle="dark-content" backgroundColor="#EAEAEA" />
+        <StatusBar barStyle="dark-content" backgroundColor="#F0F2FA" />
 
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.navigate('Home')}>
@@ -198,15 +246,18 @@ const TimetableScreen = ({ navigation }) => {
         </View>
 
         {loading ? (
-          <ActivityIndicator size="large" color="#000" style={{ marginTop: 50 }} />
+          <ActivityIndicator
+            size="large"
+            color="#3A7AFE"
+            style={{ marginTop: 50 }}
+          />
         ) : (
           <ScrollView contentContainerStyle={styles.scrollContent}>
-
             <View style={styles.calendarCard}>
               <Calendar
                 current={selectedDate}
-                key={selectedDate} // Force re-render on date change
-                onDayPress={day => {
+                key={selectedDate}
+                onDayPress={(day) => {
                   setSelectedDate(day.dateString);
                   setActiveTab('Selected');
                 }}
@@ -214,34 +265,64 @@ const TimetableScreen = ({ navigation }) => {
                 markedDates={getDisplayMarkedDates()}
                 theme={{
                   selectedDayBackgroundColor: '#3F4E85',
+                  selectedDayTextColor: '#ffffff',
                   todayTextColor: '#3A7AFE',
-                  arrowColor: 'black',
-                  textMonthFontWeight: 'bold',
+                  arrowColor: '#111827',
+                  monthTextColor: '#111827',
+                  textMonthFontWeight: '700',
+                  textDayHeaderFontWeight: '600',
                 }}
               />
             </View>
 
             <View style={styles.toggleContainer}>
               <TouchableOpacity
-                style={[styles.toggleButton, activeTab === 'Selected' ? styles.activeBtn : styles.inactiveBtn]}
+                style={[
+                  styles.toggleButton,
+                  activeTab === 'Selected'
+                    ? styles.activeBtn
+                    : styles.inactiveBtn,
+                ]}
                 onPress={() => setActiveTab('Selected')}
               >
-                <Text style={activeTab === 'Selected' ? styles.activeText : styles.inactiveText}>Selected</Text>
+                <Text
+                  style={
+                    activeTab === 'Selected'
+                      ? styles.activeText
+                      : styles.inactiveText
+                  }
+                >
+                  Selected
+                </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.toggleButton, activeTab === 'Upcoming' ? styles.activeBtn : styles.inactiveBtn]}
+                style={[
+                  styles.toggleButton,
+                  activeTab === 'Upcoming'
+                    ? styles.activeBtn
+                    : styles.inactiveBtn,
+                ]}
                 onPress={() => {
                   setActiveTab('Upcoming');
                   setSelectedDate(new Date().toISOString().split('T')[0]);
                 }}
               >
-                <Text style={activeTab === 'Upcoming' ? styles.activeText : styles.inactiveText}>Upcoming</Text>
+                <Text
+                  style={
+                    activeTab === 'Upcoming'
+                      ? styles.activeText
+                      : styles.inactiveText
+                  }
+                >
+                  Upcoming
+                </Text>
               </TouchableOpacity>
             </View>
 
-            {activeTab === 'Selected' ? renderSelectedContent() : renderUpcomingContent()}
-
+            {activeTab === 'Selected'
+              ? renderSelectedContent()
+              : renderUpcomingContent()}
           </ScrollView>
         )}
       </View>
@@ -250,43 +331,183 @@ const TimetableScreen = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  mainContainer: { flex: 1, backgroundColor: '#fff' },
-  topSafeArea: { flex: 0, backgroundColor: '#EAEAEA' },
-  contentContainer: { flex: 1, backgroundColor: '#fff' },
-  scrollContent: { paddingBottom: 20 },
+  mainContainer: { flex: 1, backgroundColor: '#F5F7FB' },
+  topSafeArea: { flex: 0, backgroundColor: '#F0F2FA' },
+  contentContainer: { flex: 1, backgroundColor: '#F5F7FB' },
+  scrollContent: { paddingBottom: 24 },
+
   header: {
-    backgroundColor: '#EAEAEA', paddingVertical: 15, paddingHorizontal: 20,
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: '#F0F2FA',
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
-  backArrow: { fontSize: 24, color: '#333', fontWeight: '300' },
-  headerTitle: { fontSize: 18, fontWeight: '700', color: '#000' },
+  backArrow: { fontSize: 24, color: '#4B5563', fontWeight: '300' },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#111827',
+    letterSpacing: 0.3,
+  },
+
   calendarCard: {
-    backgroundColor: '#fff', marginHorizontal: 10, borderRadius: 20, padding: 10, marginTop: 10,
-    elevation: 2, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 5,
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 16,
+    marginTop: 14,
+    borderRadius: 18,
+    padding: 10,
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 3,
   },
+
   toggleContainer: {
-    flexDirection: 'row', backgroundColor: '#EAEAEA', marginHorizontal: 20, marginTop: 20,
-    borderRadius: 30, padding: 2, height: 50,
+    flexDirection: 'row',
+    backgroundColor: '#E5E7EB',
+    marginHorizontal: 20,
+    marginTop: 18,
+    borderRadius: 999,
+    padding: 2,
+    height: 44,
   },
-  toggleButton: { flex: 1, alignItems: 'center', justifyContent: 'center', borderRadius: 28 },
-  activeBtn: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#ddd', elevation: 2 },
-  inactiveBtn: { backgroundColor: 'transparent' },
-  activeText: { fontWeight: 'bold', color: '#000' },
-  inactiveText: { fontWeight: 'bold', color: '#999' },
+  toggleButton: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 999,
+  },
+  activeBtn: {
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
+  inactiveBtn: {
+    backgroundColor: 'transparent',
+  },
+  activeText: { fontWeight: '700', color: '#111827', fontSize: 14 },
+  inactiveText: { fontWeight: '600', color: '#9CA3AF', fontSize: 14 },
 
-  sectionDateTitle: { fontSize: 18, fontWeight: 'bold', margin: 20, marginBottom: 10 },
+  sectionDateTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#111827',
+    marginHorizontal: 20,
+    marginTop: 20,
+    marginBottom: 10,
+  },
 
-  eventCard: { marginHorizontal: 20, borderRadius: 12, padding: 20, marginBottom: 15, flexDirection: 'row', justifyContent: 'space-between' },
+  eventCard: {
+    marginHorizontal: 20,
+    borderRadius: 18,
+    padding: 16,
+    marginBottom: 16,
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowOffset: { width: 0, height: 3 },
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  cardBlue: {
+    backgroundColor: '#E3F2FD',
+  },
+  cardSelected: {
+    backgroundColor: '#EAF1FF',
+  },
+  cardUpcoming: {
+    backgroundColor: '#EAF1FF',
+    borderLeftWidth: 4,
+    borderLeftColor: '#3A7AFE',
+  },
+  cardHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 10,
+  },
 
-  cardBlue: { backgroundColor: '#B3E5FC' },
-  cardUpcoming: { backgroundColor: '#FFF9C4' },
+  upTitle: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1A2B5F',
+    marginRight: 8,
+  },
 
-  cardContent: { flex: 1 },
-  eventTitle: { fontWeight: 'bold', fontSize: 16 },
-  eventTime: { fontSize: 14, marginTop: 4 },
-  eventLoc: { fontSize: 14, color: '#555', marginTop: 2 },
-  emptyContainer: { alignItems: 'center', padding: 20 },
-  emptyText: { color: '#999', fontSize: 16 }
+  chip: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+    backgroundColor: 'rgba(58, 122, 254, 0.12)',
+    alignSelf: 'flex-start',
+  },
+
+  chipText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#3A7AFE',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+
+  upRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+
+  upIcon: {
+    width: 20,
+    fontSize: 14,
+  },
+
+  upLabel: {
+    width: 70,
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#555',
+  },
+
+  upValue: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#222',
+  },
+
+
+  cardAccent: {
+    width: 4,
+    borderRadius: 999,
+    backgroundColor: '#3A7AFE',
+    marginRight: 10,
+  },
+  cardAccentUpcoming: {
+    width: 4,
+    borderRadius: 999,
+    backgroundColor: '#3A7AFE',
+    marginRight: 10,
+  },
+
+
+  emptyContainer: { alignItems: 'center', padding: 24 },
+  emptyText: { color: '#9CA3AF', fontSize: 14 },
+
+  noUpcomingText: {
+    textAlign: 'center',
+    color: '#9CA3AF',
+    fontSize: 14,
+    marginTop: 10,
+  },
+
+
 });
 
 export default TimetableScreen;

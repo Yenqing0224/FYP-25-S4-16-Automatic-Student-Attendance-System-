@@ -8,118 +8,157 @@ import {
   StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+
+const COLORS = {
+  primary: '#3A7AFE',
+  background: '#F5F7FB',
+  textDark: '#111827',
+  textMuted: '#6B7280',
+  card: '#FFFFFF',
+};
 
 const NotificationDetailScreen = ({ route, navigation }) => {
   const { item } = route.params;
 
-  // ✅ CHANGED: Date format (No Time)
   const formatDate = (dateString) => {
     if (!dateString) return "";
     const date = new Date(dateString);
     return date.toLocaleDateString('en-GB', { 
-        day: 'numeric', 
-        month: 'long', 
-        year: 'numeric'
+      day: 'numeric', 
+      month: 'long', 
+      year: 'numeric'
     });
   };
 
   return (
     <View style={styles.mainContainer}>
-      <SafeAreaView edges={['top']} style={styles.topSafeArea} />
+      <SafeAreaView edges={['top']} style={styles.safeTop} />
 
-      <View style={styles.contentContainer}>
-        <StatusBar barStyle="dark-content" backgroundColor="#EAEAEA" />
-        
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Text style={styles.backArrow}>{'<'}</Text>
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Details</Text>
-          <View style={{ width: 20 }} /> 
-        </View>
+      <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
 
-        <ScrollView contentContainerStyle={styles.content}>
-          
-          {/* ✅ CHANGED: Header Row (Title Left, Date Right) */}
-          <View style={styles.topHeaderRow}>
-            {/* Title takes up remaining space */}
-            <Text style={styles.title}>
-              {item.title}
-            </Text>
+      {/* BEAUTIFIED HEADER */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+          <Ionicons name="chevron-back" size={26} color={COLORS.primary} />
+        </TouchableOpacity>
 
-            {/* Date is fixed on the right */}
-            <Text style={styles.date}>
-              {formatDate(item.date_sent)}
-            </Text>
+        <Text style={styles.headerTitle}>Notification</Text>
+
+        <View style={{ width: 30 }} /> 
+      </View>
+
+      {/* MAIN CONTENT */}
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <View style={styles.contentCard}>
+
+          {/* Title + Date row */}
+          <View style={styles.titleRow}>
+            <Text style={styles.title}>{item.title}</Text>
+            <Text style={styles.date}>{formatDate(item.date_sent)}</Text>
           </View>
 
-          {/* Divider Line */}
           <View style={styles.divider} />
 
-          {/* Body Text */}
-          <Text style={styles.bodyText}>
-            {item.description}
-          </Text>
+          {/* Description */}
+          <Text style={styles.bodyText}>{item.description}</Text>
+        </View>
 
-        </ScrollView>
-      </View>
+        <View style={{ height: 40 }} />
+      </ScrollView>
     </View>
   );
 };
 
+/* ---------------- STYLES ---------------- */
 const styles = StyleSheet.create({
-  mainContainer: { flex: 1, backgroundColor: '#fff' },
-  topSafeArea: { flex: 0, backgroundColor: '#EAEAEA' },
-  contentContainer: { flex: 1, backgroundColor: '#fff' },
+  mainContainer: { 
+    flex: 1, 
+    backgroundColor: COLORS.background 
+  },
 
+  safeTop: { 
+    flex: 0, 
+    backgroundColor: COLORS.background 
+  },
+
+  /* HEADER */
   header: {
-    backgroundColor: '#EAEAEA',
-    paddingVertical: 15,
+    backgroundColor: COLORS.background,
+    paddingVertical: 16,
     paddingHorizontal: 20,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-  },
-  backArrow: { fontSize: 24, color: '#333', fontWeight: '300' },
-  headerTitle: { fontSize: 18, fontWeight: '700', color: '#000' },
-  
-  content: { padding: 20 },
 
-  // ✅ NEW: Row layout for Title and Date
-  topHeaderRow: {
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    elevation: 2,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E6E6E6',
+  },
+
+  backBtn: { 
+    width: 30 
+  },
+
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: COLORS.textDark,
+  },
+
+  /* CONTENT */
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
+  },
+
+  contentCard: {
+    backgroundColor: COLORS.card,
+    padding: 20,
+    borderRadius: 16,
+
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 6,
+    elevation: 3,
+  },
+
+  titleRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start', // Ensures alignment at the top
-    marginBottom: 15,
+    alignItems: 'flex-start',
   },
 
   title: {
+    flex: 1,
     fontSize: 20,
-    fontWeight: 'bold',
-    color: '#000',
-    flex: 1, // Allow title to wrap if long
-    marginRight: 15, // Gap between title and date
+    fontWeight: '800',
+    color: COLORS.textDark,
+    marginRight: 15,
   },
 
   date: {
     fontSize: 12,
-    color: '#666',
+    color: COLORS.textMuted,
+    minWidth: 90,
     textAlign: 'right',
-    marginTop: 4, // Slight adjustment to align with title text
-    minWidth: 100, // Ensure date doesn't wrap weirdly
   },
 
   divider: {
     height: 1,
-    backgroundColor: '#E0E0E0',
-    marginBottom: 20,
+    backgroundColor: '#E4E5E7',
+    marginVertical: 16,
   },
+
   bodyText: {
-    fontSize: 16,
-    color: '#333',
-    lineHeight: 26,
-    textAlign: 'left',
+    fontSize: 15,
+    lineHeight: 24,
+    color: COLORS.textDark,
   },
 });
 

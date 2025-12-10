@@ -7,84 +7,77 @@ import {
   TouchableOpacity,
   ScrollView,
   Alert,
-  ActivityIndicator,
-  StatusBar
+  StatusBar,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
 
-const BASE_URL = "https://attendify-ekg6.onrender.com";
+const PROFILE_API_URL = "https://attendify-ekg6.onrender.com/api/profile/";
+
+const COLORS = {
+  primary: "#3A7AFE",
+  background: "#F5F7FB",
+  card: "#FFFFFF",
+  textDark: "#111827",
+  textMuted: "#6B7280",
+  borderSoft: "#E5E7EB",
+};
 
 const EditProfileScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
 
-  // --- READ ONLY FIELDS ---
+  // non-editable fields
   const [name, setName] = useState("");
-  const [course, setCourse] = useState("");
+  const [course, setCourse] = useState("Bachelor of Computer Science (Big Data)");
   const [schoolEmail, setSchoolEmail] = useState("");
 
-  // --- EDITABLE FIELDS ---
+  // editable fields
   const [mobileNumber, setMobileNumber] = useState("");
   const [personalEmail, setPersonalEmail] = useState("");
-  
-  // Address
-  const [country, setCountry] = useState("Singapore"); // Default to Singapore
+  const [country, setCountry] = useState("Singapore");
   const [streetAddress, setStreetAddress] = useState("");
   const [unitNumber, setUnitNumber] = useState("");
   const [postalCode, setPostalCode] = useState("");
 
-  // To check for changes
   const initialValues = useRef(null);
 
-  // 1️⃣ LOAD DATA
+  // 1️⃣ Load existing data from API
   useEffect(() => {
     const fetchProfile = async () => {
       try {
         const storedData = await AsyncStorage.getItem("userInfo");
-        if (!storedData) return;
+        if (!storedData) {
+          Alert.alert("Error", "No user found. Please log in again.");
+          navigation.goBack();
+          return;
+        }
 
         const basicUser = JSON.parse(storedData);
-        
-        // Fetch full profile
-        const res = await axios.get(`${BASE_URL}/api/profile/?id=${basicUser.id}`);
+        const res = await axios.get(`${PROFILE_API_URL}?id=${basicUser.id}`);
         const student = res.data;
-        
-        // ✅ CRITICAL FIX: Access fields from student.user, not student
-        const user = student.user || {}; 
 
-        // --- MAP DATA TO STATE ---
-        
-        // Read-Only
-        setName(`${user.first_name} ${user.last_name}`);
-        setCourse(student.programme); 
-        setSchoolEmail(user.email);
+        setName(student.user?.username || "");
+        setCourse(student.programme || "Bachelor of Computer Science (Big Data)");
+        setSchoolEmail(student.user?.email || "");
 
-        // Editable (Handle nulls)
-        // ✅ Fix: Use user.phone_number matching your Django model
-        setMobileNumber(user.phone_number || ""); 
-        setPersonalEmail(user.personal_email || "");
-        
-        // ✅ Fix: Default to "Singapore" if empty so it shows as value, not placeholder
-        setCountry(user.address_country || "Singapore"); 
-        
-        setStreetAddress(user.address_street || "");
-        setUnitNumber(user.address_unit || "");
-        setPostalCode(user.address_postal || "");
+        setMobileNumber(student.mobile_number || "");
+        setPersonalEmail(student.personal_email || "");
+        setCountry(student.country || "Singapore");
+        setStreetAddress(student.street_address || "");
+        setUnitNumber(student.unit_number || "");
+        setPostalCode(student.postal_code || "");
 
-        // Save initial state to compare later
         initialValues.current = {
-          mobileNumber: user.phone_number || "",
-          personalEmail: user.personal_email || "",
-          country: user.address_country || "Singapore",
-          streetAddress: user.address_street || "",
-          unitNumber: user.address_unit || "",
-          postalCode: user.address_postal || "",
+          mobileNumber: student.mobile_number || "",
+          personalEmail: student.personal_email || "",
+          country: student.country || "Singapore",
+          streetAddress: student.street_address || "",
+          unitNumber: student.unit_number || "",
+          postalCode: student.postal_code || "",
         };
-
       } catch (err) {
-        console.error("Profile fetch error:", err);
+        console.log("Profile fetch error:", err.response?.data || err);
         Alert.alert("Error", "Unable to load profile.");
         navigation.goBack();
       } finally {
@@ -95,9 +88,16 @@ const EditProfileScreen = ({ navigation }) => {
     fetchProfile();
   }, [navigation]);
 
-  // 2️⃣ SAVE DATA
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
+        <Text style={{ padding: 20 }}>Loading profile...</Text>
+      </SafeAreaView>
+    );
+  }
+
   const handleSave = async () => {
-    // Trim inputs
     const mobileTrim = mobileNumber.trim();
     const personalEmailTrim = personalEmail.trim();
     const countryTrim = country.trim();
@@ -105,14 +105,40 @@ const EditProfileScreen = ({ navigation }) => {
     const unitTrim = unitNumber.trim();
     const postalTrim = postalCode.trim();
 
-    // Basic Validation
-    if (!mobileTrim || !personalEmailTrim || !streetTrim || !postalTrim) {
-      Alert.alert("Missing Info", "Please fill in all required fields.");
+    if (
+      !mobileTrim ||
+      !personalEmailTrim ||
+      !countryTrim ||
+      !streetTrim ||
+      !postalTrim
+    ) {
+      Alert.alert(
+        "Missing information",
+        "Please fill in all the required fields."
+      );
       return;
     }
 
-    // Check for changes
+    const phoneRegex = /^\d{8}$/;
+    if (!phoneRegex.test(mobileTrim)) {
+      Alert.alert(
+        "Invalid mobile number",
+        "Mobile number must be exactly 8 digits."
+      );
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(personalEmailTrim)) {
+      Alert.alert(
+        "Invalid personal email",
+        "Please enter a valid email address."
+      );
+      return;
+    }
+
     const hasChanges =
+      !initialValues.current ||
       mobileTrim !== initialValues.current.mobileNumber ||
       personalEmailTrim !== initialValues.current.personalEmail ||
       countryTrim !== initialValues.current.country ||
@@ -121,54 +147,51 @@ const EditProfileScreen = ({ navigation }) => {
       postalTrim !== initialValues.current.postalCode;
 
     if (!hasChanges) {
-      navigation.goBack(); 
+      Alert.alert("No changes", "You have not made any changes.");
       return;
     }
 
-    setSaving(true);
+    Alert.alert(
+      "Confirm changes",
+      "Do you want to save these changes to your profile?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Confirm",
+          onPress: async () => {
+            try {
+              const storedData = await AsyncStorage.getItem("userInfo");
+              const basicUser = JSON.parse(storedData);
 
-    try {
-      const storedData = await AsyncStorage.getItem("userInfo");
-      const basicUser = JSON.parse(storedData);
+              await axios.patch(
+                `https://attendify-ekg6.onrender.com/api/profile/${basicUser.id}/`,
+                {
+                  mobile_number: mobileTrim,
+                  personal_email: personalEmailTrim,
+                  country: countryTrim,
+                  street_address: streetTrim,
+                  unit_number: unitTrim,
+                  postal_code: postalTrim,
+                }
+              );
 
-      // ✅ Send Payload to update-profile endpoint
-      const payload = {
-        user_id: basicUser.id,
-        phone_number: mobileTrim,
-        personal_email: personalEmailTrim,
-        address_country: countryTrim,
-        address_street: streetTrim,
-        address_unit: unitTrim,
-        address_postal: postalTrim,
-      };
-
-      await axios.patch(`${BASE_URL}/api/edit-profile/`, payload);
-
-      Alert.alert("Success", "Profile updated successfully!", [
-        { text: "OK", onPress: () => navigation.goBack() }
-      ]);
-
-    } catch (err) {
-      console.error("Update error:", err);
-      Alert.alert("Error", "Failed to save changes.");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  if (loading) {
-    return (
-      <View style={{flex:1, justifyContent:'center', alignItems:'center'}}>
-        <ActivityIndicator size="large" color="#000" />
-      </View>
+              Alert.alert("Saved", "Your profile has been updated.");
+              navigation.goBack();
+            } catch (err) {
+              console.log("Profile update error:", err.response?.data || err);
+              Alert.alert("Error", "Failed to update profile.");
+            }
+          },
+        },
+      ]
     );
-  }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#EAEAEA" />
-      
-      {/* Header */}
+      <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
+
+      {/* HEADER */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Text style={styles.backArrow}>{"<"}</Text>
@@ -178,160 +201,234 @@ const EditProfileScreen = ({ navigation }) => {
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        
-        {/* Avatar Placeholder */}
-        <View style={styles.avatarSection}>
-          <View style={styles.avatarPlaceholder} />
+        {/* AVATAR CARD */}
+        <View style={styles.card}>
+          <View style={styles.avatarSection}>
+            <View style={styles.avatarPlaceholder}>
+              <Text style={styles.avatarInitial}>
+                {name ? name.charAt(0).toUpperCase() : ""}
+              </Text>
+            </View>
+            <TouchableOpacity>
+              <Text style={styles.changePhotoText}>Change profile picture</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
-        {/* --- READ ONLY SECTION --- */}
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>Name</Text>
-          <TextInput
-            style={[styles.input, styles.readOnlyInput]}
-            value={name}
-            editable={false}
-          />
-        </View>
+        {/* BASIC INFO CARD */}
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>Basic Information</Text>
 
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>Course</Text>
-          <TextInput
-            style={[styles.input, styles.readOnlyInput]}
-            value={course}
-            editable={false}
-          />
-        </View>
-
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>School Email</Text>
-          <TextInput
-            style={[styles.input, styles.readOnlyInput]}
-            value={schoolEmail}
-            editable={false}
-          />
-        </View>
-
-        {/* --- EDITABLE SECTION --- */}
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>Mobile Number</Text>
-          <TextInput
-            style={styles.input}
-            keyboardType="phone-pad"
-            value={mobileNumber}
-            onChangeText={setMobileNumber}
-            placeholder="e.g. 8888 9999"
-          />
-        </View>
-
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>Personal Email</Text>
-          <TextInput
-            style={styles.input}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            value={personalEmail}
-            onChangeText={setPersonalEmail}
-            placeholder="e.g. john@gmail.com"
-          />
-        </View>
-
-        <Text style={styles.sectionTitle}>Mailing Address</Text>
-
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>Country</Text>
-          <TextInput
-            style={styles.input}
-            value={country} // ✅ Shows "Singapore" as text value
-            onChangeText={setCountry}
-          />
-        </View>
-
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>Street Address</Text>
-          <TextInput
-            style={styles.input}
-            value={streetAddress}
-            onChangeText={setStreetAddress}
-            placeholder="e.g. Blk 123 Tampines St"
-          />
-        </View>
-
-        <View style={styles.formRow}>
-          <View style={[styles.formGroup, { flex: 1, marginRight: 8 }]}>
-            <Text style={styles.label}>Unit Number</Text>
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>Name</Text>
             <TextInput
-              style={styles.input}
-              value={unitNumber}
-              onChangeText={setUnitNumber}
-              placeholder="#01-01"
+              style={[styles.input, styles.readOnlyInput]}
+              value={name}
+              editable={false}
             />
           </View>
 
-          <View style={[styles.formGroup, { flex: 1, marginLeft: 8 }]}>
-            <Text style={styles.label}>Postal Code</Text>
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>Course</Text>
             <TextInput
-              style={styles.input}
-              keyboardType="number-pad"
-              value={postalCode}
-              onChangeText={setPostalCode}
-              placeholder="123456"
+              style={[styles.input, styles.readOnlyInput]}
+              value={course}
+              editable={false}
+            />
+          </View>
+
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>School Email</Text>
+            <TextInput
+              style={[styles.input, styles.readOnlyInput]}
+              value={schoolEmail}
+              editable={false}
             />
           </View>
         </View>
 
-        <TouchableOpacity 
-            style={[styles.saveButton, saving && {opacity: 0.7}]} 
-            onPress={handleSave}
-            disabled={saving}
-        >
-          {saving ? (
-             <ActivityIndicator color="#fff" />
-          ) : (
-             <Text style={styles.saveButtonText}>Save</Text>
-          )}
+        {/* CONTACT CARD */}
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>Contact Details</Text>
+
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>Mobile Number</Text>
+            <TextInput
+              style={styles.input}
+              keyboardType="phone-pad"
+              value={mobileNumber}
+              onChangeText={setMobileNumber}
+              maxLength={8}
+            />
+          </View>
+
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>Personal Email</Text>
+            <TextInput
+              style={styles.input}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              value={personalEmail}
+              onChangeText={setPersonalEmail}
+            />
+          </View>
+        </View>
+
+        {/* ADDRESS CARD */}
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>Mailing Address</Text>
+
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>Country</Text>
+            <TextInput
+              style={styles.input}
+              value={country}
+              onChangeText={setCountry}
+            />
+          </View>
+
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>Street Address</Text>
+            <TextInput
+              style={styles.input}
+              value={streetAddress}
+              onChangeText={setStreetAddress}
+            />
+          </View>
+
+          <View style={styles.formRow}>
+            <View style={[styles.formGroup, { flex: 1, marginRight: 8 }]}>
+              <Text style={styles.label}>Unit Number (optional)</Text>
+              <TextInput
+                style={styles.input}
+                value={unitNumber}
+                onChangeText={setUnitNumber}
+                placeholder="e.g. #05-12 (optional)"
+              />
+            </View>
+
+            <View style={[styles.formGroup, { flex: 1, marginLeft: 8 }]}>
+              <Text style={styles.label}>Postal Code</Text>
+              <TextInput
+                style={styles.input}
+                keyboardType="number-pad"
+                value={postalCode}
+                onChangeText={setPostalCode}
+                maxLength={6}
+              />
+            </View>
+          </View>
+        </View>
+
+        {/* SAVE BUTTON */}
+        <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
+          <Text style={styles.saveButtonText}>Save changes</Text>
         </TouchableOpacity>
-
       </ScrollView>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fff" },
+  container: { flex: 1, backgroundColor: COLORS.background },
+
   header: {
-    backgroundColor: "#EAEAEA",
+    backgroundColor: COLORS.background,
     paddingVertical: 15,
     paddingHorizontal: 20,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: COLORS.borderSoft,
   },
-  backArrow: { fontSize: 24, color: "#333", fontWeight: "300" },
-  headerTitle: { fontSize: 18, fontWeight: "700", color: "#000" },
-  scrollContent: { padding: 20, paddingBottom: 40 },
-  
-  avatarSection: { alignItems: "center", marginBottom: 20 },
+  backArrow: { fontSize: 24, color: COLORS.textDark, fontWeight: "300" },
+  headerTitle: { fontSize: 18, fontWeight: "700", color: COLORS.textDark },
+
+  scrollContent: {
+    padding: 20,
+    paddingBottom: 40,
+  },
+
+  card: {
+    backgroundColor: COLORS.card,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: "#000",
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3,
+  },
+
+  avatarSection: { alignItems: "center" },
   avatarPlaceholder: {
-    width: 90, height: 90, borderRadius: 45, backgroundColor: "#D9D9D9", marginBottom: 10,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: "#CBD5F5",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 8,
   },
-  
-  formGroup: { marginBottom: 15 },
-  label: { fontSize: 14, color: "#555", marginBottom: 6 },
+  avatarInitial: {
+    fontSize: 32,
+    fontWeight: "800",
+    color: "#1E1B4B",
+  },
+  changePhotoText: {
+    color: COLORS.primary,
+    fontSize: 13,
+    fontWeight: "600",
+  },
+
+  sectionTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: COLORS.textDark,
+    marginBottom: 10,
+  },
+
+  formGroup: { marginBottom: 12 },
+  label: { fontSize: 13, color: COLORS.textMuted, marginBottom: 4 },
   input: {
-    height: 45, borderRadius: 8, borderWidth: 1, borderColor: "#CCC",
-    paddingHorizontal: 12, fontSize: 15, color: "#000",
+    height: 45,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: COLORS.borderSoft,
+    paddingHorizontal: 12,
+    fontSize: 15,
+    color: COLORS.textDark,
+    backgroundColor: "#FFFFFF",
   },
-  readOnlyInput: { backgroundColor: "#F0F0F0", color: "#777" },
-  
-  sectionTitle: { fontSize: 16, fontWeight: "700", marginTop: 10, marginBottom: 10 },
-  formRow: { flexDirection: "row", justifyContent: "space-between" },
-  
+  readOnlyInput: {
+    backgroundColor: "#F3F4F6",
+  },
+
+  formRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+
   saveButton: {
-    marginTop: 20, backgroundColor: "#8E8E93", height: 50,
-    borderRadius: 10, justifyContent: "center", alignItems: "center",
+    marginTop: 8,
+    backgroundColor: COLORS.primary,
+    height: 50,
+    borderRadius: 999,
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#3A7AFE",
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 4,
   },
-  saveButtonText: { color: "#fff", fontSize: 16, fontWeight: "bold" },
+  saveButtonText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "700",
+  },
 });
 
 export default EditProfileScreen;

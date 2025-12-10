@@ -13,19 +13,26 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import axios from 'axios';
 
+const COLORS = {
+  primary: '#3A7AFE',
+  background: '#F5F7FB',
+  card: '#FFFFFF',
+  textDark: '#111827',
+  textMuted: '#6B7280',
+  border: '#D1D5DB',
+  shadow: 'rgba(0,0,0,0.08)'
+};
+
 const NewsEventsScreen = ({ navigation }) => {
   const [searchText, setSearchText] = useState('');
   const [activeTab, setActiveTab] = useState('News');
-  
-  // STATE: Hold the real data from Server
+
   const [newsList, setNewsList] = useState([]);
   const [eventsList, setEventsList] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // ✅ FIX 1: Use the correct URL endpoint defined in Django urls.py
   const API_URL = 'https://attendify-ekg6.onrender.com/api/newsevent/';
 
-  // FETCH DATA ON LOAD
   useEffect(() => {
     fetchNewsAndEvents();
   }, []);
@@ -42,20 +49,14 @@ const NewsEventsScreen = ({ navigation }) => {
     }
   };
 
-  // ✅ FIX 2: Search Filter Logic
-  // First, pick the list based on the tab
   const rawItems = activeTab === 'Events' ? eventsList : newsList;
-  
-  // Then, filter that list based on the Search Text
-  const currentItems = rawItems.filter(item => 
+  const currentItems = rawItems.filter(item =>
     item.title.toLowerCase().includes(searchText.toLowerCase())
   );
 
-  // Helper to format date
   const formatDate = (dateString) => {
     if (!dateString) return "";
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+    return new Date(dateString).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
   };
 
   return (
@@ -63,87 +64,92 @@ const NewsEventsScreen = ({ navigation }) => {
       <SafeAreaView edges={['top']} style={styles.topSafeArea} />
 
       <View style={styles.contentContainer}>
-        <StatusBar barStyle="dark-content" backgroundColor="#EAEAEA" />
+        <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
 
-        {/* --- HEADER --- */}
+        {/* HEADER */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.navigate('Home')}>
+          <TouchableOpacity onPress={() => navigation.goBack()}>
             <Text style={styles.backArrow}>{'<'}</Text>
           </TouchableOpacity>
+
           <Text style={styles.headerTitle}>News & Events</Text>
-          <View style={{ width: 20 }} /> 
+
+          <View style={{ width: 24 }} />
         </View>
 
-        {/* --- LOADING STATE --- */}
+
         {loading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#000" />
-            <Text style={{marginTop: 10}}>Loading updates...</Text>
+          <View style={styles.loadingBox}>
+            <ActivityIndicator size="large" color={COLORS.primary} />
+            <Text style={{ marginTop: 10, color: COLORS.textMuted }}>Loading updates...</Text>
           </View>
         ) : (
           <ScrollView contentContainerStyle={styles.scrollContent}>
-            
+
             {/* SEARCH BAR */}
             <View style={styles.searchContainer}>
-              <Text style={{ marginRight: 10 }}>🔍</Text>
+              <Text style={styles.searchIcon}>🔍</Text>
               <TextInput
                 style={styles.searchInput}
-                placeholder="Search"
-                placeholderTextColor="#999"
+                placeholder="Search news or events"
+                placeholderTextColor={COLORS.textMuted}
                 value={searchText}
                 onChangeText={setSearchText}
               />
             </View>
 
-            {/* TAB TOGGLES */}
+            {/* TAB SWITCHER */}
             <View style={styles.tabContainer}>
-              <TouchableOpacity 
-                style={activeTab === 'News' ? styles.tabActive : styles.tabInactive}
-                onPress={() => {
-                    setActiveTab('News');
-                    setSearchText(''); // Optional: Clear search when switching tabs
-                }}
-              >
-                <Text style={activeTab === 'News' ? styles.tabTextActive : styles.tabTextInactive}>News</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={activeTab === 'Events' ? styles.tabActive : styles.tabInactive}
-                onPress={() => {
-                    setActiveTab('Events');
+              {['News', 'Events'].map((tab) => (
+                <TouchableOpacity
+                  key={tab}
+                  style={[
+                    styles.tabButton,
+                    activeTab === tab && styles.activeTab
+                  ]}
+                  onPress={() => {
+                    setActiveTab(tab);
                     setSearchText('');
-                }}
-              >
-                <Text style={activeTab === 'Events' ? styles.tabTextActive : styles.tabTextInactive}>Events</Text>
-              </TouchableOpacity>
+                  }}
+                >
+                  <Text style={activeTab === tab ? styles.activeTabText : styles.inactiveTabText}>
+                    {tab}
+                  </Text>
+                </TouchableOpacity>
+              ))}
             </View>
 
-            {/* LIST CONTENT */}
+            {/* LIST */}
             <View style={styles.listContainer}>
               {currentItems.length === 0 ? (
                 <Text style={styles.emptyText}>
-                    {searchText ? `No results for "${searchText}"` : `No ${activeTab} found.`}
+                  {searchText ? `No results for "${searchText}"` : `No ${activeTab} found.`}
                 </Text>
               ) : (
                 currentItems.map((item) => (
-                  <TouchableOpacity 
-                    key={item.id} 
+                  <TouchableOpacity
+                    key={item.id}
                     style={styles.card}
-                    onPress={() => navigation.navigate('NewseventDetail', { item: item })}
+                    onPress={() =>
+                      navigation.navigate('NewseventDetail', { item })
+                    }
                   >
-                    {/* Image Handling */}
+                    {/* Image */}
                     {item.image_url ? (
-                         <Image source={{ uri: item.image_url }} style={styles.cardImage} />
+                      <Image source={{ uri: item.image_url }} style={styles.cardImage} />
                     ) : (
-                         <View style={styles.imagePlaceholder} />
+                      <View style={styles.imagePlaceholder} />
                     )}
 
-                    <View style={styles.textContainer}>
+                    {/* Text */}
+                    <View style={styles.cardText}>
                       <Text style={styles.cardTitle}>{item.title}</Text>
+
                       <Text style={styles.cardDescription} numberOfLines={2}>
                         {item.message || item.description}
                       </Text>
-                      <Text style={styles.cardTime}>
+
+                      <Text style={styles.cardDate}>
                         {formatDate(activeTab === 'News' ? item.news_date : item.event_date)}
                       </Text>
                     </View>
@@ -159,90 +165,154 @@ const NewsEventsScreen = ({ navigation }) => {
   );
 };
 
-// ... Styles remain exactly the same as your code ...
+
 const styles = StyleSheet.create({
-  mainContainer: { flex: 1, backgroundColor: '#fff' },
-  topSafeArea: { flex: 0, backgroundColor: '#EAEAEA' },
-  contentContainer: { flex: 1, backgroundColor: '#fff' },
-  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  mainContainer: { flex: 1, backgroundColor: COLORS.background },
+  topSafeArea: { backgroundColor: COLORS.background },
+
+  contentContainer: { flex: 1 },
+
   header: {
-    backgroundColor: '#EAEAEA',
-    paddingVertical: 15,
+    backgroundColor: '#F5F7FB',
+    paddingVertical: 16,
     paddingHorizontal: 20,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    elevation: 3,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E4E4E4',
   },
-  backArrow: { fontSize: 24, color: '#333', fontWeight: '300' },
-  headerTitle: { fontSize: 18, fontWeight: '700', color: '#000' },
+
+  backArrow: {
+    fontSize: 26,
+    fontWeight: '300',
+    color: '#3A7AFE',
+  },
+
+  headerTitle: {
+    flex: 1,
+    textAlign: 'center',
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#111827',
+    letterSpacing: 0.4,
+    marginRight: 24,
+  },
+
+
+
   scrollContent: { paddingBottom: 20 },
+
+  loadingBox: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+
+  /* SEARCH BAR */
   searchContainer: {
-    marginHorizontal: 20,
-    marginTop: 20,
-    marginBottom: 15,
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#333',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    height: 45,
+    backgroundColor: COLORS.card,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    height: 50,
+    margin: 20,
+    shadowColor: COLORS.shadow,
+    shadowOpacity: 0.12,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
   },
-  searchInput: { flex: 1, height: 40, color: '#000' },
+  searchIcon: { fontSize: 18, marginRight: 10, color: COLORS.textMuted },
+  searchInput: { flex: 1, fontSize: 15, color: COLORS.textDark },
+
+  /* TABS */
   tabContainer: {
     flexDirection: 'row',
     marginHorizontal: 20,
-    marginBottom: 20,
-    borderRadius: 25,
-    borderWidth: 1,
-    borderColor: '#333',
+    backgroundColor: COLORS.card,
+    borderRadius: 30,
     overflow: 'hidden',
-    height: 40,
+    height: 45,
+    shadowColor: COLORS.shadow,
+    shadowOpacity: 0.12,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
   },
-  tabInactive: {
+  tabButton: {
     flex: 1,
-    backgroundColor: '#EAEAEA',
-    alignItems: 'center',
     justifyContent: 'center',
-    borderRightWidth: 1,
-    borderRightColor: '#333',
-  },
-  tabActive: {
-    flex: 1,
-    backgroundColor: '#fff',
     alignItems: 'center',
-    justifyContent: 'center',
   },
-  tabTextInactive: { color: '#999', fontWeight: '700', fontSize: 15 },
-  tabTextActive: { color: '#000', fontWeight: '700', fontSize: 15 },
-  listContainer: { paddingHorizontal: 20 },
-  emptyText: { textAlign: 'center', marginTop: 20, color: '#777' },
+  activeTab: {
+    backgroundColor: COLORS.primary,
+  },
+  activeTabText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 15,
+  },
+  inactiveTabText: {
+    color: COLORS.textMuted,
+    fontWeight: '600',
+    fontSize: 15,
+  },
+
+  /* LIST */
+  listContainer: { paddingHorizontal: 20, marginTop: 10 },
+
+  emptyText: {
+    textAlign: 'center',
+    marginTop: 20,
+    color: COLORS.textMuted,
+    fontSize: 14,
+  },
+
   card: {
     flexDirection: 'row',
-    backgroundColor: '#E0E0E0',
+    backgroundColor: COLORS.card,
+    borderRadius: 16,
+    padding: 12,
+    marginBottom: 16,
+    shadowColor: COLORS.shadow,
+    shadowOpacity: 0.14,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 4,
+  },
+
+  cardImage: {
+    width: 65,
+    height: 65,
     borderRadius: 10,
-    padding: 10,
-    marginBottom: 15,
-    alignItems: 'center',
+    marginRight: 14,
+    backgroundColor: '#D1D5DB',
   },
   imagePlaceholder: {
-    width: 60,
-    height: 60,
-    backgroundColor: '#757575',
-    borderRadius: 4,
-    marginRight: 15,
+    width: 65,
+    height: 65,
+    borderRadius: 10,
+    marginRight: 14,
+    backgroundColor: '#C7C9D1',
   },
-  cardImage: {
-    width: 60,
-    height: 60,
-    borderRadius: 4,
-    marginRight: 15,
-    backgroundColor: '#ccc'
+
+  cardText: { flex: 1 },
+  cardTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: COLORS.textDark,
+    marginBottom: 4,
   },
-  textContainer: { flex: 1 },
-  cardTitle: { fontSize: 14, fontWeight: 'bold', color: '#000', marginBottom: 4 },
-  cardDescription: { fontSize: 12, color: '#333', marginBottom: 4 },
-  cardTime: { fontSize: 10, color: '#555' },
+  cardDescription: {
+    fontSize: 13,
+    color: COLORS.textMuted,
+    marginBottom: 6,
+  },
+  cardDate: {
+    fontSize: 12,
+    color: COLORS.primary,
+    fontWeight: '700',
+  },
 });
 
 export default NewsEventsScreen;

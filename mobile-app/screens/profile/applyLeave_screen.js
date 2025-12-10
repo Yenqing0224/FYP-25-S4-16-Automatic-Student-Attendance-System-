@@ -1,4 +1,3 @@
-// mobile-app/screens/profile/applyLeave_screen.js
 import React, { useState } from "react";
 import {
   View,
@@ -15,6 +14,15 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import * as DocumentPicker from "expo-document-picker";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
+
+const COLORS = {
+  primary: "#3A7AFE",
+  background: "#F5F7FB",
+  card: "#FFFFFF",
+  textDark: "#111827",
+  textMuted: "#6B7280",
+  border: "#E5E7EB",
+};
 
 const REASONS = ["Medical Leave", "In-Camp Training", "Others"];
 
@@ -61,22 +69,18 @@ const ApplyLeaveScreen = ({ navigation }) => {
 
   // ---------- SUBMIT ----------
   const handleSubmit = async () => {
-    // 1. Basic validations
     if (!startDate) {
       alert("Please select a start date.");
       return;
     }
-
     if (!endDate) {
       alert("Please select an end date.");
       return;
     }
-
     if (!reason) {
       alert("Please choose a reason.");
       return;
     }
-
     if (!fileUri) {
       alert("Please attach a supporting document.");
       return;
@@ -84,56 +88,46 @@ const ApplyLeaveScreen = ({ navigation }) => {
 
     const trimmedOther = otherReason.trim();
 
-    // 👇 What we send to API:
-    // - reason      -> main category (from dropdown)
-    // - description -> extra text (only if user typed something)
-    const mainReason = reason; // e.g. "Medical Leave"
+    const mainReason = reason;
     const description =
       reason === "Others" && trimmedOther ? trimmedOther : "";
 
-    // For UI summary on success screen
     const finalReason =
       reason === "Others" && trimmedOther
         ? `Others: ${trimmedOther}`
         : reason;
 
     try {
-      // 2. Get current user
       const storedUser = await AsyncStorage.getItem("userInfo");
       if (!storedUser) {
         alert("No user found. Please log in again.");
         return;
       }
-      const user = JSON.parse(storedUser); // should have user.id
+      const user = JSON.parse(storedUser);
 
-      // 3. Build FormData exactly as backend expects
       const formData = new FormData();
+      formData.append("user_id", String(user.id));
+      formData.append("start_date", toApiDate(startDateObj));
+      formData.append("end_date", toApiDate(endDateObj));
+      formData.append("reason", mainReason);
+      formData.append("description", description);
 
-      formData.append("user_id", String(user.id));                     // ✅ user_id
-      formData.append("start_date", toApiDate(startDateObj));          // ✅ YYYY-MM-DD
-      formData.append("end_date", toApiDate(endDateObj));             // ✅ YYYY-MM-DD
-      formData.append("reason", mainReason);                           // ✅ main category
-      formData.append("description", description);                     // ✅ extra details (can be "")
-
-      // document (backend will receive but maybe not store)
       formData.append("document", {
         uri: fileUri,
         name: fileName,
         type: "application/pdf",
       });
 
-      // 4. POST to backend
       await axios.post(API_URL, formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
       });
 
-      // 5. Go to success screen
       navigation.navigate("ApplyLeaveSuccess", {
         startDate,
         endDate,
-        reason: finalReason, // pretty text for display
+        reason: finalReason,
       });
     } catch (err) {
       console.error("Submit leave error:", err.response?.data || err);
@@ -162,7 +156,7 @@ const ApplyLeaveScreen = ({ navigation }) => {
     }
 
     setStartDateObj(finalDate);
-    setStartDate(formatDate(finalDate)); // dd-mm-yyyy
+    setStartDate(formatDate(finalDate));
     setShowStartPicker(false);
   };
 
@@ -235,96 +229,102 @@ const ApplyLeaveScreen = ({ navigation }) => {
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Start Date */}
-        <View style={styles.fieldGroup}>
-          <Text style={styles.label}>Start Date</Text>
-          <View style={styles.inputWithIcon}>
-            <TextInput
-              style={styles.input}
-              placeholder="dd-mm-yyyy"
-              value={startDate}
-              editable={false}
-            />
-            <TouchableOpacity onPress={openStartPicker}>
-              <Text style={styles.icon}>📅</Text>
-            </TouchableOpacity>
+        <View style={styles.formCard}>
+          {/* Start Date */}
+          <View style={styles.fieldGroup}>
+            <Text style={styles.label}>Start Date</Text>
+            <View style={styles.inputWithIcon}>
+              <TextInput
+                style={styles.input}
+                placeholder="dd-mm-yyyy"
+                placeholderTextColor={COLORS.textMuted}
+                value={startDate}
+                editable={false}
+              />
+              <TouchableOpacity onPress={openStartPicker}>
+                <Text style={styles.icon}>📅</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
 
-        {/* End Date */}
-        <View style={styles.fieldGroup}>
-          <Text style={styles.label}>End Date</Text>
-          <View style={styles.inputWithIcon}>
-            <TextInput
-              style={styles.input}
-              placeholder="dd-mm-yyyy"
-              value={endDate}
-              editable={false}
-            />
-            <TouchableOpacity onPress={openEndPicker}>
-              <Text style={styles.icon}>📅</Text>
-            </TouchableOpacity>
+          {/* End Date */}
+          <View style={styles.fieldGroup}>
+            <Text style={styles.label}>End Date</Text>
+            <View style={styles.inputWithIcon}>
+              <TextInput
+                style={styles.input}
+                placeholder="dd-mm-yyyy"
+                placeholderTextColor={COLORS.textMuted}
+                value={endDate}
+                editable={false}
+              />
+              <TouchableOpacity onPress={openEndPicker}>
+                <Text style={styles.icon}>📅</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
 
-        {/* Reason selector */}
-        <View style={styles.fieldGroup}>
-          <Text style={styles.label}>Reason</Text>
-          <TouchableOpacity
-            style={styles.dropdown}
-            onPress={openReasonSheet}
-            activeOpacity={0.8}
-          >
-            <Text
-              style={[
-                styles.dropdownText,
-                !reason && { color: "#999" },
-              ]}
+          {/* Reason selector */}
+          <View style={styles.fieldGroup}>
+            <Text style={styles.label}>Reason</Text>
+            <TouchableOpacity
+              style={styles.dropdown}
+              onPress={openReasonSheet}
+              activeOpacity={0.8}
             >
-              {reason || "Choose your reason"}
+              <Text
+                style={[
+                  styles.dropdownText,
+                  !reason && { color: COLORS.textMuted },
+                ]}
+              >
+                {reason || "Choose your reason"}
+              </Text>
+              <Text style={styles.dropdownIcon}>⌄</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* If others, specify */}
+          <View style={styles.fieldGroup}>
+            <Text style={styles.label}>
+              If others, please specify (optional)
             </Text>
-            <Text style={styles.dropdownIcon}>⌄</Text>
+            <TextInput
+              style={[styles.baseInputBox, styles.textArea]}
+              multiline
+              numberOfLines={4}
+              placeholder="Type here..."
+              placeholderTextColor={COLORS.textMuted}
+              value={otherReason}
+              onChangeText={setOtherReason}
+            />
+          </View>
+
+          {/* Attach document */}
+          <View style={styles.fieldGroup}>
+            <Text style={styles.label}>Attach Document</Text>
+            <View style={styles.attachRow}>
+              <TextInput
+                style={[styles.baseInputBox, { flex: 1 }]}
+                placeholder="No file chosen"
+                placeholderTextColor={COLORS.textMuted}
+                value={fileName}
+                editable={false}
+              />
+              <TouchableOpacity
+                style={styles.addFileButton}
+                onPress={handlePickDocument}
+              >
+                <Text style={styles.addFileText}>Add File</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Submit */}
+          <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
+            <Text style={styles.submitText}>Submit</Text>
           </TouchableOpacity>
         </View>
-
-        {/* If others, specify */}
-        <View style={styles.fieldGroup}>
-          <Text style={styles.label}>
-            If others, please specify (optional)
-          </Text>
-          <TextInput
-            style={[styles.baseInputBox, styles.textArea]}
-            multiline
-            numberOfLines={4}
-            placeholder="Type here..."
-            value={otherReason}
-            onChangeText={setOtherReason}
-          />
-        </View>
-
-        {/* Attach document */}
-        <View className="fieldGroup" style={styles.fieldGroup}>
-          <Text style={styles.label}>Attach Document</Text>
-          <View style={styles.attachRow}>
-            <TextInput
-              style={[styles.baseInputBox, { flex: 1 }]}
-              placeholder="No file chosen"
-              value={fileName}
-              editable={false}
-            />
-            <TouchableOpacity
-              style={styles.addFileButton}
-              onPress={handlePickDocument}
-            >
-              <Text style={styles.addFileText}>Add File</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Submit */}
-        <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
-          <Text style={styles.submitText}>Submit</Text>
-        </TouchableOpacity>
       </ScrollView>
 
       {/* START DATE modal */}
@@ -461,85 +461,101 @@ const ApplyLeaveScreen = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  // ... keep your existing styles exactly as before ...
   container: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: COLORS.background,
   },
   header: {
-    backgroundColor: "#EAEAEA",
+    backgroundColor: COLORS.background,
     paddingVertical: 15,
     paddingHorizontal: 20,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: COLORS.border,
   },
   backArrow: {
     fontSize: 24,
-    color: "#333",
+    color: COLORS.textDark,
     fontWeight: "300",
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: "700",
-    color: "#000",
+    color: COLORS.textDark,
   },
   scrollContent: {
     paddingHorizontal: 20,
+    paddingVertical: 24,
+  },
+  formCard: {
+    backgroundColor: COLORS.card,
+    borderRadius: 18,
+    paddingHorizontal: 16,
     paddingVertical: 20,
+    shadowColor: "#000",
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3,
   },
   fieldGroup: {
-    marginBottom: 20,
+    marginBottom: 18,
   },
   label: {
-    fontSize: 14,
-    color: "#333",
+    fontSize: 13,
+    color: COLORS.textMuted,
     marginBottom: 6,
+    fontWeight: "500",
   },
   baseInputBox: {
     borderWidth: 1,
-    borderColor: "#D9D9D9",
-    borderRadius: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
+    borderColor: COLORS.border,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     fontSize: 14,
-    color: "#000",
+    color: COLORS.textDark,
+    backgroundColor: "#FFFFFF",
   },
   inputWithIcon: {
     flexDirection: "row",
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#D9D9D9",
-    borderRadius: 4,
-    paddingHorizontal: 10,
-    height: 40,
+    borderColor: COLORS.border,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    height: 44,
+    backgroundColor: "#FFFFFF",
   },
   input: {
     flex: 1,
     fontSize: 14,
-    color: "#000",
+    color: COLORS.textDark,
   },
   icon: {
-    fontSize: 16,
-    marginLeft: 6,
+    fontSize: 18,
+    marginLeft: 8,
   },
   dropdown: {
     flexDirection: "row",
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#D9D9D9",
-    borderRadius: 4,
-    paddingHorizontal: 10,
-    height: 40,
+    borderColor: COLORS.border,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    height: 44,
     justifyContent: "space-between",
+    backgroundColor: "#FFFFFF",
   },
   dropdownText: {
     fontSize: 14,
-    color: "#000",
+    color: COLORS.textDark,
   },
   dropdownIcon: {
     fontSize: 16,
-    color: "#333",
+    color: COLORS.textMuted,
   },
   textArea: {
     height: 100,
@@ -552,27 +568,29 @@ const styles = StyleSheet.create({
   },
   addFileButton: {
     marginLeft: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderRadius: 4,
-    backgroundColor: "#EAEAEA",
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderRadius: 999,
+    backgroundColor: COLORS.primary,
   },
   addFileText: {
     fontSize: 12,
-    fontWeight: "600",
+    fontWeight: "700",
+    color: "#FFFFFF",
   },
   submitButton: {
-    marginTop: 10,
-    backgroundColor: "#D9D9D9",
+    marginTop: 8,
+    backgroundColor: COLORS.primary,
     paddingVertical: 12,
-    borderRadius: 4,
+    borderRadius: 999,
     alignItems: "center",
   },
   submitText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "700",
-    color: "#000",
+    color: "#FFFFFF",
   },
+
   sheetBackdrop: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.3)",
@@ -590,6 +608,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "700",
     marginBottom: 12,
+    color: COLORS.textDark,
   },
   sheetItem: {
     paddingVertical: 12,
@@ -598,7 +617,7 @@ const styles = StyleSheet.create({
   },
   sheetItemText: {
     fontSize: 14,
-    color: "#000",
+    color: COLORS.textDark,
   },
   moreInfoBtn: {
     paddingVertical: 14,
@@ -606,7 +625,9 @@ const styles = StyleSheet.create({
   moreInfoText: {
     fontSize: 14,
     fontWeight: "600",
+    color: COLORS.primary,
   },
+
   modalBackground: {
     flex: 1,
     justifyContent: "center",
