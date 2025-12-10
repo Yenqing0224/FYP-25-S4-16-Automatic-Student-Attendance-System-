@@ -1,103 +1,73 @@
-# core/interface/views/admin_views.py
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
-from core.models import *
-from core.interface.serializers.users_serializers import StudentSerializer
-from core.interface.serializers.communication_serializers import NotificationSerializer, NewsSerializer, EventSerializer
 from django.shortcuts import get_object_or_404
 
+# Import all models
+from core.models import *
 
-@api_view(['GET', 'POST'])
-@permission_classes([IsAdminUser])
-def news_list_create(request):
-    if request.method == 'GET':
-        news = News.objects.all().order_by('-news_date')
-        serializer = NewsSerializer(news, many=True)
-        return Response(serializer.data)
-    elif request.method == 'POST':
-        serializer = NewsSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=201)
-        return Response(serializer.errors, status=400)
+# Import all serializers
+from core.interface.serializers.admin_serializers import *
 
-
-@api_view(['GET', 'PATCH', 'DELETE'])
-@permission_classes([IsAdminUser])
-def news_detail(request, pk):
-    news = get_object_or_404(News, pk=pk)
-    
-    if request.method == 'GET':
-        serializer = NewsSerializer(news)
-        return Response(serializer.data)
-    elif request.method == 'PATCH':
-        serializer = NewsSerializer(news, data=request.data, partial=True)
-        if serializer.is_valid():
-            serializer.save()
+# Helper Function
+def create_crud_views(model_class, serializer_class):
+    @api_view(['GET', 'POST'])
+    @permission_classes([IsAdminUser])
+    def list_create(request):
+        if request.method == 'GET':
+            filter_kwargs = {k: v for k, v in request.query_params.items() if k in [f.name for f in model_class._meta.fields]}
+            items = model_class.objects.filter(**filter_kwargs)
+            serializer = serializer_class(items, many=True)
             return Response(serializer.data)
-        return Response(serializer.errors, status=400)
-    elif request.method == 'DELETE':
-        news.delete()
-        return Response({"message": "News deleted successfully"}, status=204)
+        
+        elif request.method == 'POST':
+            serializer = serializer_class(data=request.data)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data, status=201)
+            return Response(serializer.errors, status=400)
 
 
-@api_view(['GET', 'POST'])
-@permission_classes([IsAdminUser])
-def events_list_create(request):
-    if request.method == 'GET':
-        events = Event.objects.all().order_by('-event_date')
-        serializer = EventSerializer(events, many=True)
-        return Response(serializer.data)
-    elif request.method == 'POST':
-        serializer = EventSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=201)
-        return Response(serializer.errors, status=400)
+    @api_view(['GET', 'PATCH', 'DELETE'])
+    @permission_classes([IsAdminUser])
+    def detail(request, pk):
+        item = get_object_or_404(model_class, pk=pk)
 
-
-@api_view(['GET', 'PATCH', 'DELETE'])
-@permission_classes([IsAdminUser])
-def events_detail(request, pk):
-    event = get_object_or_404(Event, pk=pk)
-
-    if request.method == 'GET':
-        serializer = EventSerializer(event)
-        return Response(serializer.data)
-    elif request.method == 'PATCH':
-        serializer = EventSerializer(event, data=request.data, partial=True)
-        if serializer.is_valid():
-            serializer.save()
+        if request.method == 'GET':
+            serializer = serializer_class(item)
             return Response(serializer.data)
-        return Response(serializer.errors, status=400)
-    elif request.method == 'DELETE':
-        event.delete()
-        return Response({"message": "Event deleted successfully"}, status=204)
+
+        elif request.method == 'PATCH':
+            serializer = serializer_class(item, data=request.data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data)
+            return Response(serializer.errors, status=400)
+
+        elif request.method == 'DELETE':
+            item.delete()
+            return Response({"message": "Item deleted successfully"}, status=204)
+
+    return list_create, detail
 
 
-@api_view(['GET', 'POST'])
-@permission_classes([IsAdminUser])
-def notifications_list_create(request):
-    if request.method == 'GET':
-        notes = Notification.objects.all().order_by('-date_sent')
-        serializer = NotificationSerializer(notes, many=True)
-        return Response(serializer.data)
-    elif request.method == 'POST':
-        serializer = NotificationSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=201)
-        return Response(serializer.errors, status=400)
+# Users
+users_list, users_detail = create_crud_views(User, AdminUserSerializer)
+students_list, students_detail = create_crud_views(Student, AdminStudentSerializer)
+lecturers_list, lecturers_detail = create_crud_views(Lecturer, AdminLecturerSerializer)
+admins_list, admins_detail = create_crud_views(Admin, AdminAdminSerializer)
 
-@api_view(['GET', 'DELETE'])
-@permission_classes([IsAdminUser])
-def notifications_detail(request, pk):
-    note = get_object_or_404(Notification, pk=pk)
+# Academics
+semesters_list, semesters_detail = create_crud_views(Semester, AdminSemesterSerializer)
+modules_list, modules_detail = create_crud_views(Module, AdminModuleSerializer)
+sessions_list, sessions_detail = create_crud_views(ClassSession, AdminClassSessionSerializer)
+records_list, records_detail = create_crud_views(AttendanceRecord, AdminAttendanceRecordSerializer)
 
-    if request.method == 'GET':
-        serializer = NotificationSerializer(note)
-        return Response(serializer.data)
-    elif request.method == 'DELETE':
-        note.delete()
-        return Response({"message": "Notification deleted successfully"}, status=204)
+# Communication
+notifs_list, notifs_detail = create_crud_views(Notification, AdminNotificationSerializer)
+news_list, news_detail = create_crud_views(News, AdminNewsSerializer)
+events_list, events_detail = create_crud_views(Event, AdminEventSerializer)
+
+# Requests
+leaves_list, leaves_detail = create_crud_views(LeaveRequest, AdminLeaveRequestSerializer)
+appeals_list, appeals_detail = create_crud_views(AttendanceAppeal, AdminAttendanceAppealSerializer)

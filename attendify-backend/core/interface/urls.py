@@ -30,10 +30,38 @@ urlpatterns = [
     path('apply-leaves/', requests_views.apply_leaves, name='apply-leaves'),
 
     # Admin
-    path('admin/news/', admin_views.news_list_create, name='admin-news-list'),
-    path('admin/news/<int:pk>/', admin_views.news_detail, name='admin-news-detail'),
-    path('admin/events/', admin_views.events_list_create, name='admin-events-list'),
-    path('admin/events/<int:pk>/', admin_views.events_detail, name='admin-events-detail'),
-    path('admin/notifications/', admin_views.notifications_list_create, name='admin-notifications-list'),
-    path('admin/notifications/<int:pk>/', admin_views.notifications_detail, name='admin-notifications-detail'),
+    # Users
+    path('admin/crud/users/', admin_views.users_list, name='crud-users-list'),
+    path('admin/crud/users/<int:pk>/', admin_views.users_detail, name='crud-users-detail'),
+    # Manage specific profiles
+    path('admin/crud/students/', admin_views.students_list, name='crud-students-list'),
+    path('admin/crud/students/<int:pk>/', admin_views.students_detail, name='crud-students-detail'), 
+    path('admin/crud/lecturers/', admin_views.lecturers_list, name='crud-lecturers-list'),
+    path('admin/crud/lecturers/<int:pk>/', admin_views.lecturers_detail, name='crud-lecturers-detail'),
+    path('admin/crud/admins/', admin_views.admins_list, name='crud-admins-list'),
+    path('admin/crud/admins/<int:pk>/', admin_views.admins_detail, name='crud-admins-detail'),
+
+    # Academics
+    path('admin/crud/semesters/', admin_views.semesters_list, name='crud-semesters-list'),
+    path('admin/crud/semesters/<int:pk>/', admin_views.semesters_detail, name='crud-semesters-detail'),
+    path('admin/crud/modules/', admin_views.modules_list, name='crud-modules-list'),
+    path('admin/crud/modules/<int:pk>/', admin_views.modules_detail, name='crud-modules-detail'),
+    path('admin/crud/sessions/', admin_views.sessions_list, name='crud-sessions-list'),
+    path('admin/crud/sessions/<int:pk>/', admin_views.sessions_detail, name='crud-sessions-detail'),
+    path('admin/crud/attendance/', admin_views.records_list, name='crud-records-list'),
+    path('admin/crud/attendance/<int:pk>/', admin_views.records_detail, name='crud-records-detail'),
+
+    # Communication
+    path('admin/crud/notifications/', admin_views.notifs_list, name='crud-notifs-list'),
+    path('admin/crud/notifications/<int:pk>/', admin_views.notifs_detail, name='crud-notifs-detail'),
+    path('admin/crud/news/', admin_views.news_list, name='crud-news-list'),
+    path('admin/crud/news/<int:pk>/', admin_views.news_detail, name='crud-news-detail'),
+    path('admin/crud/events/', admin_views.events_list, name='crud-events-list'),
+    path('admin/crud/events/<int:pk>/', admin_views.events_detail, name='crud-events-detail'),
+
+    # Requests
+    path('admin/crud/leaves/', admin_views.leaves_list, name='crud-leaves-list'),
+    path('admin/crud/leaves/<int:pk>/', admin_views.leaves_detail, name='crud-leaves-detail'),
+    path('admin/crud/appeals/', admin_views.appeals_list, name='crud-appeals-list'),
+    path('admin/crud/appeals/<int:pk>/', admin_views.appeals_detail, name='crud-appeals-detail'),
 ]  
