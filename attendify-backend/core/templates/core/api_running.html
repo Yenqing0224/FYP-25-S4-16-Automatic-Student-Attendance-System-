@@ -4,147 +4,189 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Attendify API - System Online</title>
-    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
-    
     <style>
+        @import url("https://fonts.googleapis.com/css?family=Ubuntu:400,400i,700,700i");
+        
         body {
+            font-family: "Ubuntu", sans-serif;
+            color: #6e6e6e;
+            font-size: 1.6rem;
+            background-color: #161616;
             margin: 0;
-            overflow: hidden;
-            background: radial-gradient(ellipse at center, #100518 0%, #020104 70%);
-            color: #00ffcc;
-            font-family: 'Share Tech Mono', monospace;
             width: 100vw;
             height: 100vh;
+            overflow: hidden;
+
+            /* 🚀 MOVED ANIMATION HERE -> Covers Whole Screen */
+            animation: moveParticles 6s linear infinite;
+            background: 
+                linear-gradient(90deg, gray, transparent 10%) 0 20%/180% 0.2rem repeat-x, 
+                linear-gradient(90deg, gray, transparent 20%) 0 80%/150% 0.2rem repeat-x, 
+                linear-gradient(90deg, gray, transparent 5%) 0 65%/100% 0.2rem repeat-x, 
+                linear-gradient(90deg, gray, transparent 5%) 0 40%/220% 0.2rem repeat-x, 
+                linear-gradient(0, #161616, #161616);
         }
-        canvas {
-            display: block;
-            width: 100%;
-            height: 100%;
-        }
-        #info {
+
+        .rocket-loader {
+            height: 125px;
+            width: 125px;
             position: absolute;
-            top: 20px;
-            width: 100%;
-            text-align: center;
-            color: rgba(0, 255, 204, 0.9);
-            font-size: 22px;
-            letter-spacing: 2px;
-            pointer-events: none;
-            z-index: 100;
-            text-shadow: 0 0 8px rgba(0, 255, 204, 0.7), 0 0 12px rgba(0, 255, 204, 0.5);
-        }
-        #glitch-button {
-            position: absolute;
-            z-index: 101;
-            bottom: 30px;
             left: 50%;
-            transform: translateX(-50%);
-            padding: 12px 24px;
-            border: none;
-            border-radius: 8px;
-            color: #00ffcc;
-            font-family: 'Share Tech Mono', monospace;
-            font-size: 16px;
-            letter-spacing: 1px;
-            cursor: pointer;
-            background: transparent;
-            border: 1px solid #00ffcc;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            /* Removed background from here so the box is transparent */
         }
-        #glitch-button:hover {
-            background: rgba(0, 255, 204, 0.1);
-            box-shadow: 0 0 15px rgba(0, 255, 204, 0.5);
+
+        .rocket-loader::before {
+            animation: blink 1s infinite;
+            bottom: -40px; 
+            content: "API Running"; 
+            font-size: 16px; 
+            left: 0;
+            position: absolute;
+            right: 0;
+            color: #927EF4; 
+            font-weight: bold;
+            white-space: nowrap; 
+        }
+
+        @keyframes moveParticles {
+            100% { background-position-x: -500rem; }
+        }
+
+        .rocket {
+            animation: moveRocket 2s linear infinite;
+            background: lightgray;
+            background: linear-gradient(#927EF4, purple, #927EF4);
+            border-left: 3px solid rgba(0, 0, 0, 0.4);
+            border-radius: 50%/30%;
+            height: 15%;
+            left: 50%;
+            position: absolute;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            width: 35%;
+        }
+
+        .rocket::before, .rocket::after {
+            content: "";
+            position: absolute;
+        }
+
+        .rocket::before {
+            animation: rotateFins 1s infinite;
+            background: #bababa;
+            background: linear-gradient(#927EF4, purple, #927EF4);
+            border: 2px solid transparent;
+            border-radius: 0 50% 50% 0;
+            height: 140%;
+            top: 50%;
+            transform: translate(0, -50%);
+            left: 6px;
+            width: 20%;
+        }
+
+        .rocket::after {
+            border: 7px solid transparent;
+            border-left: 14px solid rgba(146, 126, 244, 0.7);
+            border-radius: 15%;
+            right: -16px;
+            top: 2px;
+        }
+
+        .rocket-extras {
+            animation: moveExtras 1s infinite;
+            background: rgba(0, 0, 0, 0.4);
+            height: 2px;
+            left: 12px;
+            margin: -2px 0 0;
+            position: absolute;
+            top: 50%;
+            transform: translate(0, -50%);
+            width: 10px;
+        }
+
+        .rocket-extras::before, .rocket-extras::after {
+            content: "";
+            position: absolute;
+        }
+
+        .rocket-extras::before {
+            background: white;
+            border-radius: 50%;
+            height: 5px;
+            right: -7px;
+            top: -1px;
+            width: 5px;
+        }
+
+        .rocket-extras::after {
+            background: purple;
+            border-top: 1px solid #927EF4;
+            height: 1px;
+            left: -10px;
+            top: 1px;
+            width: 6px;
+        }
+
+        @keyframes moveRocket {
+            0%, 100% { transform: translate(-50%, calc(-50% - 1rem)); }
+            50% { transform: translate(-50%, calc(-50% + 1rem)); }
+        }
+
+        @keyframes rotateFins {
+            0%, 100% { height: 140%; }
+            50% { border-top: 2px solid #927EF4; border-bottom: 2px solid #927EF4; height: 110%; }
+        }
+
+        @keyframes moveExtras {
+            0%, 100% { transform: translate(0, calc(-50% + 0.1rem)); }
+            50% { transform: translate(0, calc(-50% - 0.1rem)); }
+        }
+
+        .jet {
+            height: 10px;
+            left: -10px;
+            position: absolute;
+            top: calc(50% - 5px);
+            width: 10px;
+        }
+
+        .jet::before, .jet::after, .jet span {
+            animation: moveSmoke 0.3s infinite;
+            background: #e09100;
+            border-radius: 50%;
+            content: "";
+            filter: blur(2px);
+            height: 8px;
+            left: -6px;
+            opacity: 1;
+            position: absolute;
+            transform: translate(0, 0) scale(1);
+            top: 1px;
+            width: 15px;
+        }
+
+        .jet::after { animation-delay: 0.1s; }
+        .jet span { animation-delay: 0.2s; }
+
+        @keyframes moveSmoke {
+            100% { filter: blur(3px); opacity: 0; transform: translate(-40px, 0) scale(2); }
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.2; }
         }
     </style>
-
-    <script type="importmap">
-    {
-      "imports": {
-        "three": "https://cdn.jsdelivr.net/npm/three@0.163.0/build/three.module.js",
-        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.163.0/examples/jsm/"
-      }
-    }
-    </script>
 </head>
 <body>
-
-    <div id="info">
-        ATTENDIFY API // SYSTEM ONLINE<br>
-        <span style="font-size: 14px; opacity: 0.8;">[STATUS: OPERATIONAL]</span>
+    <div class="rocket-loader">
+        <div class="rocket">
+            <div class="rocket-extras"></div>
+            <div class="jet"><span></span></div>
+        </div>
     </div>
-
-    <button id="glitch-button">DIAGNOSTIC TEST</button>
-
-    <script type="module">
-    import * as THREE from 'three';
-    import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
-    import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
-    import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
-    import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
-
-    // 1. Scene Setup
-    const scene = new THREE.Scene();
-    scene.fog = new THREE.FogExp2(0x020104, 0.035);
-    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 4000);
-    camera.position.set(-6.5, 5.0, 6.5);
-    camera.lookAt(0, 0, 0);
-
-    const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
-    document.body.appendChild(renderer.domElement);
-
-    // 2. Post Processing
-    const composer = new EffectComposer(renderer);
-    composer.addPass(new RenderPass(scene, camera));
-    composer.addPass(new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.6, 0.7, 0.2));
-
-    // 3. Black Hole Objects
-    const blackHoleGeo = new THREE.SphereGeometry(1.3, 64, 64);
-    const blackHoleMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
-    const blackHole = new THREE.Mesh(blackHoleGeo, blackHoleMat);
-    scene.add(blackHole);
-
-    const diskGeo = new THREE.RingGeometry(1.5, 8.0, 256);
-    // Simple placeholder material for the disk to ensure visibility if shader fails
-    const diskMat = new THREE.MeshBasicMaterial({ color: 0x3939f5, side: THREE.DoubleSide, transparent: true, opacity: 0.5 });
-    const disk = new THREE.Mesh(diskGeo, diskMat);
-    disk.rotation.x = Math.PI / 3;
-    scene.add(disk);
-
-    // 4. Stars
-    const starGeo = new THREE.BufferGeometry();
-    const starCount = 5000;
-    const posArray = new Float32Array(starCount * 3);
-    for(let i=0; i<starCount*3; i++) {
-        posArray[i] = (Math.random() - 0.5) * 2000; 
-    }
-    starGeo.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
-    const starMat = new THREE.PointsMaterial({size: 2, color: 0xffffff});
-    const stars = new THREE.Points(starGeo, starMat);
-    scene.add(stars);
-
-    // 5. Animation Loop
-    const clock = new THREE.Clock();
-    
-    function animate() {
-        requestAnimationFrame(animate);
-        const delta = clock.getDelta();
-        
-        disk.rotation.z += delta * 0.2;
-        stars.rotation.y += delta * 0.05;
-
-        composer.render();
-    }
-
-    // Handle Window Resize
-    window.addEventListener('resize', () => {
-        camera.aspect = window.innerWidth / window.innerHeight;
-        camera.updateProjectionMatrix();
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        composer.setSize(window.innerWidth, window.innerHeight);
-    });
-
-    animate();
-    </script>
 </body>
 </html>
