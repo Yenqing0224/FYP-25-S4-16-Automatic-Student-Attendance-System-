@@ -21,8 +21,10 @@ from django.urls import path, include
 from django.http import HttpResponse
 from django.shortcuts import render
 
+
 def home_view(request):
     return render(request, 'core/api_running.html')
+
 
 urlpatterns = [
     path('', home_view),
