@@ -2,7 +2,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.utils import timezone
-from core.models import Student, ClassSession, Semester
+from core.models import Student, ClassSession, Semester, AttendanceRecord
 # Serializers
 from core.interface.serializers.academics_serializers import ClassSessionSerializer
 
@@ -70,4 +70,33 @@ def get_timetable(request):
 
     except Exception as e:
         print(f"Timetable Error: {e}")
+        return Response({"error": str(e)}, status=500)
+    
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def get_class_details(request, session_id):
+    try:
+        user = request.user
+        if user.is_anonymous:
+            user_id = request.query_params.get('user_id')
+            student = Student.objects.get(user__id=user_id)
+        else:
+            student = Student.objects.get(user=user)
+
+        session = ClassSession.objects.get(id=session_id)
+        session_data = ClassSessionSerializer(session).data
+        attendance = AttendanceRecord.objects.filter(
+            session=session, 
+            student=student
+        ).first()
+
+        session_data['entry_time'] = attendance.entry_time if attendance else None
+        session_data['exit_time'] = attendance.exit_time if attendance else None
+        session_data['attendance_status'] = attendance.status if attendance else "absent"
+
+        return Response(session_data)
+
+    except Exception as e:
+        print(f"Class Details Error: {e}")
         return Response({"error": str(e)}, status=500)
