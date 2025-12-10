@@ -9,6 +9,7 @@ import LeaveStatusScreen from '../screens/profile//leave_status_screen';
 import LeaveDetailScreen from '../screens/profile//leave_detail_screen';
 import AppealStatusScreen from '../screens/profile//appeal_status_screen';
 import AppealDetailScreen from "../screens/profile/appeal_detail_screen";
+import ChangePasswordScreen from "../screens/profile/changePassword_screen";
 import FAQScreen from '../screens/profile//faq_screen';
 
 
@@ -25,6 +26,7 @@ export default function ProfileStack() {
       <Stack.Screen name="LeaveDetail" component={LeaveDetailScreen}/>
       <Stack.Screen name="AppealStatus" component={AppealStatusScreen} />
       <Stack.Screen name="AppealDetail" component={AppealDetailScreen}/>
+      <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
       <Stack.Screen name="FAQ" component={FAQScreen} />
     </Stack.Navigator>
   );

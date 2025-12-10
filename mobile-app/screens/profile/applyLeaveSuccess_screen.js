@@ -45,7 +45,10 @@ const ApplyLeaveSuccessScreen = ({ navigation, route }) => {
           <Text style={styles.description}>
             The review process will take 2–3 working days.{"\n"}
             You may track the status under{" "}
-            <Text style={styles.link}>Leaves Status</Text>.
+            <Text style={styles.link} onPress={goToStatus}>
+              Leaves Status
+            </Text>
+            .
           </Text>
 
           {startDate && (

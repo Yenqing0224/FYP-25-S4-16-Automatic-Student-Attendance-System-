@@ -1,3 +1,4 @@
+// mobile-app/screens/profile/profile_screen.js
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -188,6 +189,20 @@ const ProfileScreen = ({ navigation }) => {
                 <Text style={styles.menuText}>Appeals Module Status</Text>
                 <Text style={styles.menuSubText}>
                   View updates on your module appeals.
+                </Text>
+              </View>
+              <Text style={styles.arrow}>{'>'}</Text>
+            </TouchableOpacity>
+
+            {/* 🔐 Change Password */}
+            <TouchableOpacity
+              style={[styles.menuItem, styles.menuItemBorder]}
+              onPress={() => navigation.navigate('ChangePassword')}
+            >
+              <View>
+                <Text style={styles.menuText}>Change Password</Text>
+                <Text style={styles.menuSubText}>
+                  Update your login password securely.
                 </Text>
               </View>
               <Text style={styles.arrow}>{'>'}</Text>
