@@ -177,7 +177,9 @@ const HomeScreen = ({ navigation }) => {
                 onPress={async () => {
                   const dateToJump = item.date_time.split('T')[0];
                   await AsyncStorage.setItem('jumpToDate', dateToJump);
-                  navigation.navigate('Timetable');
+                  navigation.navigate('Timetable', {
+                    screen: 'TimeTableMain',
+                  });
                 }}
               >
                 {/* LABEL + VALUE */}
