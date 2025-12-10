@@ -42,7 +42,7 @@ const LoginScreen = ({ navigation }) => {
     console.log("User saved to storage:", userData.username);
     
     // 3. Navigate (No need to pass params anymore!)
-    navigation.replace("MainTabs");
+    navigation.replace("Welcome");
 
   } catch (error) {
     // ... error handling ...
