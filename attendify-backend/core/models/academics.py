@@ -65,7 +65,8 @@ class ClassSession(models.Model):
     attendance_rate = models.FloatField(default=0.0)
 
     def __str__(self):
-        return f"{self.module.code} - {self.name} ({self.status})"
+        formatted_date = self.date_time.strftime('%Y-%m-%d')
+        return f"{self.module.code} - {self.name} ({formatted_date}) [{self.status}]"
     
 
 class AttendanceRecord(models.Model):

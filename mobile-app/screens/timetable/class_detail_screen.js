@@ -12,7 +12,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 
 const ClassDetailScreen = ({ route, navigation }) => {
-  const { session_id } = route.params; // Get ID passed from Timetable
+  const { session_id } = route.params;
   const [classData, setClassData] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -25,7 +25,6 @@ const ClassDetailScreen = ({ route, navigation }) => {
         const storedUser = await AsyncStorage.getItem('userInfo');
         if (storedUser) {
           const user = JSON.parse(storedUser);
-          // Pass user_id to get attendance for this specific student
           const response = await axios.get(`${API_URL}?user_id=${user.id}`);
           setClassData(response.data);
         }
@@ -38,7 +37,6 @@ const ClassDetailScreen = ({ route, navigation }) => {
     fetchData();
   }, [session_id]);
 
-  // Helper to format time (e.g. 12:00pm)
   const formatTime = (isoString) => {
     if (!isoString) return "-";
     const date = new Date(isoString);
@@ -47,7 +45,6 @@ const ClassDetailScreen = ({ route, navigation }) => {
     }).toLowerCase();
   };
 
-  // Helper for Date (e.g. 19 Oct 2025)
   const formatDate = (isoString) => {
     if (!isoString) return "";
     return new Date(isoString).toLocaleDateString('en-GB', {
@@ -79,50 +76,67 @@ const ClassDetailScreen = ({ route, navigation }) => {
 
         <View style={styles.content}>
           {classData && (
-            <View style={styles.blueCard}>
-              
-              {/* Module Code & Name (Nested from Serializer) */}
-              <Text style={styles.moduleCode}>
-                {classData.module?.code || "CODE"}
-              </Text>
-              <Text style={styles.moduleName}>
-                {classData.module?.name || "Module Name"}
-              </Text>
-
-              {/* Date, Time, Venue */}
-              <View style={styles.infoBlock}>
-                <Text style={styles.dateText}>
-                    {formatDate(classData.date_time)}
-                </Text>
+            <>
+              <View style={styles.blueCard}>
                 
-                {/* Auto-calc End Time (Assuming 3 hours) or just show Start Time */}
-                <Text style={styles.timeText}>
-                    {formatTime(classData.date_time)} - {formatTime(new Date(new Date(classData.date_time).getTime() + 3*60*60*1000))}
+                {/* Module Code & Name */}
+                <Text style={styles.moduleCode}>
+                  {classData.module?.code || "CODE"}
                 </Text>
-                
-                <Text style={styles.venueText}>{classData.venue}</Text>
-              </View>
+                <Text style={styles.moduleName}>
+                  {classData.module?.name || "Module Name"}
+                </Text>
 
-              {/* Entry / Exit Split */}
-              <View style={styles.attendanceRow}>
-                <View style={styles.attendanceCol}>
-                  <Text style={styles.attendanceLabel}>Entry</Text>
-                  <Text style={styles.attendanceValue}>
-                    {formatTime(classData.entry_time)}
+                {/* Date, Time, Venue */}
+                <View style={styles.infoBlock}>
+                  <Text style={styles.dateText}>
+                      {formatDate(classData.date_time)}
                   </Text>
+                  
+                  <Text style={styles.timeText}>
+                      {formatTime(classData.date_time)} - {formatTime(new Date(new Date(classData.date_time).getTime() + 3*60*60*1000))}
+                  </Text>
+                  
+                  <Text style={styles.venueText}>{classData.venue}</Text>
                 </View>
 
-                <View style={styles.verticalDivider} />
+                {/* Entry / Exit Split */}
+                <View style={styles.attendanceRow}>
+                  <View style={styles.attendanceCol}>
+                    <Text style={styles.attendanceLabel}>Entry</Text>
+                    <Text style={styles.attendanceValue}>
+                      {formatTime(classData.entry_time)}
+                    </Text>
+                  </View>
 
-                <View style={styles.attendanceCol}>
-                  <Text style={styles.attendanceLabel}>Exit</Text>
-                  <Text style={styles.attendanceValue}>
-                    {formatTime(classData.exit_time)}
-                  </Text>
+                  <View style={styles.verticalDivider} />
+
+                  <View style={styles.attendanceCol}>
+                    <Text style={styles.attendanceLabel}>Exit</Text>
+                    <Text style={styles.attendanceValue}>
+                      {formatTime(classData.exit_time)}
+                    </Text>
+                  </View>
                 </View>
               </View>
 
-            </View>
+              {/* APPEAL BUTTON Logic: 
+                  Only show if:
+                  1. Status is 'absent' 
+                  2. AND Class is 'completed' (Not upcoming) 
+              */}
+              {classData.attendance_status === 'absent' && classData.status === 'completed' && (
+                <TouchableOpacity 
+                  style={styles.appealButton}
+                  onPress={() => {
+                    console.log("Appeal Pressed");
+                    // navigation.navigate('AppealRequest', { session_id: classData.id });
+                  }}
+                >
+                  <Text style={styles.appealButtonText}>Appeal</Text>
+                </TouchableOpacity>
+              )}
+            </>
           )}
         </View>
 
@@ -149,55 +163,50 @@ const styles = StyleSheet.create({
 
   content: { padding: 20, alignItems: 'center', paddingTop: 40 },
 
-  // Blue Card Style
   blueCard: {
-    backgroundColor: '#B3E5FC', // Matches screenshot light blue
+    backgroundColor: '#B3E5FC',
     width: '100%',
     borderRadius: 16,
     paddingVertical: 30,
     paddingHorizontal: 20,
     alignItems: 'center',
-    // Shadow
     shadowColor: "#000",
     shadowOpacity: 0.1,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 4 },
     elevation: 4,
+    marginBottom: 20,
   },
 
-  moduleCode: { 
-    fontSize: 18, 
-    fontWeight: '800', 
-    color: '#000', 
-    marginBottom: 5 
-  },
-  moduleName: { 
-    fontSize: 16, 
-    fontWeight: '600', 
-    color: '#000', 
-    textAlign: 'center', 
-    marginBottom: 20 
-  },
-
+  moduleCode: { fontSize: 18, fontWeight: '800', color: '#000', marginBottom: 5 },
+  moduleName: { fontSize: 16, fontWeight: '600', color: '#000', textAlign: 'center', marginBottom: 20 },
   infoBlock: { alignItems: 'center', marginBottom: 25 },
   dateText: { fontSize: 14, color: '#333', marginBottom: 2 },
   timeText: { fontSize: 14, color: '#333', marginBottom: 2 },
   venueText: { fontSize: 14, color: '#333', fontWeight: '500' },
-
-  attendanceRow: {
-    flexDirection: 'row',
-    width: '80%',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-  },
+  attendanceRow: { flexDirection: 'row', width: '80%', justifyContent: 'space-around', alignItems: 'center' },
   attendanceCol: { alignItems: 'center' },
   attendanceLabel: { fontSize: 14, fontWeight: '700', color: '#000', marginBottom: 5 },
   attendanceValue: { fontSize: 14, color: '#333' },
+  verticalDivider: { width: 1, height: 30, backgroundColor: '#666' },
 
-  verticalDivider: {
-    width: 1,
-    height: 30,
-    backgroundColor: '#666',
+  appealButton: {
+    width: '100%',
+    backgroundColor: '#8E8E93', 
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
+  appealButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
   },
 });
 

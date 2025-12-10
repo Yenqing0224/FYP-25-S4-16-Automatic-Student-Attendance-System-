@@ -113,15 +113,17 @@ const ProfileScreen = ({ navigation }) => {
 
             <View style={styles.textSection}>
               <Text style={styles.name}>
-                {student?.user?.username || "Student"}
+                {student?.user
+                  ? `${student.user.first_name} ${student.user.last_name}`
+                  : "Loading..."}
               </Text>
 
               <Text style={styles.degree}>
-                {student?.programme || "Bachelor of Computer Science"}
+                {student?.programme || "Loading..."}
               </Text>
 
               <Text style={styles.emailText}>
-                {student?.user?.email || "student@uow.edu.au"}
+                {student?.user?.email || "Loading..."}
               </Text>
 
               <TouchableOpacity

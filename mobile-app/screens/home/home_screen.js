@@ -96,7 +96,10 @@ const HomeScreen = ({ navigation }) => {
         <View style={styles.headerContainer}>
           <View>
             <Text style={styles.greetingLabel}>Hello,</Text>
-            <Text style={styles.greetingName}>{user?.username || 'Student'} 👋</Text>
+            <Text style={styles.greetingName}>
+              {user
+                ? `${user.first_name}`
+                : "Loading..."} 👋</Text>
 
             <View style={styles.chip}>
               <Text style={styles.chipText}>Dashboard overview</Text>
@@ -198,7 +201,7 @@ const HomeScreen = ({ navigation }) => {
                   <Text style={styles.upcomingValue}>{item.venue || 'TBA'}</Text>
                 </View>
 
-             
+
                 <Text style={styles.upcomingModule}>
                   {item.module.code} — {item.module.name}
                 </Text>
