@@ -7,13 +7,14 @@ import {
   TouchableOpacity,
   ScrollView,
   Alert,
+  ActivityIndicator,
   StatusBar,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
 
-const PROFILE_API_URL = "https://attendify-ekg6.onrender.com/api/profile/";
+const BASE_URL = "https://attendify-ekg6.onrender.com";
 
 const COLORS = {
   primary: "#3A7AFE",
@@ -26,58 +27,72 @@ const COLORS = {
 
 const EditProfileScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
-  // non-editable fields
+  // --- READ ONLY FIELDS ---
   const [name, setName] = useState("");
-  const [course, setCourse] = useState("Bachelor of Computer Science (Big Data)");
+  const [course, setCourse] = useState("");
   const [schoolEmail, setSchoolEmail] = useState("");
 
-  // editable fields
+  // --- EDITABLE FIELDS ---
   const [mobileNumber, setMobileNumber] = useState("");
   const [personalEmail, setPersonalEmail] = useState("");
-  const [country, setCountry] = useState("Singapore");
+
+  // Address
+  const [country, setCountry] = useState("Singapore"); // Default to Singapore
   const [streetAddress, setStreetAddress] = useState("");
   const [unitNumber, setUnitNumber] = useState("");
   const [postalCode, setPostalCode] = useState("");
 
+  // To check for changes
   const initialValues = useRef(null);
 
-  // 1️⃣ Load existing data from API
+  // 1️⃣ LOAD DATA
   useEffect(() => {
     const fetchProfile = async () => {
       try {
         const storedData = await AsyncStorage.getItem("userInfo");
-        if (!storedData) {
-          Alert.alert("Error", "No user found. Please log in again.");
-          navigation.goBack();
-          return;
-        }
+        if (!storedData) return;
 
         const basicUser = JSON.parse(storedData);
-        const res = await axios.get(`${PROFILE_API_URL}?id=${basicUser.id}`);
+
+        // Fetch full profile
+        const res = await axios.get(`${BASE_URL}/api/profile/?id=${basicUser.id}`);
         const student = res.data;
 
-        setName(student.user?.username || "");
-        setCourse(student.programme || "Bachelor of Computer Science (Big Data)");
-        setSchoolEmail(student.user?.email || "");
+        // ✅ CRITICAL FIX: Access fields from student.user, not student
+        const user = student.user || {};
 
-        setMobileNumber(student.mobile_number || "");
-        setPersonalEmail(student.personal_email || "");
-        setCountry(student.country || "Singapore");
-        setStreetAddress(student.street_address || "");
-        setUnitNumber(student.unit_number || "");
-        setPostalCode(student.postal_code || "");
+        // --- MAP DATA TO STATE ---
 
+        // Read-Only
+        setName(`${user.first_name} ${user.last_name}`);
+        setCourse(student.programme);
+        setSchoolEmail(user.email);
+
+        // Editable (Handle nulls)
+        // ✅ Fix: Use user.phone_number matching your Django model
+        setMobileNumber(user.phone_number || "");
+        setPersonalEmail(user.personal_email || "");
+
+        // ✅ Fix: Default to "Singapore" if empty so it shows as value, not placeholder
+        setCountry(user.address_country || "Singapore");
+
+        setStreetAddress(user.address_street || "");
+        setUnitNumber(user.address_unit || "");
+        setPostalCode(user.address_postal || "");
+
+        // Save initial state to compare later
         initialValues.current = {
-          mobileNumber: student.mobile_number || "",
-          personalEmail: student.personal_email || "",
-          country: student.country || "Singapore",
-          streetAddress: student.street_address || "",
-          unitNumber: student.unit_number || "",
-          postalCode: student.postal_code || "",
+          mobileNumber: user.phone_number || "",
+          personalEmail: user.personal_email || "",
+          country: user.address_country || "Singapore",
+          streetAddress: user.address_street || "",
+          unitNumber: user.address_unit || "",
+          postalCode: user.address_postal || "",
         };
       } catch (err) {
-        console.log("Profile fetch error:", err.response?.data || err);
+        console.error("Profile fetch error:", err);
         Alert.alert("Error", "Unable to load profile.");
         navigation.goBack();
       } finally {
@@ -88,16 +103,9 @@ const EditProfileScreen = ({ navigation }) => {
     fetchProfile();
   }, [navigation]);
 
-  if (loading) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
-        <Text style={{ padding: 20 }}>Loading profile...</Text>
-      </SafeAreaView>
-    );
-  }
-
+  // 2️⃣ SAVE DATA
   const handleSave = async () => {
+    // Trim inputs
     const mobileTrim = mobileNumber.trim();
     const personalEmailTrim = personalEmail.trim();
     const countryTrim = country.trim();
@@ -105,40 +113,14 @@ const EditProfileScreen = ({ navigation }) => {
     const unitTrim = unitNumber.trim();
     const postalTrim = postalCode.trim();
 
-    if (
-      !mobileTrim ||
-      !personalEmailTrim ||
-      !countryTrim ||
-      !streetTrim ||
-      !postalTrim
-    ) {
-      Alert.alert(
-        "Missing information",
-        "Please fill in all the required fields."
-      );
+    // Basic Validation
+    if (!mobileTrim || !personalEmailTrim || !streetTrim || !postalTrim) {
+      Alert.alert("Missing Info", "Please fill in all required fields.");
       return;
     }
 
-    const phoneRegex = /^\d{8}$/;
-    if (!phoneRegex.test(mobileTrim)) {
-      Alert.alert(
-        "Invalid mobile number",
-        "Mobile number must be exactly 8 digits."
-      );
-      return;
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(personalEmailTrim)) {
-      Alert.alert(
-        "Invalid personal email",
-        "Please enter a valid email address."
-      );
-      return;
-    }
-
+    // Check for changes
     const hasChanges =
-      !initialValues.current ||
       mobileTrim !== initialValues.current.mobileNumber ||
       personalEmailTrim !== initialValues.current.personalEmail ||
       countryTrim !== initialValues.current.country ||
@@ -147,45 +129,51 @@ const EditProfileScreen = ({ navigation }) => {
       postalTrim !== initialValues.current.postalCode;
 
     if (!hasChanges) {
-      Alert.alert("No changes", "You have not made any changes.");
+      navigation.goBack();
       return;
     }
 
-    Alert.alert(
-      "Confirm changes",
-      "Do you want to save these changes to your profile?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Confirm",
-          onPress: async () => {
-            try {
-              const storedData = await AsyncStorage.getItem("userInfo");
-              const basicUser = JSON.parse(storedData);
+    setSaving(true);
 
-              await axios.patch(
-                `https://attendify-ekg6.onrender.com/api/profile/${basicUser.id}/`,
-                {
-                  mobile_number: mobileTrim,
-                  personal_email: personalEmailTrim,
-                  country: countryTrim,
-                  street_address: streetTrim,
-                  unit_number: unitTrim,
-                  postal_code: postalTrim,
-                }
-              );
+    try {
+      const storedData = await AsyncStorage.getItem("userInfo");
+      const basicUser = JSON.parse(storedData);
 
-              Alert.alert("Saved", "Your profile has been updated.");
-              navigation.goBack();
-            } catch (err) {
-              console.log("Profile update error:", err.response?.data || err);
-              Alert.alert("Error", "Failed to update profile.");
-            }
-          },
-        },
-      ]
-    );
+      // ✅ Send Payload to update-profile endpoint
+      const payload = {
+        user_id: basicUser.id,
+        phone_number: mobileTrim,
+        personal_email: personalEmailTrim,
+        address_country: countryTrim,
+        address_street: streetTrim,
+        address_unit: unitTrim,
+        address_postal: postalTrim,
+      };
+
+      await axios.patch(`${BASE_URL}/api/edit-profile/`, payload); // Updated Endpoint per your request
+
+      Alert.alert("Success", "Profile updated successfully!", [
+        { text: "OK", onPress: () => navigation.goBack() },
+      ]);
+    } catch (err) {
+      console.error("Update error:", err);
+      Alert.alert("Error", "Failed to save changes.");
+    } finally {
+      setSaving(false);
+    }
   };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
+        <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
+          <Text style={{ marginTop: 10, color: COLORS.textMuted }}>Loading profile...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -209,9 +197,10 @@ const EditProfileScreen = ({ navigation }) => {
                 {name ? name.charAt(0).toUpperCase() : ""}
               </Text>
             </View>
-            <TouchableOpacity>
+            {/* Keeping the UI element but removing functionality as requested previously */}
+             {/* <TouchableOpacity>
               <Text style={styles.changePhotoText}>Change profile picture</Text>
-            </TouchableOpacity>
+            </TouchableOpacity> */}
           </View>
         </View>
 
@@ -259,6 +248,8 @@ const EditProfileScreen = ({ navigation }) => {
               value={mobileNumber}
               onChangeText={setMobileNumber}
               maxLength={8}
+              placeholder="e.g. 8888 9999"
+              placeholderTextColor={COLORS.textMuted}
             />
           </View>
 
@@ -270,6 +261,8 @@ const EditProfileScreen = ({ navigation }) => {
               autoCapitalize="none"
               value={personalEmail}
               onChangeText={setPersonalEmail}
+              placeholder="e.g. john@gmail.com"
+              placeholderTextColor={COLORS.textMuted}
             />
           </View>
         </View>
@@ -293,6 +286,8 @@ const EditProfileScreen = ({ navigation }) => {
               style={styles.input}
               value={streetAddress}
               onChangeText={setStreetAddress}
+              placeholder="e.g. Blk 123 Tampines St"
+              placeholderTextColor={COLORS.textMuted}
             />
           </View>
 
@@ -303,7 +298,8 @@ const EditProfileScreen = ({ navigation }) => {
                 style={styles.input}
                 value={unitNumber}
                 onChangeText={setUnitNumber}
-                placeholder="e.g. #05-12 (optional)"
+                placeholder="e.g. #05-12"
+                placeholderTextColor={COLORS.textMuted}
               />
             </View>
 
@@ -315,14 +311,24 @@ const EditProfileScreen = ({ navigation }) => {
                 value={postalCode}
                 onChangeText={setPostalCode}
                 maxLength={6}
+                placeholder="123456"
+                placeholderTextColor={COLORS.textMuted}
               />
             </View>
           </View>
         </View>
 
         {/* SAVE BUTTON */}
-        <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-          <Text style={styles.saveButtonText}>Save changes</Text>
+        <TouchableOpacity
+          style={[styles.saveButton, saving && { opacity: 0.7 }]}
+          onPress={handleSave}
+          disabled={saving}
+        >
+          {saving ? (
+            <ActivityIndicator color="#FFFFFF" />
+          ) : (
+            <Text style={styles.saveButtonText}>Save changes</Text>
+          )}
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
@@ -404,6 +410,7 @@ const styles = StyleSheet.create({
   },
   readOnlyInput: {
     backgroundColor: "#F3F4F6",
+    color: COLORS.textMuted, 
   },
 
   formRow: {
