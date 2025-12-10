@@ -19,9 +19,10 @@ from django.urls import path
 from django.http import JsonResponse
 from django.urls import path, include
 from django.http import HttpResponse
+from django.shortcuts import render
 
 def home_view(request):
-    return HttpResponse("<h1>✅ Attendify API is Running!</h1>")
+    return render(request, 'core/api_running.html')
 
 urlpatterns = [
     path('', home_view),
