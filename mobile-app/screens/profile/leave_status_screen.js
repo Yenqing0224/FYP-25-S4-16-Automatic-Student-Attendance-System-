@@ -36,7 +36,7 @@ const getStatusStyle = (status) => {
 
     case "pending":
     default:
-      return { 
+      return {
         bg: "#F7F4EC",       // ⬅️ VERY SOFT CREAM (barely yellow)
         text: "#8B6B2C",     // muted gold-brown text
         stripe: "#E6D892"    // soft pastel gold stripe
@@ -97,10 +97,10 @@ const LeaveStatusScreen = ({ navigation }) => {
     selectedFilter === "All"
       ? leaves
       : leaves.filter(
-          (item) =>
-            item.status &&
-            item.status.toLowerCase() === selectedFilter.toLowerCase()
-        );
+        (item) =>
+          item.status &&
+          item.status.toLowerCase() === selectedFilter.toLowerCase()
+      );
 
   return (
     <SafeAreaView style={styles.container}>
@@ -157,7 +157,9 @@ const LeaveStatusScreen = ({ navigation }) => {
           ) : (
             filteredLeaves.map((item) => {
               const statusStyles = getStatusStyle(item.status);
-              const description = item.description || item.remarks;
+
+              // ❌ REMOVED: const description = item.description || item.remarks;
+              // We now use item.description and item.remarks directly below
 
               return (
                 <TouchableOpacity
@@ -208,8 +210,8 @@ const LeaveStatusScreen = ({ navigation }) => {
                         {item.start_date === item.end_date
                           ? formatDate(item.start_date)
                           : `${formatDate(item.start_date)} - ${formatDate(
-                              item.end_date
-                            )}`}
+                            item.end_date
+                          )}`}
                       </Text>
                     </Text>
 
@@ -221,13 +223,25 @@ const LeaveStatusScreen = ({ navigation }) => {
                       </Text>
                     </Text>
 
-                    {/* Remarks */}
-                    {description ? (
+                    {/* --- 1. STUDENT DESCRIPTION --- */}
+                    {item.description ? (
                       <View style={styles.remarksBox}>
-                        <Text style={styles.remarksLabel}>Remarks</Text>
-                        <Text style={styles.remarksText}>{description}</Text>
+                        <Text style={styles.remarksLabel}>Description</Text>
+                        <Text style={styles.remarksText}>{item.description}</Text>
                       </View>
                     ) : null}
+
+                    {/* --- 2. ADMIN REMARKS (Only if rejected/commented) --- */}
+                    {item.remarks ? (
+                      <View style={[styles.remarksBox, { marginTop: 8, backgroundColor: 'rgba(255,255,255,0.6)' }]}>
+                        {/* We use status color for the label to indicate it comes from Admin/System */}
+                        <Text style={[styles.remarksLabel, { color: statusStyles.text }]}>
+                          Admin Remarks
+                        </Text>
+                        <Text style={styles.remarksText}>{item.remarks}</Text>
+                      </View>
+                    ) : null}
+
                   </View>
                 </TouchableOpacity>
               );
@@ -319,7 +333,7 @@ const styles = StyleSheet.create({
   },
   cardHeaderRow: {
     flexDirection: "row",
-    justifyContent: "space-between", 
+    justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 6,
   },

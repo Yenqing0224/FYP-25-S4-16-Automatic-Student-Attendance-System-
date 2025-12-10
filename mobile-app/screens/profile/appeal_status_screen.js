@@ -19,37 +19,30 @@ const COLORS = {
   card: "#FFFFFF",
   textDark: "#111827",
   textMuted: "#6B7280",
-  border: "#E5E7EB",
+  borderSoft: "#E5E7EB",
 };
 
 const FILTERS = ["All", "Pending", "Approved", "Rejected"];
 
-// Helper to get colors based on status
+// Helper to get colors based on status (MATCHING LEAVE SCREEN)
 const getStatusStyle = (status) => {
   const normalized = status ? status.toLowerCase() : "";
-
   switch (normalized) {
     case "approved":
-      return {
-        bg: "#E8F8EE",   
-        text: "#15803D",
-      };
+      return { bg: "#E8F8EE", text: "#15803D", stripe: "#4ADE80" }; // soft green
 
     case "rejected":
-      return {
-        bg: "#F9E5E5",   
-        text: "#B91C1C",
-      };
+      return { bg: "#F9E5E5", text: "#B91C1C", stripe: "#F87171" }; // soft red
 
     case "pending":
     default:
-      return {
-        bg: "#F7F4EC",  
-        text: "#8B6B2C", 
+      return { 
+        bg: "#F7F4EC",       // ⬅️ VERY SOFT CREAM (barely yellow)
+        text: "#8B6B2C",     // muted gold-brown text
+        stripe: "#E6D892"    // soft pastel gold stripe
       };
   }
 };
-
 
 const AppealStatusScreen = ({ navigation }) => {
   const [selectedFilter, setSelectedFilter] = useState("All");
@@ -114,7 +107,7 @@ const AppealStatusScreen = ({ navigation }) => {
           <Text style={styles.backArrow}>{"<"}</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Appeals Status</Text>
-        <View style={{ width: 20 }} />
+        <View style={{ width: 24 }} />
       </View>
 
       {/* FILTER CHIPS */}
@@ -140,6 +133,7 @@ const AppealStatusScreen = ({ navigation }) => {
         })}
       </View>
 
+      {/* CONTENT */}
       {loading ? (
         <ActivityIndicator
           size="large"
@@ -157,60 +151,89 @@ const AppealStatusScreen = ({ navigation }) => {
             </View>
           ) : (
             filteredAppeals.map((item) => {
-              const stylesStatus = getStatusStyle(item.status);
+              const statusStyles = getStatusStyle(item.status);
 
               return (
                 <TouchableOpacity
                   key={item.id}
-                  style={styles.card}
+                  style={styles.cardWrapper}
                   onPress={() =>
                     navigation.navigate("AppealDetail", { appeal: item })
                   }
                 >
-                  <View style={styles.cardHeaderRow}>
-                    <View style={{ flex: 1, paddingRight: 8 }}>
-                      <Text style={styles.cardType}>Reason</Text>
-                      <Text style={styles.cardReason}>{item.reason}</Text>
-                    </View>
+                  {/* Colored Stripe */}
+                  <View
+                    style={[
+                      styles.statusStripe,
+                      { backgroundColor: statusStyles.stripe },
+                    ]}
+                  />
 
-                    <View
-                      style={[
-                        styles.statusBadge,
-                        { backgroundColor: stylesStatus.bg },
-                      ]}
-                    >
-                      <Text
+                  {/* Main Card Content */}
+                  <View
+                    style={[
+                      styles.card,
+                      { backgroundColor: statusStyles.bg || COLORS.card },
+                    ]}
+                  >
+                    {/* Header Row */}
+                    <View style={styles.cardHeaderRow}>
+                      <View style={{ flex: 1, paddingRight: 8 }}>
+                        <Text style={styles.cardType}>Reason</Text>
+                        <Text style={styles.cardReason}>{item.reason}</Text>
+                      </View>
+
+                      <View
                         style={[
-                          styles.statusText,
-                          { color: stylesStatus.text },
+                          styles.statusBadge,
+                          { backgroundColor: "#FFFFFF" },
                         ]}
                       >
-                        {formatStatus(item.status)}
-                      </Text>
+                        <Text
+                          style={[
+                            styles.statusText,
+                            { color: statusStyles.text },
+                          ]}
+                        >
+                          {formatStatus(item.status)}
+                        </Text>
+                      </View>
                     </View>
+
+                    {/* Details */}
+                    <Text style={styles.label}>
+                      Module:{" "}
+                      <Text style={styles.value}>
+                        {item.class_session?.module?.code} -{" "}
+                        {item.class_session?.module?.name}
+                      </Text>
+                    </Text>
+
+                    <Text style={styles.label}>
+                      Class Date:{" "}
+                      <Text style={styles.value}>
+                        {formatDate(item.class_session?.date_time)}
+                      </Text>
+                    </Text>
+
+                    <Text style={styles.label}>
+                      Submitted on:{" "}
+                      <Text style={styles.value}>
+                        {formatDate(item.created_at)}
+                      </Text>
+                    </Text>
+
+                    {/* Admin Remarks (Only if present) */}
+                    {item.remarks ? (
+                      <View style={[styles.remarksBox, { backgroundColor: 'rgba(255,255,255,0.6)' }]}>
+                        <Text style={[styles.remarksLabel, { color: statusStyles.text }]}>
+                          Admin Remarks
+                        </Text>
+                        <Text style={styles.remarksText}>{item.remarks}</Text>
+                      </View>
+                    ) : null}
+
                   </View>
-
-                  <Text style={styles.label}>
-                    Module:{" "}
-                    <Text style={styles.value}>
-                      {item.class_session?.module?.code} -{" "}
-                      {item.class_session?.module?.name}
-                    </Text>
-                  </Text>
-
-                  <Text style={styles.label}>
-                    Class Date:{" "}
-                    <Text style={styles.value}>
-                      {formatDate(item.class_session?.date_time)}
-                    </Text>
-                  </Text>
-
-                  <Text style={styles.label}>
-                    Submitted on:{" "}
-                    <Text style={styles.value}>
-                      {formatDate(item.created_at)}
-                    </Text>
-                  </Text>
                 </TouchableOpacity>
               );
             })
@@ -222,70 +245,87 @@ const AppealStatusScreen = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  // PAGE
   container: { flex: 1, backgroundColor: COLORS.background },
 
   // HEADER
   header: {
     backgroundColor: COLORS.background,
-    paddingVertical: 15,
+    paddingVertical: 14,
     paddingHorizontal: 20,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: COLORS.border,
+    borderBottomColor: COLORS.borderSoft,
   },
   backArrow: { fontSize: 24, color: COLORS.textDark, fontWeight: "300" },
-  headerTitle: { fontSize: 18, fontWeight: "700", color: COLORS.textDark },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: COLORS.textDark,
+  },
 
   // FILTERS
   filterContainer: {
     flexDirection: "row",
     paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingVertical: 12,
     justifyContent: "space-between",
   },
   filterChip: {
     paddingHorizontal: 10,
     paddingVertical: 6,
-    borderRadius: 999,
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: COLORS.border,
-    marginRight: 6,
+    borderColor: COLORS.borderSoft,
     flex: 1,
     marginHorizontal: 3,
     alignItems: "center",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: COLORS.card,
   },
   filterChipActive: {
     backgroundColor: COLORS.primary,
     borderColor: COLORS.primary,
   },
-  filterText: { fontSize: 12, color: COLORS.textMuted, fontWeight: "500" },
-  filterTextActive: { color: "#FFFFFF", fontWeight: "700" },
+  filterText: {
+    fontSize: 12,
+    color: COLORS.textMuted,
+    fontWeight: "600",
+  },
+  filterTextActive: {
+    color: "#FFFFFF",
+    fontWeight: "700",
+  },
 
-  // LIST
-  scrollContent: { padding: 20, paddingBottom: 40 },
+  // CARD STYLES (Matching Leave Screen)
+  scrollContent: { paddingHorizontal: 16, paddingBottom: 40 },
 
-  card: {
-    backgroundColor: COLORS.card,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 16,
+  cardWrapper: {
+    flexDirection: "row",
+    borderRadius: 14,
+    overflow: "hidden",
+    marginBottom: 14,
     shadowColor: "#000",
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 3,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: COLORS.border,
+    shadowOpacity: 0.05,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    elevation: 2,
+    backgroundColor: "transparent",
+  },
+  statusStripe: {
+    width: 5,
+  },
+  card: {
+    flex: 1,
+    padding: 14,
+    borderTopRightRadius: 14,
+    borderBottomRightRadius: 14,
   },
   cardHeaderRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
-    marginBottom: 10,
+    marginBottom: 8,
   },
   cardType: {
     fontSize: 12,
@@ -309,6 +349,18 @@ const styles = StyleSheet.create({
   label: { fontSize: 13, color: COLORS.textMuted, marginTop: 4 },
   value: { fontWeight: "600", color: COLORS.textDark },
 
+  remarksBox: {
+    marginTop: 10,
+    borderRadius: 8,
+    padding: 10,
+  },
+  remarksLabel: {
+    fontSize: 12,
+    fontWeight: "700",
+    marginBottom: 4,
+  },
+  remarksText: { fontSize: 13, color: COLORS.textDark },
+
   // EMPTY STATE
   emptyBox: { marginTop: 40, alignItems: "center" },
   emptyTitle: { fontSize: 16, fontWeight: "700", marginBottom: 8 },
@@ -316,7 +368,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: COLORS.textMuted,
     textAlign: "center",
-    paddingHorizontal: 20,
+    paddingHorizontal: 24,
   },
 });
 
