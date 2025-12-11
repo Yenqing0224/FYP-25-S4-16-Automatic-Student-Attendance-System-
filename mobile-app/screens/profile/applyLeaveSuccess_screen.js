@@ -73,7 +73,6 @@ const ApplyLeaveSuccessScreen = ({ navigation, route }) => {
   );
 };
 
-export default ApplyLeaveSuccessScreen;
 
 const styles = StyleSheet.create({
   container: {
@@ -189,3 +188,5 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
 });
+
+export default ApplyLeaveSuccessScreen;

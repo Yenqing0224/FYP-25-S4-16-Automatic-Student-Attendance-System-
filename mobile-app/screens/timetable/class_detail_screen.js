@@ -40,8 +40,8 @@ const ClassDetailScreen = ({ route, navigation }) => {
   const formatTime = (isoString) => {
     if (!isoString) return "-";
     const date = new Date(isoString);
-    return date.toLocaleTimeString('en-US', { 
-        hour: 'numeric', minute: '2-digit', hour12: true 
+    return date.toLocaleTimeString('en-US', {
+      hour: 'numeric', minute: '2-digit', hour12: true
     }).toLowerCase();
   };
 
@@ -78,7 +78,7 @@ const ClassDetailScreen = ({ route, navigation }) => {
           {classData && (
             <>
               <View style={styles.blueCard}>
-                
+
                 {/* Module Code & Name */}
                 <Text style={styles.moduleCode}>
                   {classData.module?.code || "CODE"}
@@ -90,13 +90,13 @@ const ClassDetailScreen = ({ route, navigation }) => {
                 {/* Date, Time, Venue */}
                 <View style={styles.infoBlock}>
                   <Text style={styles.dateText}>
-                      {formatDate(classData.date_time)}
+                    {formatDate(classData.date_time)}
                   </Text>
-                  
+
                   <Text style={styles.timeText}>
-                      {formatTime(classData.date_time)} - {formatTime(new Date(new Date(classData.date_time).getTime() + 3*60*60*1000))}
+                    {formatTime(classData.date_time)} - {formatTime(new Date(new Date(classData.date_time).getTime() + 3 * 60 * 60 * 1000))}
                   </Text>
-                  
+
                   <Text style={styles.venueText}>{classData.venue}</Text>
                 </View>
 
@@ -126,11 +126,13 @@ const ClassDetailScreen = ({ route, navigation }) => {
                   2. AND Class is 'completed' (Not upcoming) 
               */}
               {classData.attendance_status === 'absent' && classData.status === 'completed' && (
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.appealButton}
                   onPress={() => {
-                    console.log("Appeal Pressed");
-                    // navigation.navigate('AppealRequest', { session_id: classData.id });
+                    // ✅ PASS DATA TO APPEAL SCREEN HERE
+                    navigation.navigate('ApplyAppeal', {
+                      classSession: classData
+                    });
                   }}
                 >
                   <Text style={styles.appealButtonText}>Appeal</Text>
@@ -192,7 +194,7 @@ const styles = StyleSheet.create({
 
   appealButton: {
     width: '100%',
-    backgroundColor: '#8E8E93', 
+    backgroundColor: '#8E8E93',
     paddingVertical: 14,
     borderRadius: 12,
     alignItems: 'center',
