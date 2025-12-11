@@ -29,6 +29,8 @@ urlpatterns = [
     path('leaves/', requests_views.get_student_leaves, name='leaves'),
     path('appeals/', requests_views.get_student_appeals, name='appeals'),
     path('apply-leaves/', requests_views.apply_leaves, name='apply-leaves'),
+    path('apply-appeals/', requests_views.apply_appeals, name='apply-appeals'),
+
 
     # Admin
     # Users
