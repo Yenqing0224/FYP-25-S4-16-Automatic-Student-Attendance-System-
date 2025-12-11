@@ -15,8 +15,6 @@ const ApplyAppealSuccessScreen = ({ navigation, route }) => {
     const { moduleCode, moduleName, reason } = route.params || {};
 
     const goToStatus = () => {
-        // Navigate to the Appeal Status list
-        // Make sure 'AppealStatus' matches the name in your StackNavigator
         navigation.navigate("Profile", {
             screen: "AppealStatus"
         });
