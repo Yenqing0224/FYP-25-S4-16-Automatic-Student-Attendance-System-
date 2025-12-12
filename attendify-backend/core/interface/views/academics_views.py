@@ -8,15 +8,10 @@ from core.interface.serializers.academics_serializers import ClassSessionSeriali
 
 
 @api_view(['GET'])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def get_dashboard(request):
     try:
-        user = request.user
-        if user.is_anonymous:
-            user_id = request.query_params.get('user_id')
-            student = Student.objects.get(user__id=user_id)
-        else:
-            student = Student.objects.get(user=user)
+        student = Student.objects.get(user=request.user)
 
         today = timezone.now()
         current_semester = Semester.objects.filter(start_date__lte=today, end_date__gte=today).first()
@@ -41,11 +36,14 @@ def get_dashboard(request):
         ).order_by('date_time')[:5]
 
         return Response({
+            "attendance_rate": student.attendance_rate,
             "semester_range": semester_range,
             "today_classes": ClassSessionSerializer(todays_sessions, many=True).data,
             "upcoming_classes": ClassSessionSerializer(upcoming_sessions, many=True).data
         })
 
+    except Student.DoesNotExist:
+        return Response({"error": "This user is not a Student"}, status=403)
     except Exception as e:
         print(f"Dashboard Error: {e}")
         return Response({"error": str(e)}, status=500)
