@@ -11,7 +11,7 @@ from core.interface.serializers.communication_serializers import NotificationSer
 @permission_classes([IsAuthenticated])
 def get_newsevent(request):
     try:
-        news_object = News.objects.all().order_by('-date_posted')
+        news_object = News.objects.all()
         events_object = Event.objects.filter(status__in=['upcoming', 'in_progress']).order_by('date')
 
         return Response({
@@ -28,10 +28,8 @@ def get_newsevent(request):
 @permission_classes([IsAuthenticated])
 def get_notifications(request):
     try:
-        notification_object = Notification.objects.filter(
-            recipient=request.user
-        ).order_by('-date_sent')
-        
+        notification_object = Notification.objects.filter(recipient=request.user)
+
         serializer = NotificationSerializer(notification_object, many=True)
         return Response(serializer.data)
 
