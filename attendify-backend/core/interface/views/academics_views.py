@@ -1,6 +1,6 @@
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.permissions import IsAuthenticated
 from django.utils import timezone
 from core.models import Student, ClassSession, Semester, AttendanceRecord
 # Serializers
@@ -50,15 +50,10 @@ def get_dashboard(request):
 
 
 @api_view(['GET'])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def get_timetable(request):
     try:
-        user = request.user
-        if user.is_anonymous:
-            user_id = request.query_params.get('user_id')
-            student = Student.objects.get(user__id=user_id)
-        else:
-            student = Student.objects.get(user=user)
+        student = Student.objects.get(user=request.user)
 
         sessions = ClassSession.objects.filter(
             module__students=student
@@ -66,24 +61,22 @@ def get_timetable(request):
 
         return Response(ClassSessionSerializer(sessions, many=True).data)
 
+    except Student.DoesNotExist:
+        return Response({"error": "This user is not a Student"}, status=403)
     except Exception as e:
         print(f"Timetable Error: {e}")
         return Response({"error": str(e)}, status=500)
     
 
 @api_view(['GET'])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def get_class_details(request, session_id):
     try:
-        user = request.user
-        if user.is_anonymous:
-            user_id = request.query_params.get('user_id')
-            student = Student.objects.get(user__id=user_id)
-        else:
-            student = Student.objects.get(user=user)
+        student = Student.objects.get(user=request.user)
 
         session = ClassSession.objects.get(id=session_id)
         session_data = ClassSessionSerializer(session).data
+        
         attendance = AttendanceRecord.objects.filter(
             session=session, 
             student=student
@@ -95,6 +88,10 @@ def get_class_details(request, session_id):
 
         return Response(session_data)
 
+    except Student.DoesNotExist:
+        return Response({"error": "User is not a student"}, status=403)
+    except ClassSession.DoesNotExist:
+        return Response({"error": "Class session not found"}, status=404)
     except Exception as e:
         print(f"Class Details Error: {e}")
         return Response({"error": str(e)}, status=500)
