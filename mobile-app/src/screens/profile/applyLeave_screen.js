@@ -12,8 +12,9 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import * as DocumentPicker from "expo-document-picker";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import axios from "axios";
+// ❌ Removed AsyncStorage (No longer needed for user_id)
+// ❌ Removed axios
+import api from "../../api/api_client"; // 👈 1. Use Helper Client
 
 const COLORS = {
   primary: "#3A7AFE",
@@ -40,9 +41,6 @@ const toApiDate = (date) => {
   if (!(date instanceof Date)) return "";
   return date.toISOString().split("T")[0];
 };
-
-// 🔗 your real POST endpoint
-const API_URL = "https://attendify-ekg6.onrender.com/api/apply-leaves/";
 
 const ApplyLeaveScreen = ({ navigation }) => {
   // -------- dates --------
@@ -98,15 +96,9 @@ const ApplyLeaveScreen = ({ navigation }) => {
         : reason;
 
     try {
-      const storedUser = await AsyncStorage.getItem("userInfo");
-      if (!storedUser) {
-        alert("No user found. Please log in again.");
-        return;
-      }
-      const user = JSON.parse(storedUser);
-
+      // 👈 2. Create FormData (No user_id needed)
       const formData = new FormData();
-      formData.append("user_id", String(user.id));
+      // ❌ No user_id attached
       formData.append("start_date", toApiDate(startDateObj));
       formData.append("end_date", toApiDate(endDateObj));
       formData.append("reason", mainReason);
@@ -115,10 +107,11 @@ const ApplyLeaveScreen = ({ navigation }) => {
       formData.append("document", {
         uri: fileUri,
         name: fileName,
-        type: "application/pdf",
+        type: "application/pdf", // Adjust if needed
       });
 
-      await axios.post(API_URL, formData, {
+      // 👈 3. Secure POST
+      await api.post('/apply-leaves/', formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
@@ -201,7 +194,7 @@ const ApplyLeaveScreen = ({ navigation }) => {
   const handlePickDocument = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
-        type: "application/pdf",
+        type: ["application/pdf", "image/*"], // Allowed types
         multiple: false,
         copyToCacheDirectory: true,
       });

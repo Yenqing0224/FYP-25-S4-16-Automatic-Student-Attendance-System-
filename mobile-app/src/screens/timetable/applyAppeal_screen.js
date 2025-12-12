@@ -10,8 +10,9 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as DocumentPicker from "expo-document-picker";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import axios from "axios";
+// ❌ Removed AsyncStorage (Not needed for ID anymore)
+// ❌ Removed axios
+import api from "../../api/api_client"; // 👈 1. Use Helper Client
 
 const COLORS = {
   primary: "#3A7AFE",
@@ -23,8 +24,6 @@ const COLORS = {
 };
 
 const REASONS = ["Medical Leave", "Late", "Emergency", "Others"];
-
-const API_URL = "https://attendify-ekg6.onrender.com/api/apply-appeals/";
 
 const ApplyAppealScreen = ({ route, navigation }) => {
   // Get the class session data passed from ClassDetailScreen
@@ -45,8 +44,8 @@ const ApplyAppealScreen = ({ route, navigation }) => {
       alert("Please choose a reason.");
       return;
     }
-    // Note: If document is optional for appeals, remove this check.
-    // Based on your screenshot, it looks standard to require it.
+    
+    // Check if file is required
     if (!fileUri) {
       alert("Please attach a supporting document.");
       return;
@@ -58,15 +57,9 @@ const ApplyAppealScreen = ({ route, navigation }) => {
     const description = reason === "Others" && trimmedOther ? trimmedOther : "";
 
     try {
-      const storedUser = await AsyncStorage.getItem("userInfo");
-      if (!storedUser) {
-        alert("No user found. Please log in again.");
-        return;
-      }
-      const user = JSON.parse(storedUser);
-
+      // 👈 2. Create FormData
       const formData = new FormData();
-      formData.append("user_id", String(user.id));
+      // ❌ No user_id needed (Handled by Token)
       formData.append("session_id", String(classSession?.id)); 
       formData.append("reason", mainReason);
       formData.append("description", description);
@@ -74,10 +67,11 @@ const ApplyAppealScreen = ({ route, navigation }) => {
       formData.append("document", {
         uri: fileUri,
         name: fileName,
-        type: "application/pdf", // Adjust if allowing images
+        type: "application/pdf", // Adjust if allowing images (e.g. check file extension)
       });
 
-      await axios.post(API_URL, formData, {
+      // 👈 3. Secure POST with Multipart Header
+      await api.post('/apply-appeals/', formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },

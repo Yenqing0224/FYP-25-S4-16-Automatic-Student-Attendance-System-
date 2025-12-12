@@ -10,8 +10,9 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import axios from "axios";
+// ❌ Removed AsyncStorage
+// ❌ Removed axios
+import api from "../../api/api_client"; // 👈 1. Use Helper Client
 
 const COLORS = {
   primary: "#3A7AFE",
@@ -49,8 +50,6 @@ const AppealStatusScreen = ({ navigation }) => {
   const [appeals, setAppeals] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const API_URL = "https://attendify-ekg6.onrender.com/api/appeals/";
-
   useFocusEffect(
     useCallback(() => {
       setLoading(true);
@@ -60,12 +59,10 @@ const AppealStatusScreen = ({ navigation }) => {
 
   const fetchAppeals = async () => {
     try {
-      const storedUser = await AsyncStorage.getItem("userInfo");
-      if (storedUser) {
-        const user = JSON.parse(storedUser);
-        const response = await axios.get(`${API_URL}?user_id=${user.id}`);
-        setAppeals(response.data);
-      }
+      // 👈 2. Secure Fetch (No user_id param needed)
+      // The token automatically tells the backend which student's appeals to fetch.
+      const response = await api.get('/appeals/'); 
+      setAppeals(response.data);
     } catch (error) {
       console.error("Fetch Appeals Error:", error);
     } finally {

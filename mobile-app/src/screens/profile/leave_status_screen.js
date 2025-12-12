@@ -10,8 +10,9 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import axios from "axios";
+// ❌ Removed AsyncStorage
+// ❌ Removed axios
+import api from "../../api/api_client"; // 👈 1. Use Helper Client
 
 const FILTERS = ["All", "Pending", "Approved", "Rejected"];
 
@@ -50,8 +51,6 @@ const LeaveStatusScreen = ({ navigation }) => {
   const [leaves, setLeaves] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const API_URL = "https://attendify-ekg6.onrender.com/api/leaves/";
-
   useFocusEffect(
     useCallback(() => {
       setLoading(true);
@@ -61,12 +60,10 @@ const LeaveStatusScreen = ({ navigation }) => {
 
   const fetchLeaves = async () => {
     try {
-      const storedUser = await AsyncStorage.getItem("userInfo");
-      if (storedUser) {
-        const user = JSON.parse(storedUser);
-        const response = await axios.get(`${API_URL}?user_id=${user.id}`);
-        setLeaves(response.data);
-      }
+      // 👈 2. Secure Fetch (No user_id param needed)
+      // The token automatically tells the backend which student's leaves to fetch.
+      const response = await api.get('/leaves/');
+      setLeaves(response.data);
     } catch (error) {
       console.error("Fetch Leaves Error:", error);
     } finally {
@@ -157,9 +154,6 @@ const LeaveStatusScreen = ({ navigation }) => {
           ) : (
             filteredLeaves.map((item) => {
               const statusStyles = getStatusStyle(item.status);
-
-              // ❌ REMOVED: const description = item.description || item.remarks;
-              // We now use item.description and item.remarks directly below
 
               return (
                 <TouchableOpacity
