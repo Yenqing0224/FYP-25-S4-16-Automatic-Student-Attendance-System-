@@ -2,6 +2,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from django.contrib.auth import authenticate
 from rest_framework.response import Response
+from rest_framework.authtoken.models import Token
 # Import Serializers
 from core.interface.serializers.users_serializers import UserSerializer
 
@@ -21,9 +22,11 @@ def login_view(request):
         user = authenticate(username=username, password=password)
 
         if user is not None:
+            token, created = Token.objects.get_or_create(user=user)
             serializer = UserSerializer(user)
             return Response({
-                "message": "Login successful", 
+                "message": "Login successful",
+                "token": token.key, 
                 "user": serializer.data
             }, status=200)
         else:
