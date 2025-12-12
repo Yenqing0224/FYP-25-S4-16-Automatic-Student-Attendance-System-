@@ -18,21 +18,21 @@ const BG = "#F5F7FB";
 const SLIDES = (firstName) => [
   {
     key: "1",
-    image: require("../../assets/onboarding/download.jpeg"),
+    image: require("../../../assets/onboarding/download.jpeg"),
     title: `Welcome to Attendify, ${firstName} 👋`,
     description:
       "Your smart assistant for tracking attendance and staying on top of your academic schedule.",
   },
   {
     key: "2",
-    image: require("../../assets/onboarding/attendance.jpeg"),
+    image: require("../../../assets/onboarding/attendance.jpeg"),
     title: "Track Attendance Easily",
     description:
       "View your attendance rate, monitor modules and see which classes need extra attention.",
   },
   {
     key: "3",
-    image: require("../../assets/onboarding/timetable.jpeg"),
+    image: require("../../../assets/onboarding/timetable.jpeg"),
     title: "Manage Classes & Requests",
     description:
       "See today’s timetable, upcoming classes, and submit leave or appeals quickly — all in one place.",

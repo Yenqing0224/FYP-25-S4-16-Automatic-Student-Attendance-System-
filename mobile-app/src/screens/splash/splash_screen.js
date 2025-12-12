@@ -32,7 +32,7 @@ export default function SplashScreen({ navigation }) {
   return (
     <View style={styles.container}>
       <Animated.Image 
-        source={require("../../assets/attendify.png")}
+        source={require("../../../assets/attendify.png")}
         style={[
           styles.logo,
           { opacity: fadeAnim, transform: [{ scale: scaleAnim }] }

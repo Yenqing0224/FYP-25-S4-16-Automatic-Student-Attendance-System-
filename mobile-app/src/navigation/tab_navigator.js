@@ -22,15 +22,15 @@ export default function TabNavigator() {
           let iconSource;
 
           if (route.name === "Home") {
-            iconSource = require("../assets/home/home_icon.png");
+            iconSource = require("../../assets/home/home_icon.png");
           } else if (route.name === "Timetable") {
-            iconSource = require("../assets/timetable/timetable_icon.png");
+            iconSource = require("../../assets/timetable/timetable_icon.png");
           } else if (route.name === "Notifications") {
-            iconSource = require("../assets/notifications/notifications_icon.png");
+            iconSource = require("../../assets/notifications/notifications_icon.png");
           } else if (route.name === "Newsevent") {
-            iconSource = require("../assets/newsevent/newsevent_icon.png");
+            iconSource = require("../../assets/newsevent/newsevent_icon.png");
           } else if (route.name === "Profile") {
-            iconSource = require("../assets/profile/profile_icon.png");
+            iconSource = require("../../assets/profile/profile_icon.png");
           }
 
           return (

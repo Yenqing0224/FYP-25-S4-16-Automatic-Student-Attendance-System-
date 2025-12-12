@@ -25,31 +25,45 @@ const LoginScreen = ({ navigation }) => {
   const API_URL = 'https://attendify-ekg6.onrender.com/api/login/';
 
   const handleLogin = async () => {
-  // ... validation ...
-  setLoading(true);
+    // Basic validation
+    if (!username || !password) {
+      Alert.alert("Error", "Please enter both username and password.");
+      return;
+    }
 
-  try {
-    const response = await axios.post(API_URL, {
-      username: username,
-      password: password
-    });
+    setLoading(true);
 
-    // 2. SUCCESS: Save User Data to Hardware
-    // We must turn the object into a String to save it
-    const userData = response.data.user;
-    await AsyncStorage.setItem('userInfo', JSON.stringify(userData));
+    try {
+      const response = await axios.post(API_URL, {
+        username: username,
+        password: password
+      });
 
-    console.log("User saved to storage:", userData.username);
-    
-    // 3. Navigate (No need to pass params anymore!)
-    navigation.replace("Welcome");
+      // 1. Destructure Token and User from response
+      const { token, user } = response.data;
 
-  } catch (error) {
-    // ... error handling ...
-  } finally {
-    setLoading(false);
-  }
-};
+      // 🔍 CONSOLE LOG: Check if token exists
+      console.log("------------------------------------------");
+      console.log("✅ Login Successful!");
+      console.log("🔑 Token received:", token);
+      console.log("👤 User:", user.username);
+      console.log("------------------------------------------");
+
+      // 2. SAVE BOTH to Async Storage
+      await AsyncStorage.setItem('userToken', token); // Save the Key Card
+      await AsyncStorage.setItem('userInfo', JSON.stringify(user)); // Save User Data
+
+      // 3. Navigate
+      navigation.replace("Welcome");
+
+    } catch (error) {
+      console.error("Login Error:", error);
+      const errorMessage = error.response?.data?.error || "Unable to log in. Please check your network.";
+      Alert.alert("Login Failed", errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -62,7 +76,6 @@ const LoginScreen = ({ navigation }) => {
           <View style={styles.formSection}>
             <Text style={styles.headerTitle}>Log In</Text>
 
-            {/* ✅ CHANGED: Label and Placeholder are now Username */}
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Username</Text>
               <TextInput
