@@ -8,7 +8,7 @@ class AdminUserSerializer(serializers.ModelSerializer):
         model = User
         fields = ['id', 'username', 'email', 
                   'first_name', 'last_name', 'phone_number', 'gender', 'personal_email', 'image_url',
-                  'address_street', 'address_unit', 'address_postal', 'address_country'
+                  'address_street', 'address_unit', 'address_postal', 'address_country', 
                   'role_type', 'is_staff', 'is_active']
 
 class AdminStudentSerializer(serializers.ModelSerializer):
