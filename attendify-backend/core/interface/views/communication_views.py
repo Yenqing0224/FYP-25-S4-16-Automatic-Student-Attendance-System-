@@ -12,7 +12,7 @@ from core.interface.serializers.communication_serializers import NotificationSer
 def get_newsevent(request):
     try:
         news_object = News.objects.all()
-        events_object = Event.objects.filter(status__in=['upcoming', 'in_progress']).order_by('date')
+        events_object = Event.objects.filter(status__in=['upcoming', 'in_progress'])
 
         return Response({
             "news": NewsSerializer(news_object, many=True).data,
