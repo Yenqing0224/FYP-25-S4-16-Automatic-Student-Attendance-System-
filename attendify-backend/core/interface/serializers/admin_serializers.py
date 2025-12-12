@@ -6,7 +6,10 @@ from core.models import *
 class AdminUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'role_type', 'is_staff', 'is_active']
+        fields = ['id', 'username', 'email', 
+                  'first_name', 'last_name', 'phone_number', 'gender', 'personal_email', 'image_url',
+                  'address_street', 'address_unit', 'address_postal', 'address_country'
+                  'role_type', 'is_staff', 'is_active']
 
 class AdminStudentSerializer(serializers.ModelSerializer):
     user_details = AdminUserSerializer(source='user', read_only=True)
