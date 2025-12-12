@@ -8,11 +8,11 @@ from core.interface.serializers.communication_serializers import NotificationSer
 
 
 @api_view(['GET'])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def get_newsevent(request):
     try:
-        news_object = News.objects.all()
-        events_object = Event.objects.filter(status__in=['upcoming', 'in_progress'])
+        news_object = News.objects.all().order_by('-date_posted')
+        events_object = Event.objects.filter(status__in=['upcoming', 'in_progress']).order_by('date')
 
         return Response({
             "news": NewsSerializer(news_object, many=True).data,
@@ -25,40 +25,29 @@ def get_newsevent(request):
 
 
 @api_view(['GET'])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def get_notifications(request):
     try:
-        user = request.user
-        
-        if user.is_anonymous:
-            user_id = request.query_params.get('user_id')
-            if not user_id:
-                return Response({"error": "Test Mode: Please add ?user_id=YOUR_ID to the URL"}, status=400)
-            user = User.objects.get(id=user_id)
-
-        notification_object = Notification.objects.filter(recipient=user).order_by('-date_sent')
+        notification_object = Notification.objects.filter(
+            recipient=request.user
+        ).order_by('-date_sent')
         
         serializer = NotificationSerializer(notification_object, many=True)
         return Response(serializer.data)
 
-    except User.DoesNotExist:
-        return Response({"error": "User not found"}, status=404)
     except Exception as e:
         print(f"Notification Error: {e}")
         return Response({"error": "Failed to load notifications"}, status=500)
     
 
 @api_view(['POST'])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def mark_notifications_read(request):
     try:
-        user_id = request.data.get('user_id')
-        
-        if not user_id:
-            return Response({"error": "User ID required"}, status=400)
-
-        # Update all notifications
-        count = Notification.objects.filter(recipient_id=user_id, is_read=False).update(is_read=True)
+        count = Notification.objects.filter(
+            recipient=request.user, 
+            is_read=False
+        ).update(is_read=True)
         
         return Response({"message": f"Marked {count} notifications as read"})
 
