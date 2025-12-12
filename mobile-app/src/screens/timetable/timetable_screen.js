@@ -11,8 +11,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Calendar } from 'react-native-calendars';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import axios from 'axios';
 import { useFocusEffect } from '@react-navigation/native';
+import api from '../../api/api_client'; // 👈 1. Use your API Helper
 
 const TimetableScreen = ({ navigation }) => {
   const [activeTab, setActiveTab] = useState('Selected');
@@ -23,8 +23,6 @@ const TimetableScreen = ({ navigation }) => {
   const [fullSchedule, setFullSchedule] = useState([]);
   const [markedDates, setMarkedDates] = useState({});
   const [loading, setLoading] = useState(true);
-
-  const API_URL = 'https://attendify-ekg6.onrender.com/api/timetable/';
 
   // --- 1. NAVIGATION LISTENER ---
   useFocusEffect(
@@ -55,13 +53,13 @@ const TimetableScreen = ({ navigation }) => {
 
   const fetchTimetable = async () => {
     try {
-      const storedUser = await AsyncStorage.getItem('userInfo');
-      if (storedUser) {
-        const user = JSON.parse(storedUser);
-        const response = await axios.get(`${API_URL}?user_id=${user.id}`);
-        setFullSchedule(response.data);
-        processCalendarDots(response.data);
-      }
+      // 👈 2. Clean & Secure API Call
+      // Token is attached automatically by api_client.js
+      const response = await api.get('/timetable/');
+      
+      setFullSchedule(response.data);
+      processCalendarDots(response.data);
+
     } catch (error) {
       console.error('Timetable Error:', error);
     } finally {
@@ -497,6 +495,12 @@ const styles = StyleSheet.create({
   // Reuse existing styles
   emptyContainer: { alignItems: 'center', padding: 24 },
   emptyText: { color: '#9CA3AF', fontSize: 14 },
+  
+  // Missing text styles that were used in renderSelectedContent
+  cardContent: { flex: 1 },
+  eventTitle: { fontSize: 16, fontWeight: '700', color: '#111827', marginBottom: 4 },
+  eventTime: { fontSize: 14, fontWeight: '600', color: '#3A7AFE', marginBottom: 2 },
+  eventLoc: { fontSize: 13, color: '#6B7280' },
 });
 
 export default TimetableScreen;

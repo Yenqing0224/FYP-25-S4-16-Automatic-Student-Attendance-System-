@@ -8,26 +8,20 @@ import {
   StatusBar
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import axios from 'axios';
+import api from '../../api/api_client'; // 👈 1. Use Helper Client
 
 const ClassDetailScreen = ({ route, navigation }) => {
   const { session_id } = route.params;
   const [classData, setClassData] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // New API endpoint
-  const API_URL = `https://attendify-ekg6.onrender.com/api/class-details/${session_id}/`;
-
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const storedUser = await AsyncStorage.getItem('userInfo');
-        if (storedUser) {
-          const user = JSON.parse(storedUser);
-          const response = await axios.get(`${API_URL}?user_id=${user.id}`);
-          setClassData(response.data);
-        }
+        // 👈 2. Clean API Call (Token handles auth)
+        // Note: We use the relative path since api_client knows the Base URL
+        const response = await api.get(`/class-details/${session_id}/`);
+        setClassData(response.data);
       } catch (error) {
         console.error("Fetch Details Error:", error);
       } finally {
@@ -120,16 +114,11 @@ const ClassDetailScreen = ({ route, navigation }) => {
                 </View>
               </View>
 
-              {/* APPEAL BUTTON Logic: 
-                  Only show if:
-                  1. Status is 'absent' 
-                  2. AND Class is 'completed' (Not upcoming) 
-              */}
+              {/* APPEAL BUTTON Logic */}
               {classData.attendance_status === 'absent' && classData.status === 'completed' && (
                 <TouchableOpacity
                   style={styles.appealButton}
                   onPress={() => {
-                    // ✅ PASS DATA TO APPEAL SCREEN HERE
                     navigation.navigate('ApplyAppeal', {
                       classSession: classData
                     });

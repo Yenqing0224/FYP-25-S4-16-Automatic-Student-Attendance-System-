@@ -11,7 +11,7 @@ import {
   Image
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import axios from 'axios';
+import api from '../../api/api_client'; // 👈 1. Import helper client (Replaces axios)
 
 const COLORS = {
   primary: '#3A7AFE',
@@ -31,7 +31,7 @@ const NewsEventsScreen = ({ navigation }) => {
   const [eventsList, setEventsList] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const API_URL = 'https://attendify-ekg6.onrender.com/api/newsevent/';
+  // ❌ Removed hardcoded API_URL (The helper client handles this)
 
   useEffect(() => {
     fetchNewsAndEvents();
@@ -39,7 +39,9 @@ const NewsEventsScreen = ({ navigation }) => {
 
   const fetchNewsAndEvents = async () => {
     try {
-      const response = await axios.get(API_URL);
+      // 👈 2. Use 'api.get'. It automatically adds the Base URL and Token
+      const response = await api.get('/newsevent/');
+      
       setNewsList(response.data.news);
       setEventsList(response.data.events);
     } catch (error) {
@@ -76,7 +78,6 @@ const NewsEventsScreen = ({ navigation }) => {
 
           <View style={{ width: 24 }} />
         </View>
-
 
         {loading ? (
           <View style={styles.loadingBox}>
@@ -165,7 +166,6 @@ const NewsEventsScreen = ({ navigation }) => {
   );
 };
 
-
 const styles = StyleSheet.create({
   mainContainer: { flex: 1, backgroundColor: COLORS.background },
   topSafeArea: { backgroundColor: COLORS.background },
@@ -203,8 +203,6 @@ const styles = StyleSheet.create({
     letterSpacing: 0.4,
     marginRight: 24,
   },
-
-
 
   scrollContent: { paddingBottom: 20 },
 

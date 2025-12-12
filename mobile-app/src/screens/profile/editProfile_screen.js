@@ -11,10 +11,7 @@ import {
   StatusBar,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import axios from "axios";
-
-const BASE_URL = "https://attendify-ekg6.onrender.com";
+import api from "../../api/api_client"; // 👈 Ensure this path matches your folder structure
 
 const COLORS = {
   primary: "#3A7AFE",
@@ -39,7 +36,7 @@ const EditProfileScreen = ({ navigation }) => {
   const [personalEmail, setPersonalEmail] = useState("");
 
   // Address
-  const [country, setCountry] = useState("Singapore"); // Default to Singapore
+  const [country, setCountry] = useState("Singapore");
   const [streetAddress, setStreetAddress] = useState("");
   const [unitNumber, setUnitNumber] = useState("");
   const [postalCode, setPostalCode] = useState("");
@@ -51,38 +48,24 @@ const EditProfileScreen = ({ navigation }) => {
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const storedData = await AsyncStorage.getItem("userInfo");
-        if (!storedData) return;
+        // ✅ CORRECT: Use the GET endpoint to READ data
+        const res = await api.get('/profile/');
 
-        const basicUser = JSON.parse(storedData);
-
-        // Fetch full profile
-        const res = await axios.get(`${BASE_URL}/api/profile/?id=${basicUser.id}`);
         const student = res.data;
-
-        // ✅ CRITICAL FIX: Access fields from student.user, not student
         const user = student.user || {};
 
         // --- MAP DATA TO STATE ---
-
-        // Read-Only
         setName(`${user.first_name} ${user.last_name}`);
         setCourse(student.programme);
         setSchoolEmail(user.email);
 
-        // Editable (Handle nulls)
-        // ✅ Fix: Use user.phone_number matching your Django model
         setMobileNumber(user.phone_number || "");
         setPersonalEmail(user.personal_email || "");
-
-        // ✅ Fix: Default to "Singapore" if empty so it shows as value, not placeholder
         setCountry(user.address_country || "Singapore");
-
         setStreetAddress(user.address_street || "");
         setUnitNumber(user.address_unit || "");
         setPostalCode(user.address_postal || "");
 
-        // Save initial state to compare later
         initialValues.current = {
           mobileNumber: user.phone_number || "",
           personalEmail: user.personal_email || "",
@@ -136,12 +119,8 @@ const EditProfileScreen = ({ navigation }) => {
     setSaving(true);
 
     try {
-      const storedData = await AsyncStorage.getItem("userInfo");
-      const basicUser = JSON.parse(storedData);
-
-      // ✅ Send Payload to update-profile endpoint
+      // ✅ USES /edit-profile/ for SAVING
       const payload = {
-        user_id: basicUser.id,
         phone_number: mobileTrim,
         personal_email: personalEmailTrim,
         address_country: countryTrim,
@@ -150,7 +129,7 @@ const EditProfileScreen = ({ navigation }) => {
         address_postal: postalTrim,
       };
 
-      await axios.patch(`${BASE_URL}/api/edit-profile/`, payload); // Updated Endpoint per your request
+      await api.patch('/edit-profile/', payload);
 
       Alert.alert("Success", "Profile updated successfully!", [
         { text: "OK", onPress: () => navigation.goBack() },
@@ -169,6 +148,7 @@ const EditProfileScreen = ({ navigation }) => {
         <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
         <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
           <ActivityIndicator size="large" color={COLORS.primary} />
+          {/* ✅ FIXED SYNTAX ERROR HERE */}
           <Text style={{ marginTop: 10, color: COLORS.textMuted }}>Loading profile...</Text>
         </View>
       </SafeAreaView>
@@ -197,10 +177,6 @@ const EditProfileScreen = ({ navigation }) => {
                 {name ? name.charAt(0).toUpperCase() : ""}
               </Text>
             </View>
-            {/* Keeping the UI element but removing functionality as requested previously */}
-             {/* <TouchableOpacity>
-              <Text style={styles.changePhotoText}>Change profile picture</Text>
-            </TouchableOpacity> */}
           </View>
         </View>
 
@@ -383,12 +359,6 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     color: "#1E1B4B",
   },
-  changePhotoText: {
-    color: COLORS.primary,
-    fontSize: 13,
-    fontWeight: "600",
-  },
-
   sectionTitle: {
     fontSize: 15,
     fontWeight: "700",
@@ -410,7 +380,7 @@ const styles = StyleSheet.create({
   },
   readOnlyInput: {
     backgroundColor: "#F3F4F6",
-    color: COLORS.textMuted, 
+    color: COLORS.textMuted,
   },
 
   formRow: {

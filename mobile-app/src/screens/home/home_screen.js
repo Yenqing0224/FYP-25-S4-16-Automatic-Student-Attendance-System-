@@ -1,4 +1,3 @@
-// mobile-app/screens/home/home_screen.js
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -11,8 +10,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import axios from 'axios';
 import { Ionicons } from '@expo/vector-icons';
+import api from '../../api/api_client'; // 👈 1. Use your Helper Client
 
 const COLORS = {
   primary: '#3A7AFE',
@@ -27,22 +26,24 @@ const COLORS = {
 const HomeScreen = ({ navigation }) => {
   const [user, setUser] = useState(null);
   const [semesterRange, setSemesterRange] = useState('Loading...');
+  const [attendanceRate, setAttendanceRate] = useState(0); // 👈 2. New State
   const [todayClasses, setTodayClasses] = useState([]);
   const [upcomingClasses, setUpcomingClasses] = useState([]);
   const [loading, setLoading] = useState(true);
-
-  const API_URL = 'https://attendify-ekg6.onrender.com/api/dashboard/';
 
   // load user + dashboard
   useEffect(() => {
     const initDashboard = async () => {
       try {
+        // Load User Info just for the "Hello, Name" text
         const storedUser = await AsyncStorage.getItem('userInfo');
         if (storedUser) {
-          const parsedUser = JSON.parse(storedUser);
-          setUser(parsedUser);
-          fetchDashboardData(parsedUser.id);
+          setUser(JSON.parse(storedUser));
         }
+        
+        // Fetch Data (Token is handled automatically by api_client)
+        fetchDashboardData();
+
       } catch (error) {
         console.error('Init Error:', error);
       }
@@ -50,12 +51,14 @@ const HomeScreen = ({ navigation }) => {
     initDashboard();
   }, []);
 
-  const fetchDashboardData = async (userId) => {
+  const fetchDashboardData = async () => {
     try {
-      const response = await axios.get(`${API_URL}?user_id=${userId}`);
+      // 👈 3. Clean API Call (No user_id needed)
+      const response = await api.get('/dashboard/'); 
       const data = response.data;
 
       setSemesterRange(data.semester_range);
+      setAttendanceRate(data.attendance_rate); // 👈 Save the rate
       setTodayClasses(data.today_classes);
       setUpcomingClasses(data.upcoming_classes);
     } catch (error) {
@@ -99,7 +102,7 @@ const HomeScreen = ({ navigation }) => {
             <Text style={styles.greetingName}>
               {user
                 ? `${user.first_name}`
-                : "Loading..."} 👋</Text>
+                : "Student"} 👋</Text>
 
             <View style={styles.chip}>
               <Text style={styles.chipText}>Dashboard overview</Text>
@@ -118,7 +121,10 @@ const HomeScreen = ({ navigation }) => {
           <Text style={styles.attendanceSubtitle}>{semesterRange}</Text>
 
           <View style={styles.attendanceCircle}>
-            <Text style={styles.attendancePercentage}>83%</Text>
+             {/* 👈 4. Real Data Display */}
+            <Text style={styles.attendancePercentage}>
+                {loading ? "..." : `${attendanceRate.toFixed(0)}%`}
+            </Text>
           </View>
         </View>
 
@@ -332,7 +338,6 @@ const styles = StyleSheet.create({
   },
 
   // TODAY CARDS
-
   todayCard: {
     backgroundColor: '#8C99FF',
     borderRadius: 18,
@@ -344,33 +349,34 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 3 },
     shadowRadius: 5,
   },
-
   todayCardInner: {
     borderRadius: 16,
     padding: 14,
     backgroundColor: 'rgba(255,255,255,0.95)',
   },
-
   cardTitle: {
     fontSize: 16,
     fontWeight: '800',
     color: '#1E1B4B',
     marginBottom: 8,
   },
-
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+    gap: 6,
+  },
   cardDetail: {
     fontSize: 14,
     fontWeight: '600',
     color: '#1E1B4B',
   },
-
   cardSubtitle: {
     marginTop: 10,
     fontSize: 13,
     fontWeight: '600',
     color: COLORS.primary,
   },
-
 
   // UPCOMING
   horizontalScrollContainer: {
@@ -388,7 +394,6 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowRadius: 6,
   },
-
   upcomingLabel: {
     fontSize: 11,
     color: 'rgba(255,255,255,0.75)',
@@ -401,7 +406,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     marginBottom: 6,
   },
-  upcomingCode: {
+  upcomingModule: {
     marginTop: 6,
     fontSize: 14,
     fontWeight: '800',
@@ -420,10 +425,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#F0F4FF',
     borderRadius: 18,
     gap: 8,
-  },
-  emptyStateEmoji: {
-    fontSize: 36,
-    marginBottom: 8,
   },
   emptyStateText: {
     fontSize: 15,

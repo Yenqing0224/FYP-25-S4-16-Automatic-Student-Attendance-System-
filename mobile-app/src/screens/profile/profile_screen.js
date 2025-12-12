@@ -1,4 +1,3 @@
-// mobile-app/screens/profile/profile_screen.js
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -13,9 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import axios from 'axios';
-
-const API_URL = 'https://attendify-ekg6.onrender.com/api/profile/';
+import api from '../../api/api_client';
 
 const COLORS = {
   primary: '#3A7AFE',
@@ -39,12 +36,8 @@ const ProfileScreen = ({ navigation }) => {
 
   const loadProfile = async () => {
     try {
-      const storedData = await AsyncStorage.getItem('userInfo');
-      if (storedData) {
-        const basicUser = JSON.parse(storedData);
-        const response = await axios.get(`${API_URL}?id=${basicUser.id}`);
-        setStudent(response.data);
-      }
+      const response = await api.get('/profile/');
+      setStudent(response.data);
     } catch (error) {
       console.error("Profile Load Error:", error);
     } finally {
@@ -64,6 +57,8 @@ const ProfileScreen = ({ navigation }) => {
           onPress: async () => {
             try {
               await AsyncStorage.removeItem('userInfo');
+              await AsyncStorage.removeItem('userToken'); // Don't forget to clear the token!
+              
               navigation.reset({
                 index: 0,
                 routes: [{ name: 'Login' }],
@@ -119,11 +114,11 @@ const ProfileScreen = ({ navigation }) => {
               </Text>
 
               <Text style={styles.degree}>
-                {student?.programme || "Loading..."}
+                {student?.programme || "Student"}
               </Text>
 
               <Text style={styles.emailText}>
-                {student?.user?.email || "Loading..."}
+                {student?.user?.email || ""}
               </Text>
 
               <TouchableOpacity

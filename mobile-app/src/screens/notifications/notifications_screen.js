@@ -10,9 +10,10 @@ import {
   Alert
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import axios from 'axios';
+// ❌ Removed AsyncStorage (The token handles identity now)
+// ❌ Removed axios
 import { Ionicons } from '@expo/vector-icons';
+import api from '../../api/api_client'; // 👈 1. Import your secure client
 
 const COLORS = {
   primary: '#3A7AFE',
@@ -25,9 +26,8 @@ const COLORS = {
 const NotificationScreen = ({ navigation }) => {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [userId, setUserId] = useState(null);
-
-  const API_URL = 'https://attendify-ekg6.onrender.com/api/notifications/';
+  
+  // ❌ userId state is no longer needed (backend knows who you are via Token)
 
   useEffect(() => {
     fetchNotifications();
@@ -35,14 +35,9 @@ const NotificationScreen = ({ navigation }) => {
 
   const fetchNotifications = async () => {
     try {
-      const storedData = await AsyncStorage.getItem('userInfo');
-      if (storedData) {
-        const user = JSON.parse(storedData);
-        setUserId(user.id);
-
-        const response = await axios.get(`${API_URL}?user_id=${user.id}`);
-        setNotifications(response.data);
-      }
+      // 👈 2. Use 'api.get'. No need to pass ?user_id=...
+      const response = await api.get('/notifications/');
+      setNotifications(response.data);
     } catch (error) {
       console.error("Failed to load notifications:", error);
     } finally {
@@ -51,16 +46,18 @@ const NotificationScreen = ({ navigation }) => {
   };
 
   const handleMarkAllRead = async () => {
-    if (!userId) return;
-
+    // Optimistically update UI
     const updatedList = notifications.map(item => ({ ...item, is_read: true }));
     setNotifications(updatedList);
 
     try {
-      await axios.post(`${API_URL}mark-read/`, { user_id: userId });
+      // 👈 3. Secure POST. No need to send body { user_id }
+      await api.post('/notifications/mark-read/');
     } catch (error) {
       console.error("Failed to mark read:", error);
       Alert.alert("Error", "Could not sync with server");
+      // Revert if failed (optional, but good practice)
+      fetchNotifications(); 
     }
   };
 
@@ -79,7 +76,7 @@ const NotificationScreen = ({ navigation }) => {
       <SafeAreaView edges={['top']} style={styles.safeTop} />
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
 
-      {/* HEADER (beautified) */}
+      {/* HEADER */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.navigate('Home')} style={styles.headerIconBox}>
           <Ionicons name="chevron-back" size={24} color={COLORS.primary} />
@@ -87,7 +84,6 @@ const NotificationScreen = ({ navigation }) => {
 
         <Text style={styles.headerTitle}>Notifications</Text>
 
-        {/* placeholder for alignment */}
         <View style={styles.headerIconBox} />
       </View>
 
