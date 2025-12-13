@@ -20,7 +20,7 @@ The project adopts a **mobile-first, API-driven architecture**, consisting of a 
 * Header-based authentication:
 
   ```
-  Authorization: Token <your_api_key>
+  Authorization: Token <token_string>
   ```
 * Role-based user handling (Admin / Lecturer / Student)
 
