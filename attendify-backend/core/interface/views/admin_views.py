@@ -19,7 +19,7 @@ def create_crud_views(model_class, serializer_class):
         if request.method == 'GET':
             filter_kwargs = {k: v for k, v in request.query_params.items() 
                            if k in [f.name for f in model_class._meta.fields]}
-            queryset = model_class.objects.filter(**filter_kwargs).order_by('id') 
+            queryset = model_class.objects.filter(**filter_kwargs).order_by('pk') 
 
             # Pagination Setup
             paginator = PageNumberPagination()
