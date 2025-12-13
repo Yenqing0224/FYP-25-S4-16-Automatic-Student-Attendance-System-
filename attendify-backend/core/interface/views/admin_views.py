@@ -2,6 +2,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
+from rest_framework.pagination import PageNumberPagination
 
 # Import all models
 from core.models import *
@@ -11,42 +12,120 @@ from core.interface.serializers.admin_serializers import *
 
 # Helper Function
 def create_crud_views(model_class, serializer_class):
+    
     @api_view(['GET', 'POST'])
     @permission_classes([IsAdminUser])
     def list_create(request):
         if request.method == 'GET':
-            filter_kwargs = {k: v for k, v in request.query_params.items() if k in [f.name for f in model_class._meta.fields]}
-            items = model_class.objects.filter(**filter_kwargs)
-            serializer = serializer_class(items, many=True)
-            return Response(serializer.data)
+            filter_kwargs = {k: v for k, v in request.query_params.items() 
+                           if k in [f.name for f in model_class._meta.fields]}
+            queryset = model_class.objects.filter(**filter_kwargs).order_by('id') 
+
+            # Pagination Setup
+            paginator = PageNumberPagination()
+            paginator.page_size = 12  # Default 10 items per page
+            paginator.page_size_query_param = 'page_size' # Allow client to override ?page_size=20
+            
+            page = paginator.paginate_queryset(queryset, request)
+            
+            if page is not None:
+                serializer = serializer_class(page, many=True)
+                
+                # Construct the Custom "Data" Object with Pagination Info
+                response_data = {
+                    "pagination": {
+                        "total_items": paginator.page.paginator.count,
+                        "total_pages": paginator.page.paginator.num_pages,
+                        "current_page": paginator.page.number,
+                        "page_size": paginator.page_size,
+                        "has_next": paginator.page.has_next(),
+                        "has_previous": paginator.page.has_previous(),
+                    },
+                    "results": serializer.data
+                }
+                
+                return Response({
+                    "status": "success",
+                    "code": 200,
+                    "message": f"{model_class.__name__} list retrieved successfully",
+                    "data": response_data
+                })
+
+            serializer = serializer_class(queryset, many=True)
+            return Response({
+                "status": "success",
+                "code": 200,
+                "message": "List retrieved",
+                "data": {"results": serializer.data}
+            })
         
         elif request.method == 'POST':
             serializer = serializer_class(data=request.data)
             if serializer.is_valid():
                 serializer.save()
-                return Response(serializer.data, status=201)
-            return Response(serializer.errors, status=400)
+                return Response({
+                    "status": "success",
+                    "code": 201,
+                    "message": f"{model_class.__name__} created successfully",
+                    "data": serializer.data
+                }, status=201)
+            
+            return Response({
+                "status": "error",
+                "code": 400,
+                "message": "Validation failed",
+                "data": serializer.errors
+            }, status=400)
 
 
     @api_view(['GET', 'PATCH', 'DELETE'])
     @permission_classes([IsAdminUser])
     def detail(request, pk):
-        item = get_object_or_404(model_class, pk=pk)
+        try:
+            item = model_class.objects.get(pk=pk)
+        except model_class.DoesNotExist:
+            return Response({
+                "status": "error",
+                "code": 404,
+                "message": f"{model_class.__name__} not found",
+                "data": None
+            }, status=404)
 
         if request.method == 'GET':
             serializer = serializer_class(item)
-            return Response(serializer.data)
+            return Response({
+                "status": "success",
+                "code": 200,
+                "message": "Retrieved successfully",
+                "data": serializer.data
+            })
 
         elif request.method == 'PATCH':
             serializer = serializer_class(item, data=request.data, partial=True)
             if serializer.is_valid():
                 serializer.save()
-                return Response(serializer.data)
-            return Response(serializer.errors, status=400)
+                return Response({
+                    "status": "success",
+                    "code": 200,
+                    "message": "Updated successfully",
+                    "data": serializer.data
+                })
+            
+            return Response({
+                "status": "error",
+                "code": 400,
+                "message": "Update failed",
+                "data": serializer.errors
+            }, status=400)
 
         elif request.method == 'DELETE':
             item.delete()
-            return Response({"message": "Item deleted successfully"}, status=204)
+            return Response({
+                "status": "success",
+                "code": 204,
+                "message": "Deleted successfully",
+                "data": None
+            }, status=200)
 
     return list_create, detail
 
