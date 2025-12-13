@@ -15,14 +15,6 @@ class AdminUserSerializer(serializers.ModelSerializer):
         password = validated_data.pop('password', None)
         instance = self.Meta.model(**validated_data)
         
-        raw_is_staff = self.initial_data.get('is_staff')
-        
-        if raw_is_staff is not None:
-            if str(raw_is_staff).lower() == 'true':
-                instance.is_staff = True
-            else:
-                instance.is_staff = False
-
         if password is not None:
             instance.set_password(password)
             
@@ -35,14 +27,6 @@ class AdminUserSerializer(serializers.ModelSerializer):
         
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
-
-        raw_is_staff = self.initial_data.get('is_staff')
-
-        if raw_is_staff is not None:
-            if str(raw_is_staff).lower() == 'true':
-                instance.is_staff = True
-            else:
-                instance.is_staff = False
 
         if password is not None:
             instance.set_password(password)
