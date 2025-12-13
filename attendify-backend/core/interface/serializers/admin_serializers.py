@@ -9,7 +9,7 @@ class AdminUserSerializer(serializers.ModelSerializer):
         fields = ['id', 'username', 'password', 'email', 
                   'first_name', 'last_name', 'phone_number', 'gender', 'personal_email', 'image_url',
                   'address_street', 'address_unit', 'address_postal', 'address_country', 
-                  'role_type', 'is_staff', 'is_active']
+                  'role_type', 'status', 'is_staff', 'is_active']
 
     def create(self, validated_data):
         password = validated_data.pop('password', None)

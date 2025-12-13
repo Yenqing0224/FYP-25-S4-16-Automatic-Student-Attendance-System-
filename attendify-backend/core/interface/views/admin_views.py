@@ -36,7 +36,7 @@ def create_crud_views(model_class, serializer_class):
                 'id', 'username', 'email', 
                 'first_name', 'last_name', 'phone_number', 'gender', 'personal_email', 'image_url',
                 'address_street', 'address_unit', 'address_postal', 'address_country', 
-                'role_type', 'is_staff', 'is_active'
+                'role_type', 'status', 'is_staff', 'is_active'
             ]
 
             # Deep Relationship
