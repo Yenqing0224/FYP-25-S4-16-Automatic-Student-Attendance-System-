@@ -26,7 +26,7 @@ class ClassSessionSerializer(serializers.ModelSerializer):
 
 
 class AttendanceRecordSerializer(serializers.ModelSerializer):
-    class_session = ClassSessionSerializer(read_only=True)
+    session = ClassSessionSerializer(read_only=True)
     student = StudentSerializer(read_only=True)
 
     class Meta:

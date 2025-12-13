@@ -14,7 +14,7 @@ class LeaveRequestSerializer(serializers.ModelSerializer):
 
 class AttendanceAppealSerializer(serializers.ModelSerializer):
     student = StudentSerializer(read_only=True)
-    class_session = ClassSessionSerializer(read_only=True)
+    session = ClassSessionSerializer(read_only=True)
     
     class Meta:
         model = AttendanceAppeal

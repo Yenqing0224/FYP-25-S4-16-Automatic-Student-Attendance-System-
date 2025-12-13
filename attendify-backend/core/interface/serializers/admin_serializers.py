@@ -6,11 +6,34 @@ from core.models import *
 class AdminUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 
+        fields = ['id', 'username', 'password', 'email', 
                   'first_name', 'last_name', 'phone_number', 'gender', 'personal_email', 'image_url',
                   'address_street', 'address_unit', 'address_postal', 'address_country', 
                   'role_type', 'is_staff', 'is_active']
 
+    def create(self, validated_data):
+        password = validated_data.pop('password', None)
+        instance = self.Meta.model(**validated_data)
+        
+        if password is not None:
+            instance.set_password(password)
+            
+        instance.save()
+        return instance
+
+    def update(self, instance, validated_data):
+
+        password = validated_data.pop('password', None)
+        
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+
+        if password is not None:
+            instance.set_password(password)
+
+        instance.save()
+        return instance
+    
 class AdminStudentSerializer(serializers.ModelSerializer):
     user_details = AdminUserSerializer(source='user', read_only=True)
     class Meta:

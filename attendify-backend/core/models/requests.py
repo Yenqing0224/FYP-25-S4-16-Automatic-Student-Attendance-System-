@@ -33,7 +33,7 @@ class AttendanceAppeal(models.Model):
 
     # Relationships
     student = models.ForeignKey('core.Student', on_delete=models.CASCADE, related_name='appeals')
-    class_session = models.ForeignKey('core.ClassSession', on_delete=models.CASCADE, related_name='appeals')
+    session = models.ForeignKey('core.ClassSession', on_delete=models.CASCADE, related_name='appeals')
 
     # Attributes
     reason = models.CharField(max_length=100)
@@ -43,5 +43,5 @@ class AttendanceAppeal(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"Appeal: {self.student.user.username} - {self.class_session.name}"
+        return f"Appeal: {self.student.user.username} - {self.session.name}"
     
