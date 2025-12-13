@@ -17,21 +17,99 @@ def create_crud_views(model_class, serializer_class):
     @permission_classes([IsAdminUser])
     def list_create(request):
         if request.method == 'GET':
-            filter_kwargs = {k: v for k, v in request.query_params.items() 
-                           if k in [f.name for f in model_class._meta.fields]}
-            queryset = model_class.objects.filter(**filter_kwargs).order_by('pk') 
+            filter_kwargs = {}
+            model_name = model_class.__name__
 
-            # Pagination Setup
+            # Path to user
+            user_path_map = {
+                'Student': 'user',
+                'Lecturer': 'user',
+                'Admin': 'user',
+                'Notification': 'recipient',
+                'LeaveRequest': 'student__user',
+                'AttendanceAppeal': 'student__user',
+                'AttendanceRecord': 'student__user',
+                'Module': 'students__user',           
+                'ClassSession': 'module__students__user', 
+            }
+            allowed_user_fields = [
+                'id', 'username', 'email', 
+                'first_name', 'last_name', 'phone_number', 'gender', 'personal_email', 'image_url',
+                'address_street', 'address_unit', 'address_postal', 'address_country', 
+                'role_type', 'is_staff', 'is_active'
+            ]
+
+            # Deep Relationship
+            relationship_map = {
+                'Module': {
+                    'semester': 'semester',
+                    'lecturer': 'lecturer',
+                    'student': 'students',
+                },
+                'ClassSession': {
+                    'semester': 'module__semester',
+                    'module': 'module',
+                    'lecturer': 'module__lecturer',
+                },
+                'AttendanceRecord': {
+                    'semester': 'session__module__semester',
+                    'module': 'session__module',
+                    'session': 'session',
+                    'student': 'student'
+                },
+                'LeaveRequest': {
+                    'student': 'student'
+                },
+                'AttendanceAppeal': {
+                    'semester': 'class_session__module__semester',
+                    'module': 'class_session__module',
+                    'session': 'class_session',
+                    'student': 'student'
+                },
+                'Notification': {
+                    'recipient': 'recipient'
+                }
+            }
+
+            # Filtering Logic
+            direct_fields = [f.name for f in model_class._meta.fields]
+
+            for key, value in request.query_params.items():
+                
+                # Direct Field (Field that inside the model)
+                if key in direct_fields:
+                    filter_kwargs[key] = value
+
+                # Use ID to filter 
+                elif model_name in relationship_map and key in relationship_map[model_name]:
+                    db_path = relationship_map[model_name][key]
+                    filter_kwargs[db_path] = value
+
+                # Allow all field (Any field on a related model)
+                elif '__' in key:
+                    prefix, suffix = key.split('__', 1) # Split 'semester__name'
+                    if model_name in relationship_map and prefix in relationship_map[model_name]:
+                        base_path = relationship_map[model_name][prefix]
+                        filter_kwargs[f"{base_path}__{suffix}"] = value
+                
+                # User Model(Field that allow in 'allowed_user_fields')
+                elif key in allowed_user_fields:
+                    if model_name in user_path_map:
+                        prefix = user_path_map[model_name]
+                        filter_kwargs[f'{prefix}__{key}'] = value
+
+            # distinct() to prevent duplicate
+            queryset = model_class.objects.filter(**filter_kwargs).distinct().order_by('pk') 
+
+            # Pagination
             paginator = PageNumberPagination()
-            paginator.page_size = 12  # Default 10 items per page
-            paginator.page_size_query_param = 'page_size' # Allow client to override ?page_size=20
+            paginator.page_size = 12 
+            paginator.page_size_query_param = 'page_size'
             
             page = paginator.paginate_queryset(queryset, request)
             
             if page is not None:
                 serializer = serializer_class(page, many=True)
-                
-                # Construct the Custom "Data" Object with Pagination Info
                 response_data = {
                     "pagination": {
                         "total_items": paginator.page.paginator.count,
@@ -43,7 +121,6 @@ def create_crud_views(model_class, serializer_class):
                     },
                     "results": serializer.data
                 }
-                
                 return Response({
                     "status": "success",
                     "code": 200,
@@ -77,7 +154,7 @@ def create_crud_views(model_class, serializer_class):
                 "data": serializer.errors
             }, status=400)
 
-
+    # --- DETAIL VIEW (GET/PATCH/DELETE) ---
     @api_view(['GET', 'PATCH', 'DELETE'])
     @permission_classes([IsAdminUser])
     def detail(request, pk):
