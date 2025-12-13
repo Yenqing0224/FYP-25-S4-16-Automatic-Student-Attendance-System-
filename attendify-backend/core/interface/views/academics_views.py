@@ -4,7 +4,7 @@ from rest_framework.permissions import IsAuthenticated
 from django.utils import timezone
 from core.models import Student, ClassSession, Semester, AttendanceRecord
 # Serializers
-from core.interface.serializers.academics_serializers import ClassSessionSerializer
+from core.interface.serializers.academics_serializers import ClassSessionSerializer, AttendanceRecordSerializer
 
 
 @api_view(['GET'])
@@ -94,4 +94,29 @@ def get_class_details(request, session_id):
         return Response({"error": "Class session not found"}, status=404)
     except Exception as e:
         print(f"Class Details Error: {e}")
+        return Response({"error": str(e)}, status=500)
+    
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_attendance_history(request):
+    try:
+        student = Student.objects.get(user=request.user)
+
+        records = AttendanceRecord.objects.filter(
+            student=student
+        ).select_related(
+            'session', 
+            'session__module',
+            'session__module__semester' 
+        ).order_by('-session__date_time')
+
+        serializer = AttendanceRecordSerializer(records, many=True)
+
+        return Response(serializer.data)
+
+    except Student.DoesNotExist:
+        return Response({"error": "This user is not a Student"}, status=403)
+    except Exception as e:
+        print(f"Attendance History Error: {e}")
         return Response({"error": str(e)}, status=500)
