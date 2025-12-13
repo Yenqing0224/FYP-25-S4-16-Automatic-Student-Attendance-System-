@@ -13,6 +13,10 @@ class AdminUserSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         password = validated_data.pop('password', None)
+
+        if 'is_staff' not in validated_data and 'is_staff' in self.initial_data:
+            validated_data['is_staff'] = self.initial_data['is_staff']
+
         instance = self.Meta.model(**validated_data)
         
         if password is not None:
@@ -25,6 +29,9 @@ class AdminUserSerializer(serializers.ModelSerializer):
 
         password = validated_data.pop('password', None)
         
+        if 'is_staff' not in validated_data and 'is_staff' in self.initial_data:
+            instance.is_staff = self.initial_data['is_staff']
+
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
 
