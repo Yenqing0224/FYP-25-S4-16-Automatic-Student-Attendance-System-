@@ -61,9 +61,9 @@ def create_crud_views(model_class, serializer_class):
                     'student': 'student'
                 },
                 'AttendanceAppeal': {
-                    'semester': 'class_session__module__semester',
-                    'module': 'class_session__module',
-                    'session': 'class_session',
+                    'semester': 'session__module__semester',
+                    'module': 'session__module',
+                    'session': 'session',
                     'student': 'student'
                 },
                 'Notification': {
