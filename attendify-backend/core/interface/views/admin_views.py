@@ -103,7 +103,7 @@ def create_crud_views(model_class, serializer_class):
 
             # Pagination
             paginator = PageNumberPagination()
-            paginator.page_size = 12 
+            paginator.page_size = 10
             paginator.page_size_query_param = 'page_size'
             
             page = paginator.paginate_queryset(queryset, request)
