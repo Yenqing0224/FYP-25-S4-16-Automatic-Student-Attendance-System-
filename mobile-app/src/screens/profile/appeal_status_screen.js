@@ -201,15 +201,15 @@ const AppealStatusScreen = ({ navigation }) => {
                     <Text style={styles.label}>
                       Module:{" "}
                       <Text style={styles.value}>
-                        {item.class_session?.module?.code} -{" "}
-                        {item.class_session?.module?.name}
+                        {item.session?.module?.code} -{" "}
+                        {item.session?.module?.name}
                       </Text>
                     </Text>
 
                     <Text style={styles.label}>
                       Class Date:{" "}
                       <Text style={styles.value}>
-                        {formatDate(item.class_session?.date_time)}
+                        {formatDate(item.session?.date_time)}
                       </Text>
                     </Text>
 

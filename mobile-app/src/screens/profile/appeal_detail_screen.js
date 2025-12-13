@@ -123,8 +123,8 @@ const AppealDetailScreen = ({ navigation, route }) => {
           <View style={styles.item}>
             <Text style={styles.label}>Module</Text>
             <Text style={styles.value}>
-              {appeal.class_session?.module
-                ? `${appeal.class_session.module.code} - ${appeal.class_session.module.name}`
+              {appeal.session?.module
+                ? `${appeal.session.module.code} - ${appeal.session.module.name}`
                 : "Unknown Module"}
             </Text>
           </View>
@@ -133,8 +133,8 @@ const AppealDetailScreen = ({ navigation, route }) => {
           <View style={styles.item}>
             <Text style={styles.label}>Class Date</Text>
             <Text style={styles.value}>
-              {appeal.class_session?.date_time
-                ? formatDate(appeal.class_session.date_time)
+              {appeal.session?.date_time
+                ? formatDate(appeal.session.date_time)
                 : "N.A."}
             </Text>
           </View>
