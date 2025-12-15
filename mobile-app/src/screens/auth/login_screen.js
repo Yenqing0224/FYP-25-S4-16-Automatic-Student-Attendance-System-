@@ -47,6 +47,7 @@ const LoginScreen = ({ navigation }) => {
       console.log("✅ Login Successful!");
       console.log("🔑 Token received:", token);
       console.log("👤 User:", user.username);
+      console.log("👤 User:", user.role_type);
       console.log("------------------------------------------");
 
       // 2. SAVE BOTH to Async Storage
