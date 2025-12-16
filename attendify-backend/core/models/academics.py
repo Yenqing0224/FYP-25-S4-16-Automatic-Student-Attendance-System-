@@ -55,10 +55,9 @@ class ClassSession(models.Model):
     # Attributes
     type = models.CharField(max_length=20, choices=TYPE_CHOICES)
     name = models.CharField(max_length=100) 
-    date_time = models.DateTimeField()
-    date = models.DateField(default=timezone.now) 
-    start_time = models.TimeField(default=timezone.now)
-    end_time = models.TimeField(default=timezone.now)
+    date = models.DateField() 
+    start_time = models.TimeField()
+    end_time = models.TimeField()
     venue = models.CharField(max_length=50)
     status = models.CharField(max_length=20, choices=SESSION_STATUS, default='upcoming')
 
