@@ -2,20 +2,29 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 # Import Serializers
-from core.interface.serializers.users_serializers import StudentSerializer
-from core.models import User, Student
+from core.interface.serializers.users_serializers import StudentSerializer, LecturerSerializer
+from core.models import Student, Lecturer
 
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
-def get_student_profile(request):
+def get_profile(request):
     try:
-        student = Student.objects.get(user=request.user)
+        user = request.user
         
-        return Response(StudentSerializer(student).data)
+        if user.role_type == 'student':
+            profile = Student.objects.get(user=user)
+            return Response(StudentSerializer(profile).data)
+            
+        elif user.role_type == 'lecturer':
+            profile = Lecturer.objects.get(user=user)
+            return Response(LecturerSerializer(profile).data)
 
-    except Student.DoesNotExist:
-        return Response({"error": "Student profile not found"}, status=404)
+        else:
+            return Response({"error": "Profile details not found in database"}, status=404)
+
+    except (Student.DoesNotExist, Lecturer.DoesNotExist):
+        return Response({"error": "Profile details not found in database"}, status=404)
     except Exception as e:
         return Response({"error": str(e)}, status=500)
     
