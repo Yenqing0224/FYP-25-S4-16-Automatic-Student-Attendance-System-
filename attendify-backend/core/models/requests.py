@@ -9,6 +9,7 @@ class LeaveRequest(models.Model):
 
     # Relationships
     student = models.ForeignKey('core.Student', on_delete=models.CASCADE, related_name='leave_requests')
+    user = models.ForeignKey('core.User', on_delete=models.CASCADE, related_name='leave_requests')
 
     # Attributes
     start_date = models.DateField()
