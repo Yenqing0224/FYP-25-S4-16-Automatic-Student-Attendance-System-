@@ -59,9 +59,9 @@ export default function LecturerProfileScreen({ navigation }) {
   }, []);
 
   const handleLogout = async () => {
-    await AsyncStorage.multiRemove(["userToken", "userInfo", "userRole"]);
+    await AsyncStorage.multiRemove(["userToken", "userInfo"]);
     Alert.alert("Logged out", "You have been logged out.");
-    navigation.reset({ index: 0, routes: [{ name: "RoleSelect" }] });
+    navigation.reset({ index: 0, routes: [{ name: "Login" }] });
   };
 
   const goChangePassword = () => {

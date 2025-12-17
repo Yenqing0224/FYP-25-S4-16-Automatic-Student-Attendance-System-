@@ -18,12 +18,13 @@ export default function SplashScreen({ navigation }) {
     const goNext = async () => {
       try {
         const token = await AsyncStorage.getItem("userToken");
-        const role = await AsyncStorage.getItem("userRole"); // "student" | "lecturer"
-
+        const userString = await AsyncStorage.getItem("userInfo"); // "student" | "lecturer"
+        const user = userString ? JSON.parse(userString) : null;
+        
         timer = setTimeout(() => {
-          if (token && role === "lecturer") {
+          if (token && user && user.role_type === 'lecturer') {
             navigation.reset({ index: 0, routes: [{ name: "LecturerTabs" }] });
-          } else if (token && role === "student") {
+          } else if (token && user && user.role_type === 'student') {
             navigation.reset({ index: 0, routes: [{ name: "StudentTabs" }] });
           } else {
             // not logged in OR role missing

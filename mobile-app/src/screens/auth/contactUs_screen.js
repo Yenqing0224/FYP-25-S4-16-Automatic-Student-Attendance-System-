@@ -21,7 +21,7 @@ const ContactUsScreen = ({ navigation }) => {
                     onPress={() => {
                         navigation.reset({
                             index: 0,
-                            routes: [{ name: "RoleSelect" }],
+                            routes: [{ name: "Login" }],
                         });
                     }}
                 >

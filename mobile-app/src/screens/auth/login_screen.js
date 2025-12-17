@@ -18,10 +18,11 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const LoginScreen = ({ navigation }) => {
-  const [username, setUsername] = useState('alice');
+  const [username, setUsername] = useState('alice'); // Default for testing
   const [password, setPassword] = useState('attendify');
   const [loading, setLoading] = useState(false);
 
+  // Ensure this URL is correct and reachable
   const API_URL = 'https://attendify-ekg6.onrender.com/api/login/';
 
   const handleLogin = async () => {
@@ -42,20 +43,27 @@ const LoginScreen = ({ navigation }) => {
       // 1. Destructure Token and User from response
       const { token, user } = response.data;
 
-      // 🔍 CONSOLE LOG: Check if token exists
+      // 🔍 CONSOLE LOG: Check data
       console.log("------------------------------------------");
       console.log("✅ Login Successful!");
       console.log("🔑 Token received:", token);
       console.log("👤 User:", user.username);
+      console.log("👤 User:", user.role_type);
       console.log("------------------------------------------");
 
       // 2. SAVE BOTH to Async Storage
-      await AsyncStorage.setItem('userToken', token); // Save the Key Card
-      await AsyncStorage.setItem('userInfo', JSON.stringify(user)); // Save User Data
+      await AsyncStorage.setItem('userToken', token);
+      await AsyncStorage.setItem('userInfo', JSON.stringify(user));
 
-      // 3. Navigate
-      navigation.reset({ index: 0, routes: [{ name: "StudentTabs" }] });
-
+      // 3. NAVIGATE BASED ON ROLE
+      if (user.role_type === 'lecturer') {
+        // Navigate to the Lecturer's main Tab Navigator
+        // Make sure "LecturerTabs" is defined in your Root Navigator (App.js)
+        navigation.reset({ index: 0, routes: [{ name: "LecturerTabs" }] });
+      } else {
+        // Default to Student
+        navigation.reset({ index: 0, routes: [{ name: "StudentTabs" }] });
+      }
 
     } catch (error) {
       console.error("Login Error:", error);
@@ -156,7 +164,6 @@ const LoginScreen = ({ navigation }) => {
       </TouchableWithoutFeedback>
     </SafeAreaView>
   );
-
 };
 
 export default LoginScreen;
@@ -164,7 +171,7 @@ export default LoginScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F3F4F6', // soft grey background
+    backgroundColor: '#F3F4F6',
   },
   innerContainer: {
     flex: 1,
@@ -173,8 +180,6 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     justifyContent: 'space-between',
   },
-
-  // -------- Brand section --------
   brandSection: {
     alignItems: 'center',
     marginTop: 10,
@@ -210,8 +215,6 @@ const styles = StyleSheet.create({
     marginTop: 4,
     textAlign: 'center',
   },
-
-  // -------- Card section --------
   card: {
     backgroundColor: '#FFFFFF',
     borderRadius: 18,
@@ -234,7 +237,6 @@ const styles = StyleSheet.create({
     marginTop: 4,
     marginBottom: 18,
   },
-
   inputGroup: {
     marginBottom: 16,
   },
@@ -254,7 +256,6 @@ const styles = StyleSheet.create({
     color: '#111827',
     backgroundColor: '#F9FAFB',
   },
-
   forgotLink: {
     alignSelf: 'flex-end',
     marginTop: 2,
@@ -265,7 +266,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '500',
   },
-
   loginButton: {
     backgroundColor: '#111827',
     height: 50,
@@ -281,8 +281,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
   },
-
-  // -------- Bottom helper --------
   bottomSection: {
     marginBottom: 20,
   },

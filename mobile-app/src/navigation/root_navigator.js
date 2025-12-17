@@ -9,7 +9,6 @@ import ForgotPasswordScreen from "../screens/auth/forgotPassword_screen";
 import ResetPasswordScreen from "../screens/auth/resetPassword_screen";
 import ContactUsScreen from "../screens/auth/contactUs_screen";
 
-import RoleSelectScreen from "./role_select_screen";
 import LecturerLoginScreen from "../screens/auth/lecturer_login_screen";
 import TabNavigator from "../student/navigation/tab_navigator";
 
