@@ -9,7 +9,6 @@ import ForgotPasswordScreen from "../screens/auth/forgotPassword_screen";
 import ResetPasswordScreen from "../screens/auth/resetPassword_screen";
 import ContactUsScreen from "../screens/auth/contactUs_screen";
 
-import LecturerLoginScreen from "../screens/auth/lecturer_login_screen";
 import TabNavigator from "../student/navigation/tab_navigator";
 
 import LecturerTabNavigator from "../lecturer/navigation/lecturerTab_navigator";
@@ -24,14 +23,11 @@ export default function RootNavigator() {
       <Stack.Screen name="Splash" component={SplashScreen} />
       <Stack.Screen name="Welcome" component={WelcomeScreen} />
 
-      {/* Student auth */}
+      {/* Auth */}
       <Stack.Screen name="Login" component={LoginScreen} />
       <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
       <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
       <Stack.Screen name="ContactUs" component={ContactUsScreen} />
-
-      {/* Lecturer auth */}
-      <Stack.Screen name="LecturerLogin" component={LecturerLoginScreen} />
 
       {/* Apps */}
       <Stack.Screen name="StudentTabs" component={TabNavigator} />
