@@ -2,7 +2,9 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.utils import timezone
-from core.models import Student, ClassSession, Semester, AttendanceRecord
+from django.db.models import Q
+from datetime import timedelta
+from core.models import Student, ClassSession, Semester, AttendanceRecord, Lecturer
 # Serializers
 from core.interface.serializers.academics_serializers import ClassSessionSerializer, AttendanceRecordSerializer
 
@@ -11,39 +13,70 @@ from core.interface.serializers.academics_serializers import ClassSessionSeriali
 @permission_classes([IsAuthenticated])
 def get_dashboard(request):
     try:
-        student = Student.objects.get(user=request.user)
-
+        user = request.user
         today = timezone.now()
-        current_semester = Semester.objects.filter(start_date__lte=today, end_date__gte=today).first()
-        
-        semester_range = "No Active Semester"
-        if current_semester:
-            s_start = current_semester.start_date.strftime("%b %Y")
-            s_end = current_semester.end_date.strftime("%b %Y")
-            semester_range = f"{s_start} - {s_end}"
+        today_date = today.date()
 
-        today_start = today.replace(hour=0, minute=0, second=0)
-        today_end = today.replace(hour=23, minute=59, second=59)
+        if user.role_type == 'student':
+            profile = Student.objects.get(user=user)
+            
+            current_semester = Semester.objects.filter(start_date__lte=today, end_date__gte=today).first()
+            semester_range = "No Active Semester"
+            if current_semester:
+                s_start = current_semester.start_date.strftime("%b %Y")
+                s_end = current_semester.end_date.strftime("%b %Y")
+                semester_range = f"{s_start} - {s_end}"
 
-        todays_sessions = ClassSession.objects.filter(
-            module__students=student,
-            date_time__range=(today_start, today_end)
-        ).order_by('date_time')
+            todays_sessions = ClassSession.objects.filter(
+                module__students=profile,
+                date=today_date
+            ).order_by('start_time')
+            
+            upcoming_sessions = ClassSession.objects.filter(
+                module__students=profile,
+                date__gt=today_date
+            ).order_by('date', 'start_time')[:5]
 
-        upcoming_sessions = ClassSession.objects.filter(
-            module__students=student,
-            date_time__gt=today_end
-        ).order_by('date_time')[:5]
+            return Response({
+                "attendance_rate": profile.attendance_rate,
+                "semester_range": semester_range,
+                "today_classes": ClassSessionSerializer(todays_sessions, many=True).data,
+                "upcoming_classes": ClassSessionSerializer(upcoming_sessions, many=True).data
+            })
 
-        return Response({
-            "attendance_rate": student.attendance_rate,
-            "semester_range": semester_range,
-            "today_classes": ClassSessionSerializer(todays_sessions, many=True).data,
-            "upcoming_classes": ClassSessionSerializer(upcoming_sessions, many=True).data
-        })
+        elif user.role_type == 'lecturer':
+            profile = Lecturer.objects.get(user=user)
+            
+            today_count = ClassSession.objects.filter(
+                module__lecturer=profile, 
+                date=today_date
+            ).count()
 
-    except Student.DoesNotExist:
-        return Response({"error": "This user is not a Student"}, status=403)
+            start_week = today_date - timedelta(days=today_date.weekday())
+            end_week = start_week + timedelta(days=6)
+            
+            week_count = ClassSession.objects.filter(
+                module__lecturer=profile,
+                date__range=[start_week, end_week]
+            ).count()
+
+            next_class = ClassSession.objects.filter(
+                module__lecturer=profile
+            ).filter(
+                Q(date__gt=today_date) | Q(date=today_date, start_time__gte=today.time())
+            ).order_by('date', 'start_time').first()
+
+            return Response({
+                "stats": {
+                    "today": today_count,
+                    "week": week_count
+                },
+                "next_class": ClassSessionSerializer(next_class).data if next_class else None,
+            })
+
+        else:
+            return Response({"error": "Role not supported"}, status=403)
+
     except Exception as e:
         print(f"Dashboard Error: {e}")
         return Response({"error": str(e)}, status=500)
@@ -53,16 +86,23 @@ def get_dashboard(request):
 @permission_classes([IsAuthenticated])
 def get_timetable(request):
     try:
-        student = Student.objects.get(user=request.user)
+        user = request.user
 
-        sessions = ClassSession.objects.filter(
-            module__students=student
-        ).order_by('date_time')
+        if user.role_type == 'student':
+            profile = Student.objects.get(user=user)
+            filter_kwargs = {'module__students': profile}
+        elif user.role_type == 'lecturer':
+            profile = Lecturer.objects.get(user=user)
+            filter_kwargs = {'module__lecturer': profile}
+        else:
+            return Response({"error": "Timetable not available for this role"}, status=403)
+
+        sessions = ClassSession.objects.filter(**filter_kwargs).order_by('date', 'start_time')
 
         return Response(ClassSessionSerializer(sessions, many=True).data)
 
-    except Student.DoesNotExist:
-        return Response({"error": "This user is not a Student"}, status=403)
+    except (Student.DoesNotExist, Lecturer.DoesNotExist):
+        return Response({"error": "Profile not found"}, status=404)
     except Exception as e:
         print(f"Timetable Error: {e}")
         return Response({"error": str(e)}, status=500)
