@@ -1,5 +1,5 @@
-// mobile-app/screens/auth/login_screen.js
-import React, { useState } from 'react';
+// src/screens/auth/lecturer_login_screen.js
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -11,21 +11,20 @@ import {
   TouchableWithoutFeedback,
   Keyboard,
   Alert,
-  ActivityIndicator
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import axios from 'axios';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+  ActivityIndicator,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import axios from "axios";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const LoginScreen = ({ navigation }) => {
-  const [username, setUsername] = useState('alice');
-  const [password, setPassword] = useState('attendify');
+const LecturerLoginScreen = ({ navigation }) => {
+  const [username, setUsername] = useState(""); // change if you want default
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const API_URL = 'https://attendify-ekg6.onrender.com/api/login/';
+  const API_URL = "https://attendify-ekg6.onrender.com/api/login/";
 
   const handleLogin = async () => {
-    // Basic validation
     if (!username || !password) {
       Alert.alert("Error", "Please enter both username and password.");
       return;
@@ -36,30 +35,33 @@ const LoginScreen = ({ navigation }) => {
     try {
       const response = await axios.post(API_URL, {
         username: username,
-        password: password
+        password: password,
       });
 
-      // 1. Destructure Token and User from response
       const { token, user } = response.data;
 
-      // 🔍 CONSOLE LOG: Check if token exists
       console.log("------------------------------------------");
-      console.log("✅ Login Successful!");
+      console.log("✅ Lecturer Login Successful!");
       console.log("🔑 Token received:", token);
-      console.log("👤 User:", user.username);
+      console.log("👤 User:", user?.username);
       console.log("------------------------------------------");
 
-      // 2. SAVE BOTH to Async Storage
-      await AsyncStorage.setItem('userToken', token); // Save the Key Card
-      await AsyncStorage.setItem('userInfo', JSON.stringify(user)); // Save User Data
+      // save auth
+      await AsyncStorage.setItem("userToken", token);
+      await AsyncStorage.setItem("userInfo", JSON.stringify(user));
 
-      // 3. Navigate
-      navigation.reset({ index: 0, routes: [{ name: "StudentTabs" }] });
+      // ✅ recommended: save role so Splash can auto-route later
+      await AsyncStorage.setItem("userRole", "lecturer");
 
-
+      // ✅ go lecturer UI
+      navigation.reset({
+        index: 0,
+        routes: [{ name: "LecturerTabs" }],
+      });
     } catch (error) {
-      console.error("Login Error:", error);
-      const errorMessage = error.response?.data?.error || "Unable to log in. Please check your network.";
+      console.error("Lecturer Login Error:", error);
+      const errorMessage =
+        error.response?.data?.error || "Unable to log in. Please check your network.";
       Alert.alert("Login Failed", errorMessage);
     } finally {
       setLoading(false);
@@ -70,7 +72,7 @@ const LoginScreen = ({ navigation }) => {
     <SafeAreaView style={styles.container}>
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
           style={styles.innerContainer}
         >
           {/* Top branding section */}
@@ -80,15 +82,15 @@ const LoginScreen = ({ navigation }) => {
             </View>
             <Text style={styles.appName}>Attendify</Text>
             <Text style={styles.appSubtitle}>
-              Smart student attendance companion
+              Lecturer attendance dashboard
             </Text>
           </View>
 
           {/* Card with form */}
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>Log In</Text>
+            <Text style={styles.cardTitle}>Lecturer Log In</Text>
             <Text style={styles.cardSubtitle}>
-              Enter your credentials to continue
+              Enter your lecturer credentials
             </Text>
 
             {/* USERNAME */}
@@ -117,6 +119,7 @@ const LoginScreen = ({ navigation }) => {
               />
             </View>
 
+            {/* optional: reuse forgot password */}
             <TouchableOpacity
               style={styles.forgotLink}
               onPress={() => navigation.navigate("ForgotPassword")}
@@ -126,10 +129,7 @@ const LoginScreen = ({ navigation }) => {
 
             {/* LOGIN BUTTON */}
             <TouchableOpacity
-              style={[
-                styles.loginButton,
-                loading && styles.loginButtonDisabled
-              ]}
+              style={[styles.loginButton, loading && styles.loginButtonDisabled]}
               onPress={handleLogin}
               disabled={loading}
             >
@@ -142,160 +142,95 @@ const LoginScreen = ({ navigation }) => {
           </View>
 
           {/* Bottom helper */}
-          <TouchableOpacity
-            style={styles.contactContainer}
-            onPress={() => navigation.navigate("ContactUs")}
-          >
+          <TouchableOpacity style={styles.contactContainer}>
             <Text style={styles.contactText}>
               Unable to login?{" "}
               <Text style={styles.contactHighlight}>Contact Us</Text>
             </Text>
           </TouchableOpacity>
-
         </KeyboardAvoidingView>
       </TouchableWithoutFeedback>
     </SafeAreaView>
   );
-
 };
 
-export default LoginScreen;
+export default LecturerLoginScreen;
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F3F4F6', // soft grey background
-  },
+  container: { flex: 1, backgroundColor: "#F3F4F6" },
   innerContainer: {
     flex: 1,
     paddingHorizontal: 24,
     paddingTop: 20,
     paddingBottom: 16,
-    justifyContent: 'space-between',
+    justifyContent: "space-between",
   },
 
-  // -------- Brand section --------
-  brandSection: {
-    alignItems: 'center',
-    marginTop: 10,
-    marginBottom: 10,
-  },
+  brandSection: { alignItems: "center", marginTop: 10, marginBottom: 10 },
   logoCircle: {
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: '#0078D7',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "#0078D7",
+    justifyContent: "center",
+    alignItems: "center",
     marginBottom: 12,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOpacity: 0.15,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 4 },
     elevation: 4,
   },
-  logoText: {
-    color: '#fff',
-    fontSize: 28,
-    fontWeight: '800',
-  },
-  appName: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: '#111827',
-  },
+  logoText: { color: "#fff", fontSize: 28, fontWeight: "800" },
+  appName: { fontSize: 22, fontWeight: "800", color: "#111827" },
   appSubtitle: {
     fontSize: 13,
-    color: '#6B7280',
+    color: "#6B7280",
     marginTop: 4,
-    textAlign: 'center',
+    textAlign: "center",
   },
 
-  // -------- Card section --------
   card: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
     borderRadius: 18,
     paddingHorizontal: 20,
     paddingVertical: 24,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOpacity: 0.12,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 6 },
     elevation: 5,
   },
-  cardTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  cardSubtitle: {
-    fontSize: 13,
-    color: '#6B7280',
-    marginTop: 4,
-    marginBottom: 18,
-  },
+  cardTitle: { fontSize: 20, fontWeight: "700", color: "#111827" },
+  cardSubtitle: { fontSize: 13, color: "#6B7280", marginTop: 4, marginBottom: 18 },
 
-  inputGroup: {
-    marginBottom: 16,
-  },
-  label: {
-    fontSize: 13,
-    color: '#374151',
-    marginBottom: 6,
-    fontWeight: '500',
-  },
+  inputGroup: { marginBottom: 16 },
+  label: { fontSize: 13, color: "#374151", marginBottom: 6, fontWeight: "500" },
   input: {
     height: 46,
     borderWidth: 1,
-    borderColor: '#D1D5DB',
+    borderColor: "#D1D5DB",
     borderRadius: 10,
     paddingHorizontal: 14,
     fontSize: 15,
-    color: '#111827',
-    backgroundColor: '#F9FAFB',
+    color: "#111827",
+    backgroundColor: "#F9FAFB",
   },
 
-  forgotLink: {
-    alignSelf: 'flex-end',
-    marginTop: 2,
-    marginBottom: 20,
-  },
-  forgotText: {
-    color: '#0078D7',
-    fontSize: 13,
-    fontWeight: '500',
-  },
+  forgotLink: { alignSelf: "flex-end", marginTop: 2, marginBottom: 20 },
+  forgotText: { color: "#0078D7", fontSize: 13, fontWeight: "500" },
 
   loginButton: {
-    backgroundColor: '#111827',
+    backgroundColor: "#111827",
     height: 50,
     borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
-  loginButtonDisabled: {
-    opacity: 0.6,
-  },
-  loginButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
-  },
+  loginButtonDisabled: { opacity: 0.6 },
+  loginButtonText: { color: "#FFFFFF", fontSize: 16, fontWeight: "700" },
 
-  // -------- Bottom helper --------
-  bottomSection: {
-    marginBottom: 20,
-  },
-  contactContainer: {
-    alignItems: 'center',
-    marginTop: 12,
-  },
-  contactText: {
-    fontSize: 13,
-    color: '#4B5563',
-  },
-  contactHighlight: {
-    textDecorationLine: 'underline',
-    fontWeight: '600',
-  },
+  contactContainer: { alignItems: "center", marginTop: 12 },
+  contactText: { fontSize: 13, color: "#4B5563" },
+  contactHighlight: { textDecorationLine: "underline", fontWeight: "600" },
 });

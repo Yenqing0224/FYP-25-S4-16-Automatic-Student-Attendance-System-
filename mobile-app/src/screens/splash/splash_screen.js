@@ -1,50 +1,58 @@
 import React, { useEffect, useRef } from "react";
-import { View, Text, Image, StyleSheet, Animated } from "react-native";
+import { View, StyleSheet, Animated } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function SplashScreen({ navigation }) {
-  
-  const fadeAnim = useRef(new Animated.Value(0)).current;   // for fade-in
-  const scaleAnim = useRef(new Animated.Value(0.85)).current; // slight zoom-in
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(0.85)).current;
 
   useEffect(() => {
-    // Run animation
+    // animation
     Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 800,
-        useNativeDriver: true,
-      }),
-      Animated.timing(scaleAnim, {
-        toValue: 1,
-        duration: 800,
-        useNativeDriver: true,
-      })
+      Animated.timing(fadeAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
+      Animated.timing(scaleAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
     ]).start();
 
-    // Navigate after delay
-    const timer = setTimeout(() => {
-      navigation.replace("Login");
-    }, 3000);
+    let timer;
 
-    return () => clearTimeout(timer);
-  }, []);
+    const goNext = async () => {
+      try {
+        const token = await AsyncStorage.getItem("userToken");
+        const role = await AsyncStorage.getItem("userRole"); // "student" | "lecturer"
+
+        timer = setTimeout(() => {
+          if (token && role === "lecturer") {
+            navigation.reset({ index: 0, routes: [{ name: "LecturerTabs" }] });
+          } else if (token && role === "student") {
+            navigation.reset({ index: 0, routes: [{ name: "StudentTabs" }] });
+          } else {
+            // not logged in OR role missing
+            navigation.reset({ index: 0, routes: [{ name: "Login" }] });
+          }
+        }, 1500);
+      } catch (e) {
+        console.log("Splash storage check failed:", e);
+        navigation.reset({ index: 0, routes: [{ name: "Login" }] });
+      }
+    };
+
+    goNext();
+
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [navigation, fadeAnim, scaleAnim]);
 
   return (
     <View style={styles.container}>
-      <Animated.Image 
+      <Animated.Image
         source={require("../../../assets/attendify.png")}
         style={[
           styles.logo,
-          { opacity: fadeAnim, transform: [{ scale: scaleAnim }] }
+          { opacity: fadeAnim, transform: [{ scale: scaleAnim }] },
         ]}
       />
-
-      <Animated.Text 
-        style={[
-          styles.text,
-          { opacity: fadeAnim }
-        ]}
-      >
+      <Animated.Text style={[styles.text, { opacity: fadeAnim }]}>
         Attendify
       </Animated.Text>
     </View>
@@ -58,15 +66,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  logo: {
-    width: 220,
-    height: 220,
-    marginBottom: 10,
-  },
-  text: {
-    fontSize: 26,
-    fontWeight: "700",
-    color: "#3A7AFE",
-    letterSpacing: 1.2,
-  },
+  logo: { width: 220, height: 220, marginBottom: 10 },
+  text: { fontSize: 26, fontWeight: "700", color: "#3A7AFE", letterSpacing: 1.2 },
 });
