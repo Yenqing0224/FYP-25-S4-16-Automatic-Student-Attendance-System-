@@ -2,7 +2,7 @@
 
 Attendify is a **Final Year Project (FYP)** that delivers a modern, secure, and scalable **automatic school attendance system** using **facial recognition**. The system is designed to eliminate manual attendance taking, reduce proxy attendance, and provide administrators with centralized control over academic and attendance data.
 
-The project adopts a **mobile-first, API-driven architecture**, consisting of a **React Native mobile application** for students and a **Django REST backend** for administration and system logic.
+The project adopts a **mobile-first, API-driven architecture**, consisting of a **React Native mobile application** for students, a **Django REST backend** for administration and system logic, and a **web-based admin panel** for management.
 
 ---
 
@@ -43,6 +43,7 @@ The project adopts a **mobile-first, API-driven architecture**, consisting of a 
 ```
 root-repo/
 ├── mobile-app/            # React Native (Expo) mobile application
+├── web-app/               # Web admin panel (Vite / React)
 ├── attendify-backend/     # Django + DRF backend API
 └── README.md              # Project documentation
 ```
@@ -53,27 +54,33 @@ root-repo/
 
 Attendify follows a **strict client–server architecture**:
 
-* The **mobile application** communicates exclusively with backend APIs
+* The **mobile application** and **web application** communicate exclusively with backend APIs
 * The **backend** handles authentication, facial recognition logic, business rules, and database operations
 * The **database is never accessed directly by the frontend**
 
 ```
-[ React Native Mobile App ]
-            │
-            │  HTTP / JSON (Axios)
-            ▼
-[ Django REST API ] ────► [ PostgreSQL Database ]
+[ React Native App ]      [ Web Admin Panel ]
+          │                         │
+          └──────── HTTP / JSON ────┘
+                     │
+                     ▼
+            [ Django REST API ] ───► [ PostgreSQL ]
 ```
 
 ---
 
 ## 🛠️ Tech Stack
 
-### Frontend
+### Frontend (Mobile)
 
 ![React Native](https://img.shields.io/badge/React%20Native-20232A?style=for-the-badge\&logo=react\&logoColor=61DAFB)
 ![Expo](https://img.shields.io/badge/Expo-000020?style=for-the-badge\&logo=expo\&logoColor=white)
 ![Axios](https://img.shields.io/badge/Axios-5A29E4?style=for-the-badge)
+
+### Frontend (Web Admin)
+
+![React](https://img.shields.io/badge/React-20232A?style=for-the-badge\&logo=react\&logoColor=61DAFB)
+![Vite](https://img.shields.io/badge/Vite-646CFF?style=for-the-badge\&logo=vite\&logoColor=white)
 
 ### Backend
 
@@ -225,6 +232,17 @@ Run on:
 * Android Emulator
 * iOS Simulator
 * Physical device via Expo
+
+---
+
+### Web App Setup (`web-app`)
+
+```bash
+cd web-app
+npm install --registry=https://registry.npmmirror.com
+npm run dev
+```
+
 
 ---
 
