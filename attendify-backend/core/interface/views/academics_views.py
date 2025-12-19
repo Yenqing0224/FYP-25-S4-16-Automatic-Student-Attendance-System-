@@ -1,12 +1,15 @@
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework import status
 from django.utils import timezone
 from django.db.models import Q
 from datetime import timedelta
 from core.models import Student, ClassSession, Semester, AttendanceRecord, Lecturer
+from pgvector.django import L2Distance
 # Serializers
 from core.interface.serializers.academics_serializers import ClassSessionSerializer, AttendanceRecordSerializer
+from core.interface.serializers.users_serializers import FaceEmbeddingSerializer
 
 
 @api_view(['GET'])
@@ -159,4 +162,31 @@ def get_attendance_history(request):
         return Response({"error": "This user is not a Student"}, status=403)
     except Exception as e:
         print(f"Attendance History Error: {e}")
+        return Response({"error": str(e)}, status=500)
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny]) 
+def recognize_face(request):
+    try:
+        # 1. Still validate that we received a real vector (good for testing)
+        serializer = FaceEmbeddingSerializer(data=request.data)
+        
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        received_embedding = serializer.validated_data['embedding']
+        
+        print(f"DEBUG: Received vector starting with: {received_embedding[:5]}...")
+
+        return Response({
+            "status": "success",
+            "student_id": 999,
+            "student_name": "Test Student (Hardcoded)",
+            "distance": 0.0,
+            "message": "This is a hardcoded response for testing."
+        }, status=status.HTTP_200_OK)
+
+    except Exception as e:
+        print(f"Recognition Error: {e}")
         return Response({"error": str(e)}, status=500)

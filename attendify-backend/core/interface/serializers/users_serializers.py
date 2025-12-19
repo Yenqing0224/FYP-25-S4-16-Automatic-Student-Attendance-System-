@@ -33,3 +33,11 @@ class StudentSerializer(serializers.ModelSerializer):
         model = Student
         fields = '__all__'
 
+
+class FaceEmbeddingSerializer(serializers.Serializer):
+    embedding = serializers.ListField(
+        child=serializers.FloatField(),
+        min_length=128,
+        max_length=4096
+    )
+    timestamp = serializers.DateTimeField(required=False)
