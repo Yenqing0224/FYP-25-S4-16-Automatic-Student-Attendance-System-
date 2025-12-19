@@ -34,10 +34,11 @@ class StudentSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
-class FaceEmbeddingSerializer(serializers.Serializer):
-    embedding = serializers.ListField(
-        child=serializers.FloatField(),
-        min_length=128,
-        max_length=4096
+class MultiFaceEmbeddingSerializer(serializers.Serializer):
+    embeddings = serializers.ListField(
+        child=serializers.ListField(
+            child=serializers.FloatField(),
+            min_length=128,
+            max_length=4096
+        )
     )
-    timestamp = serializers.DateTimeField(required=False)
