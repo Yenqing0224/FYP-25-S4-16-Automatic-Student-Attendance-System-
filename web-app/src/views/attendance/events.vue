@@ -174,6 +174,9 @@
         <el-form-item label="Absent" prop="absent">
           <el-input v-model.number="addForm.absent" type="number" placeholder="Enter absent" />
         </el-form-item>
+        <el-form-item label="Description" prop="description">
+          <el-input v-model="addForm.description" type="textarea" :autosize="{ minRows: 4, maxRows: 8 }" placeholder="Enter description" />
+        </el-form-item>
         <el-form-item label="Status" prop="status">
           <el-select v-model="addForm.status" placeholder="Select status">
             <el-option v-for="status in statusOptions" :key="status" :label="status" :value="status" />
@@ -195,9 +198,7 @@
           <div class="event-form-grid">
             <div class="event-form-column">
               <el-form-item label="Event" prop="eventName">
-                <el-select v-model="form.eventName" placeholder="Select event" filterable>
-                  <el-option v-for="item in eventOptions" :key="item" :label="item" :value="item" />
-                </el-select>
+                <el-input v-model="form.eventName" placeholder="Enter event name" />
               </el-form-item>
               <el-form-item label="Organizer" prop="organizer">
                 <el-select v-model="form.organizer" placeholder="Select organizer" filterable>
@@ -252,6 +253,11 @@
               <span>{{ form.rate }}</span>
             </div>
           </div>
+
+          <el-form-item prop="description" class="event-description-item" label-width="0">
+            <div class="event-description-label">Description</div>
+            <el-input v-model="form.description" class="event-description" type="textarea" placeholder="Enter description" />
+          </el-form-item>
         </el-form>
         <div class="event-drawer-footer">
           <el-button type="primary" @click="submitForm">Submit</el-button>
@@ -280,6 +286,7 @@ type EventItem = {
   late: number;
   absent: number;
   status: string;
+  description: string;
 };
 
 const eventList = ref<EventItem[]>([]);
@@ -303,7 +310,8 @@ const eventDetail = reactive<EventItem>({
   present: 0,
   late: 0,
   absent: 0,
-  status: ''
+  status: '',
+  description: ''
 });
 
 const queryFormRef = ref<FormInstance>();
@@ -327,7 +335,8 @@ const addForm = ref<EventItem>({
   present: 0,
   late: 0,
   absent: 0,
-  status: ''
+  status: '',
+  description: ''
 });
 const addRules = {
   eventName: [{ required: true, message: 'Event is required', trigger: 'blur' }],
@@ -342,7 +351,6 @@ const addRules = {
   status: [{ required: true, message: 'Status is required', trigger: 'change' }]
 };
 
-const eventOptions = ref(['Coding Workshop', 'Baseball Trial', 'Dance Club Entry Audition']);
 const organizerOptions = ref(['ICT Department', 'Baseball Club', 'Dance Club']);
 const venueOptions = ref(['LT A1.17', 'LT B2.05', 'Field B2', 'Auditorium C3']);
 const statusOptions = ref(['Not Started', 'Pending', 'Completed']);
@@ -359,7 +367,8 @@ const form = ref<EventItem>({
   present: 0,
   late: 0,
   absent: 0,
-  status: ''
+  status: '',
+  description: ''
 });
 
 const rules = {
@@ -402,7 +411,8 @@ const populateMockData = (): EventItem[] => [
     present: 205,
     late: 3,
     absent: 5,
-    status: 'Not Started'
+    status: 'Not Started',
+    description: 'Introductory workshop for new coders.'
   },
   {
     id: 2,
@@ -415,7 +425,8 @@ const populateMockData = (): EventItem[] => [
     present: 205,
     late: 3,
     absent: 5,
-    status: 'Pending'
+    status: 'Pending',
+    description: 'Open tryouts for the baseball team.'
   },
   {
     id: 3,
@@ -428,7 +439,8 @@ const populateMockData = (): EventItem[] => [
     present: 205,
     late: 3,
     absent: 5,
-    status: 'Completed'
+    status: 'Completed',
+    description: 'Auditions for new dance club members.'
   }
 ];
 
@@ -489,7 +501,8 @@ const handleAdd = () => {
     present: 0,
     late: 0,
     absent: 0,
-    status: ''
+    status: '',
+    description: ''
   };
   addDialogVisible.value = true;
 };
@@ -684,5 +697,22 @@ onMounted(() => {
 .event-drawer-footer {
   text-align: right;
   margin-top: 24px;
+}
+
+.event-description-item :deep(.el-form-item__content) {
+  margin-left: 0;
+  display: block;
+}
+
+.event-description-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #606266;
+  margin-bottom: 8px;
+}
+
+.event-description :deep(textarea) {
+  height: 320px;
+  resize: vertical;
 }
 </style>
