@@ -13,6 +13,7 @@ import {
   Alert,
   ActivityIndicator,
   StatusBar,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import axios from "axios";
