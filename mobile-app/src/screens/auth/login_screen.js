@@ -79,9 +79,14 @@ const LoginScreen = ({ navigation }) => {
           {/* HEADER (minimalist) */}
           <View style={styles.header}>
             <View style={styles.brandRow}>
-              <View style={styles.logoCircle}>
-                <Ionicons name="checkmark-done" size={22} color="#FFFFFF" />
+              <View style={styles.logoWrapper}>
+                <Image
+                  source={require("../../../assets/attendify-logo.png")}
+                  style={styles.logo}
+                  resizeMode="contain"
+                />
               </View>
+
 
               <View style={{ flex: 1 }}>
                 <Text style={styles.appName}>Attendify</Text>
