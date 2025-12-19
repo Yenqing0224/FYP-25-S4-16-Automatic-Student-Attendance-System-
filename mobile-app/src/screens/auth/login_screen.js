@@ -81,7 +81,7 @@ const LoginScreen = ({ navigation }) => {
             <View style={styles.brandRow}>
               <View style={styles.logoWrapper}>
                 <Image
-                  source={require("../../../assets/attendify-logo.png")}
+                  source={require("../../../assets/attendify.png")}
                   style={styles.logo}
                   resizeMode="contain"
                 />
