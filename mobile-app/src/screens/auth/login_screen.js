@@ -13,6 +13,7 @@ import {
   Alert,
   ActivityIndicator,
   StatusBar,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import axios from "axios";
@@ -80,8 +81,13 @@ const LoginScreen = ({ navigation }) => {
           <View style={styles.header}>
             <View style={styles.brandRow}>
               <View style={styles.logoCircle}>
-                <Ionicons name="checkmark-done" size={22} color="#FFFFFF" />
+                <Image
+                  source={require("../../../assets/attendify.png")}
+                  style={styles.logoIcon}
+                  resizeMode="contain"
+                />
               </View>
+
 
               <View style={{ flex: 1 }}>
                 <Text style={styles.appName}>Attendify</Text>
@@ -311,4 +317,9 @@ const styles = StyleSheet.create({
     textDecorationLine: "underline",
     fontWeight: "900",
   },
+  logoIcon: {
+  width: 22,
+  height: 22,
+},
+
 });
