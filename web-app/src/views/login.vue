@@ -1,7 +1,7 @@
 <template>
   <div class="login">
     <div class="login-card">
-      <div class="login-logo-circle">LOGO</div>
+      <img :src="logo" alt="Attendify logo" class="login-logo-image" />
       <h3 class="login-title">Log In</h3>
       <el-form ref="loginRef" :model="loginForm" :rules="loginRules" class="login-form" label-position="top">
         <el-form-item label="Email" prop="username">
@@ -32,6 +32,7 @@
 import { useUserStore } from '@/store/modules/user';
 import type { LoginData } from '@/api/types';
 import { to } from 'await-to-js';
+import logo from '@/assets/logo/logo.jpg';
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 const userStore = useUserStore();
@@ -106,19 +107,13 @@ onMounted(() => {
   text-align: center;
 }
 
-.login-logo-circle {
-  width: 80px;
-  height: 80px;
-  border-radius: 50%;
-  background-color: #e5e7eb;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0 auto 16px;
-  font-size: 16px;
-  font-weight: 600;
-  color: #4b5563;
-  }
+.login-logo-image {
+  width: 90px;
+  height: 90px;
+  margin: 0 auto 14px;
+  display: block;
+  object-fit: contain;
+}
 
 .login-title {
   margin-bottom: 28px;
