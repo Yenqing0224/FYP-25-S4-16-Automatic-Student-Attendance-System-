@@ -70,42 +70,30 @@ const LoginScreen = ({ navigation }) => {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.bg} />
+
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : "height"}
           style={styles.innerContainer}
         >
-          {/* HERO */}
-          <View style={styles.hero}>
-            <View style={styles.heroGlow1} />
-            <View style={styles.heroGlow2} />
-
+          {/* HEADER (minimalist) */}
+          <View style={styles.header}>
             <View style={styles.brandRow}>
               <View style={styles.logoCircle}>
-                <Ionicons name="checkmark-done" size={26} color="#FFFFFF" />
+                <Ionicons name="checkmark-done" size={22} color="#FFFFFF" />
               </View>
 
               <View style={{ flex: 1 }}>
                 <Text style={styles.appName}>Attendify</Text>
-                <Text style={styles.appSubtitle}>Your smart attendance companion</Text>
-              </View>
-            </View>
-
-            {/* Role-neutral badges (visual only) */}
-            <View style={styles.badgeRow}>
-              <View style={styles.badge}>
-                <Ionicons name="school-outline" size={14} color={COLORS.primaryDark} />
-                <Text style={styles.badgeText}>Student</Text>
-              </View>
-              <View style={styles.badge}>
-                <Ionicons name="briefcase-outline" size={14} color={COLORS.primaryDark} />
-                <Text style={styles.badgeText}>Lecturer</Text>
+                <Text style={styles.appSubtitle}>Attendance made simple</Text>
               </View>
             </View>
 
             <Text style={styles.heroTitle}>Welcome back</Text>
-            <Text style={styles.heroHint}>Log in to manage your classes and attendance.</Text>
           </View>
+
+          {/* small controlled gap (no big empty space) */}
+          <View style={{ height: 12 }} />
 
           {/* CARD */}
           <View style={styles.card}>
@@ -192,7 +180,7 @@ const LoginScreen = ({ navigation }) => {
             </TouchableOpacity>
           </View>
 
-          <View style={{ height: 10 }} />
+          <View style={{ height: 12 }} />
         </KeyboardAvoidingView>
       </TouchableWithoutFeedback>
     </SafeAreaView>
@@ -215,90 +203,54 @@ const COLORS = {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.bg },
+
+  // ✅ no "space-between" so it won't push card too far down
   innerContainer: {
     flex: 1,
     paddingHorizontal: 18,
     paddingTop: 10,
     paddingBottom: 12,
-    justifyContent: "space-between",
+    justifyContent: "flex-start",
   },
 
-  hero: {
-    borderRadius: 22,
-    padding: 18,
-    backgroundColor: "#EEF2FF",
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "#E0E7FF",
+  // ✅ minimalist header (no glow, no big hero block)
+  header: {
+    paddingHorizontal: 2,
+    paddingTop: 6,
   },
-  heroGlow1: {
-    position: "absolute",
-    width: 220,
-    height: 220,
-    borderRadius: 110,
-    backgroundColor: "#BFDBFE",
-    top: -90,
-    right: -80,
-    opacity: 0.7,
-  },
-  heroGlow2: {
-    position: "absolute",
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-    backgroundColor: "#A7F3D0",
-    bottom: -90,
-    left: -70,
-    opacity: 0.55,
-  },
+
   brandRow: { flexDirection: "row", alignItems: "center", gap: 12 },
   logoCircle: {
-    width: 50,
-    height: 50,
+    width: 44,
+    height: 44,
     borderRadius: 14,
     backgroundColor: COLORS.primary,
     justifyContent: "center",
     alignItems: "center",
-    shadowColor: "#000",
-    shadowOpacity: 0.12,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 4,
   },
   appName: { fontSize: 18, fontWeight: "900", color: COLORS.text, letterSpacing: 0.2 },
   appSubtitle: { fontSize: 12.5, color: COLORS.muted, marginTop: 2 },
 
-  badgeRow: { flexDirection: "row", gap: 10, marginTop: 12 },
-  badge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 7,
-    borderRadius: 999,
-    backgroundColor: "rgba(255,255,255,0.65)",
-    borderWidth: 1,
-    borderColor: "#DBEAFE",
-  },
-  badgeText: { fontSize: 12, fontWeight: "800", color: COLORS.primaryDark },
-
-  heroTitle: { marginTop: 12, fontSize: 22, fontWeight: "900", color: COLORS.text },
-  heroHint: { marginTop: 6, fontSize: 13, color: COLORS.muted, lineHeight: 18 },
+  // ✅ tighter spacing
+  heroTitle: { marginTop: 10, fontSize: 22, fontWeight: "900", color: COLORS.text },
 
   card: {
     backgroundColor: COLORS.card,
-    borderRadius: 22,
+    borderRadius: 18,
     paddingHorizontal: 18,
-    paddingTop: 18,
+    paddingTop: 16,
     paddingBottom: 14,
     borderWidth: 1,
     borderColor: COLORS.border,
+
+    // ✅ flatter shadow (more minimalist)
     shadowColor: "#000",
-    shadowOpacity: 0.08,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 10 },
-    elevation: 5,
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 3,
   },
+
   label: { fontSize: 12.5, color: "#334155", marginBottom: 8, fontWeight: "700" },
   inputWrap: {
     height: 48,
@@ -312,6 +264,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   input: { flex: 1, fontSize: 15, color: COLORS.text },
+
   eyeBtn: {
     position: "absolute",
     right: 10,

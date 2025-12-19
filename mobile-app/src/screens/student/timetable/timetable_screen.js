@@ -1,4 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
+// src/screens/student/timetable/timetable_screen.js  (use your actual path)
+// ✅ Adds "Add reminder" to phone calendar for students (same idea as lecturer)
+
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -7,12 +10,16 @@ import {
   TouchableOpacity,
   StatusBar,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Calendar } from 'react-native-calendars';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import api from '../../../api/api_client';
+import * as ExpoCalendar from 'expo-calendar';
+
+const REMINDER_KEY = 'studentReminderIds_v1';
 
 const TimetableScreen = ({ navigation }) => {
   const [activeTab, setActiveTab] = useState('Selected');
@@ -23,6 +30,32 @@ const TimetableScreen = ({ navigation }) => {
   const [fullSchedule, setFullSchedule] = useState([]);
   const [markedDates, setMarkedDates] = useState({});
   const [loading, setLoading] = useState(true);
+
+  // Reminder tracking
+  const [savedReminderIds, setSavedReminderIds] = useState(new Set());
+  const [savingId, setSavingId] = useState(null);
+
+  // --- Load reminder ids once ---
+  useEffect(() => {
+    (async () => {
+      try {
+        const raw = await AsyncStorage.getItem(REMINDER_KEY);
+        if (!raw) return;
+        const arr = JSON.parse(raw);
+        if (Array.isArray(arr)) setSavedReminderIds(new Set(arr));
+      } catch (e) {
+        console.error('Failed to load student reminder ids', e);
+      }
+    })();
+  }, []);
+
+  const persistReminderIds = async (nextSet) => {
+    try {
+      await AsyncStorage.setItem(REMINDER_KEY, JSON.stringify(Array.from(nextSet)));
+    } catch (e) {
+      console.error('Failed to save student reminder ids', e);
+    }
+  };
 
   // --- 1. NAVIGATION LISTENER ---
   useFocusEffect(
@@ -61,15 +94,13 @@ const TimetableScreen = ({ navigation }) => {
     }
   };
 
-  // --- 3. UPDATED FORMATTING HELPERS ---
+  // --- 3. HELPERS ---
 
-  // Fixed: Handles "14:00:00" -> "14:00"
   const formatTime = (timeString) => {
     if (!timeString) return '';
-    return timeString.slice(0, 5); 
+    return timeString.slice(0, 5);
   };
 
-  // Fixed: Handles "2025-12-17"
   const formatDateHeader = (dateString) => {
     if (!dateString) return '';
     const date = new Date(dateString);
@@ -89,17 +120,14 @@ const TimetableScreen = ({ navigation }) => {
     });
   };
 
-  // Helper to create a valid JS Date object for sorting
   const getJsDate = (item) => {
     return new Date(`${item.date}T${item.start_time}`);
   };
 
-  // Fixed: Uses item.date instead of item.date_time
   const processCalendarDots = (data) => {
     const marks = {};
     data.forEach((session) => {
-      // ✅ FIX: Use 'date' directly
-      const dateKey = session.date; 
+      const dateKey = session.date;
       marks[dateKey] = {
         dots: [{ key: 'class', color: '#90CAF9' }],
       };
@@ -125,43 +153,159 @@ const TimetableScreen = ({ navigation }) => {
     return newMarked;
   };
 
-  // --- 4. RENDER SECTIONS ---
+  // --- 4. STUDENT CALENDAR REMINDER LOGIC ---
+
+  const reminderIdFor = (item) => {
+    const code = item?.module?.code || 'MOD';
+    return `${code}|${item.date}|${item.start_time}|${item.venue || ''}`;
+  };
+
+  const isAdded = (item) => savedReminderIds.has(reminderIdFor(item));
+  const isSavingThis = (item) => savingId === reminderIdFor(item);
+
+  const buildStartEndDates = (item) => {
+    // start: date + start_time
+    const start = new Date(`${item.date}T${formatTime(item.start_time)}:00+08:00`);
+
+    // end: prefer item.end_time; else default +2 hours
+    let end;
+    if (item.end_time) {
+      end = new Date(`${item.date}T${formatTime(item.end_time)}:00+08:00`);
+    } else {
+      end = new Date(start.getTime() + 2 * 60 * 60 * 1000);
+    }
+    return { start, end };
+  };
+
+  const addReminderToCalendar = async (item) => {
+    const rid = reminderIdFor(item);
+
+    if (savedReminderIds.has(rid)) {
+      Alert.alert('Already added', 'This class reminder is already tracked.');
+      return;
+    }
+
+    setSavingId(rid);
+
+    try {
+      const { status } = await ExpoCalendar.requestCalendarPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission needed', 'Please allow Calendar access to add reminders.');
+        return;
+      }
+
+      const calendars = await ExpoCalendar.getCalendarsAsync(ExpoCalendar.EntityTypes.EVENT);
+      const defaultCal = calendars.find((c) => c.allowsModifications) || calendars[0];
+
+      if (!defaultCal) {
+        Alert.alert('No calendar found', 'Please enable a calendar on your device.');
+        return;
+      }
+
+      const { start, end } = buildStartEndDates(item);
+      const moduleCode = item?.module?.code || 'Module';
+      const moduleName = item?.module?.name || 'Class';
+
+      await ExpoCalendar.createEventAsync(defaultCal.id, {
+        title: `${moduleCode} - ${moduleName}`,
+        startDate: start,
+        endDate: end,
+        location: item.venue || '',
+        notes: 'Created from Attendify (Student).',
+        timeZone: 'Asia/Singapore',
+      });
+
+      const next = new Set(savedReminderIds);
+      next.add(rid);
+      setSavedReminderIds(next);
+      await persistReminderIds(next);
+
+      Alert.alert('Done', 'Reminder added to your calendar.');
+    } catch (e) {
+      console.error(e);
+      Alert.alert('Error', 'Could not add reminder.');
+    } finally {
+      setSavingId(null);
+    }
+  };
+
+  const removeReminderTracking = async (item) => {
+    const rid = reminderIdFor(item);
+    Alert.alert(
+      'Remove reminder?',
+      'This removes it from Attendify tracking. You can delete the calendar event in your Calendar app.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: async () => {
+            const next = new Set(savedReminderIds);
+            next.delete(rid);
+            setSavedReminderIds(next);
+            await persistReminderIds(next);
+          },
+        },
+      ]
+    );
+  };
+
+  // --- 5. RENDER SECTIONS ---
+
+  const renderReminderBtn = (item) => {
+    const added = isAdded(item);
+    const saving = isSavingThis(item);
+
+    return (
+      <TouchableOpacity
+        style={[
+          styles.reminderBtn,
+          added ? styles.reminderBtnAdded : styles.reminderBtnNormal,
+          (added || saving) && { opacity: 0.7 },
+        ]}
+        disabled={saving}
+        onPress={() => {
+          if (added) removeReminderTracking(item);
+          else addReminderToCalendar(item);
+        }}
+      >
+        <Text style={[styles.reminderBtnText, added && { color: '#1A2B5F' }]}>
+          {saving ? 'Adding…' : added ? 'Added ✓' : 'Add reminder'}
+        </Text>
+      </TouchableOpacity>
+    );
+  };
 
   const renderSelectedContent = () => {
-    // ✅ FIX: Filter by item.date
-    const classesForDay = fullSchedule.filter((item) =>
-      item.date === selectedDate
-    );
+    const classesForDay = fullSchedule.filter((item) => item.date === selectedDate);
 
     return (
       <View>
-        <Text style={styles.sectionDateTitle}>
-          {formatDateHeader(selectedDate)}
-        </Text>
+        <Text style={styles.sectionDateTitle}>{formatDateHeader(selectedDate)}</Text>
 
         {classesForDay.length > 0 ? (
           classesForDay.map((item) => (
-            <TouchableOpacity 
-                key={item.id} 
-                style={[styles.eventCard, styles.cardSelected]}
-                onPress={() => navigation.navigate('ClassDetail', { session_id: item.id })}
+            <TouchableOpacity
+              key={item.id}
+              style={[styles.eventCard, styles.cardSelected]}
+              onPress={() => navigation.navigate('ClassDetail', { session_id: item.id })}
+              activeOpacity={0.9}
             >
               <View style={[styles.cardAccent, { backgroundColor: '#3F4E85' }]} />
               <View style={styles.cardContent}>
                 <Text style={styles.eventTitle}>
                   {item.module.code} · {item.module.name}
                 </Text>
-                {/* ✅ FIX: Use formatTime(item.start_time) */}
                 <Text style={styles.eventTime}>{formatTime(item.start_time)}</Text>
                 <Text style={styles.eventLoc}>{item.venue}</Text>
+
+                <View style={{ marginTop: 10 }}>{renderReminderBtn(item)}</View>
               </View>
             </TouchableOpacity>
           ))
         ) : (
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>
-              No classes scheduled for this day.
-            </Text>
+            <Text style={styles.emptyText}>No classes scheduled for this day.</Text>
           </View>
         )}
       </View>
@@ -170,9 +314,8 @@ const TimetableScreen = ({ navigation }) => {
 
   const renderUpcomingContent = () => {
     const now = new Date();
-    // ✅ FIX: Use getJsDate helper to sort
     const upcoming = fullSchedule
-      .filter(item => getJsDate(item) > now)
+      .filter((item) => getJsDate(item) > now)
       .sort((a, b) => getJsDate(a) - getJsDate(b));
 
     return (
@@ -185,15 +328,15 @@ const TimetableScreen = ({ navigation }) => {
           </View>
         ) : (
           upcoming.slice(0, 5).map((item) => {
-            const sessionType = item.session_type || "Class";
+            const sessionType = item.session_type || 'Class';
 
             return (
-              <TouchableOpacity 
-                key={item.id} 
+              <TouchableOpacity
+                key={item.id}
                 style={[styles.eventCard, styles.cardUpcoming]}
                 onPress={() => navigation.navigate('ClassDetail', { session_id: item.id })}
+                activeOpacity={0.9}
               >
-                {/* Top row: module + chip */}
                 <View style={styles.cardHeaderRow}>
                   <Text style={styles.upTitle}>
                     {item.module.code} • {item.module.name}
@@ -204,34 +347,25 @@ const TimetableScreen = ({ navigation }) => {
                   </View>
                 </View>
 
-                {/* Date row */}
                 <View style={styles.upRow}>
                   <Text style={styles.upIcon}>🗓</Text>
                   <Text style={styles.upLabel}>Date</Text>
-                  {/* ✅ FIX: Use item.date */}
-                  <Text style={styles.upValue}>
-                    {formatDateShort(item.date)}
-                  </Text>
+                  <Text style={styles.upValue}>{formatDateShort(item.date)}</Text>
                 </View>
 
-                {/* Time row */}
                 <View style={styles.upRow}>
                   <Text style={styles.upIcon}>⏰</Text>
                   <Text style={styles.upLabel}>Time</Text>
-                  {/* ✅ FIX: Use item.start_time */}
-                  <Text style={styles.upValue}>
-                    {formatTime(item.start_time)}
-                  </Text>
+                  <Text style={styles.upValue}>{formatTime(item.start_time)}</Text>
                 </View>
 
-                {/* Location row */}
                 <View style={styles.upRow}>
                   <Text style={styles.upIcon}>📍</Text>
                   <Text style={styles.upLabel}>Location</Text>
-                  <Text style={styles.upValue}>
-                    {item.venue}
-                  </Text>
+                  <Text style={styles.upValue}>{item.venue}</Text>
                 </View>
+
+                <View style={{ marginTop: 10 }}>{renderReminderBtn(item)}</View>
               </TouchableOpacity>
             );
           })
@@ -255,11 +389,7 @@ const TimetableScreen = ({ navigation }) => {
         </View>
 
         {loading ? (
-          <ActivityIndicator
-            size="large"
-            color="#3A7AFE"
-            style={{ marginTop: 50 }}
-          />
+          <ActivityIndicator size="large" color="#3A7AFE" style={{ marginTop: 50 }} />
         ) : (
           <ScrollView contentContainerStyle={styles.scrollContent}>
             <View style={styles.calendarCard}>
@@ -313,9 +443,7 @@ const TimetableScreen = ({ navigation }) => {
               </TouchableOpacity>
             </View>
 
-            {activeTab === 'Selected'
-              ? renderSelectedContent()
-              : renderUpcomingContent()}
+            {activeTab === 'Selected' ? renderSelectedContent() : renderUpcomingContent()}
           </ScrollView>
         )}
       </View>
@@ -323,7 +451,6 @@ const TimetableScreen = ({ navigation }) => {
   );
 };
 
-// ... YOUR STYLES HERE (They are perfect, no changes needed) ...
 const styles = StyleSheet.create({
   mainContainer: { flex: 1, backgroundColor: '#F5F7FB' },
   topSafeArea: { flex: 0, backgroundColor: '#F0F2FA' },
@@ -382,9 +509,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     elevation: 2,
   },
-  inactiveBtn: {
-    backgroundColor: 'transparent',
-  },
+  inactiveBtn: { backgroundColor: 'transparent' },
   activeText: { fontWeight: '700', color: '#111827', fontSize: 14 },
   inactiveText: { fontWeight: '600', color: '#9CA3AF', fontSize: 14 },
 
@@ -408,12 +533,9 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 3 },
     shadowRadius: 6,
     elevation: 2,
-    flexDirection: 'row'
+    flexDirection: 'row',
   },
   cardContent: { flex: 1 },
-  cardBlue: {
-    backgroundColor: '#E3F2FD',
-  },
   cardSelected: {
     backgroundColor: '#F8FAFC',
     borderWidth: 1,
@@ -423,7 +545,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderLeftWidth: 4,
     borderLeftColor: '#3A7AFE',
-    flexDirection: 'column'
+    flexDirection: 'column',
   },
   cardHeaderRow: {
     flexDirection: 'row',
@@ -431,7 +553,6 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     marginBottom: 10,
   },
-
   upTitle: {
     flex: 1,
     fontSize: 16,
@@ -439,7 +560,6 @@ const styles = StyleSheet.create({
     color: '#1A2B5F',
     marginRight: 8,
   },
-
   chip: {
     paddingHorizontal: 10,
     paddingVertical: 4,
@@ -447,7 +567,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(58, 122, 254, 0.12)',
     alignSelf: 'flex-start',
   },
-
   chipText: {
     fontSize: 11,
     fontWeight: '700',
@@ -455,44 +574,34 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.4,
   },
+  upRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
+  upIcon: { width: 20, fontSize: 14 },
+  upLabel: { width: 70, fontSize: 13, fontWeight: '600', color: '#555' },
+  upValue: { flex: 1, fontSize: 13, fontWeight: '500', color: '#222' },
 
-  upRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-
-  upIcon: {
-    width: 20,
-    fontSize: 14,
-  },
-
-  upLabel: {
-    width: 70,
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#555',
-  },
-
-  upValue: {
-    flex: 1,
-    fontSize: 13,
-    fontWeight: '500',
-    color: '#222',
-  },
-  
   cardAccent: {
     width: 4,
     borderRadius: 999,
     backgroundColor: '#3A7AFE',
     marginRight: 14,
   },
-  
+
   emptyContainer: { alignItems: 'center', padding: 24 },
   emptyText: { color: '#9CA3AF', fontSize: 14 },
   eventTitle: { fontSize: 16, fontWeight: '700', color: '#111827', marginBottom: 4 },
   eventTime: { fontSize: 14, fontWeight: '600', color: '#3A7AFE', marginBottom: 2 },
   eventLoc: { fontSize: 13, color: '#6B7280' },
+
+  // Reminder button
+  reminderBtn: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 12,
+  },
+  reminderBtnNormal: { backgroundColor: 'rgba(58, 122, 254, 0.12)' },
+  reminderBtnAdded: { backgroundColor: '#EAF2FF' },
+  reminderBtnText: { fontWeight: '800', color: '#3A7AFE', fontSize: 13 },
 });
 
 export default TimetableScreen;
