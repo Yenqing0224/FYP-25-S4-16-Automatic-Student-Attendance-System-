@@ -170,7 +170,7 @@ const ProfileScreen = ({ navigation }) => {
               onPress={() => navigation.navigate('LeaveStatus')}
             >
               <View>
-                <Text style={styles.menuText}>Leaves Status</Text>
+                <Text style={styles.menuText}>Leave Status</Text>
                 <Text style={styles.menuSubText}>
                   Track approval status for your leave submissions.
                 </Text>
@@ -184,7 +184,7 @@ const ProfileScreen = ({ navigation }) => {
               onPress={() => navigation.navigate('AppealStatus')}
             >
               <View>
-                <Text style={styles.menuText}>Appeals Module Status</Text>
+                <Text style={styles.menuText}>Appeal Module Status</Text>
                 <Text style={styles.menuSubText}>
                   View updates on your module appeals.
                 </Text>
