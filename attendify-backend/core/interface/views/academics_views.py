@@ -6,10 +6,10 @@ from django.utils import timezone
 from django.db.models import Q
 from datetime import timedelta
 from core.models import Student, ClassSession, Semester, AttendanceRecord, Lecturer, User
-from pgvector.django import L2Distance
+from pgvector.django import CosineDistance
 # Serializers
 from core.interface.serializers.academics_serializers import ClassSessionSerializer, AttendanceRecordSerializer
-from core.interface.serializers.users_serializers import FaceEmbeddingSerializer
+from core.interface.serializers.users_serializers import MultiFaceEmbeddingSerializer
 
 
 @api_view(['GET'])
@@ -166,43 +166,51 @@ def get_attendance_history(request):
 
 
 @api_view(['POST'])
-@permission_classes([AllowAny]) 
+@permission_classes([AllowAny])
 def recognize_face(request):
     try:
-        serializer = FaceEmbeddingSerializer(data=request.data)
+        serializer = MultiFaceEmbeddingSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        query_embedding = serializer.validated_data['embedding']
+        received_embeddings = serializer.validated_data['embeddings']
+        results = []
+        
+        THRESHOLD = 0.4 
 
-        closest_user = User.objects.filter(role_type='student').annotate(
-            distance=L2Distance('face_embedding_512', query_embedding)
-        ).order_by('distance').first()
+        for index, vector in enumerate(received_embeddings):
+            
+            closest_user = User.objects.filter(role_type='student').annotate(
+                distance=CosineDistance('face_embedding_512', vector)
+            ).order_by('distance').first()
 
-        THRESHOLD = 1.0 
+            if closest_user:
+                print(f"Face {index} closest match: {closest_user.username} (Dist: {closest_user.distance:.4f})")
 
-        if closest_user and closest_user.distance < THRESHOLD:
-            try:
-                student_profile = closest_user.student_profile
-                student_name = closest_user.username
-                student_id = student_profile.student_id
-            except Student.DoesNotExist:
-                return Response({"error": "User found but has no student profile"}, status=404)
+            if closest_user and closest_user.distance < THRESHOLD:
+                try:
+                    student_profile = closest_user.student_profile
+                    results.append({
+                        "index": index,
+                        "status": "success",
+                        "student_name": closest_user.username,
+                        "student_id": student_profile.student_id,
+                        "distance": closest_user.distance
+                    })
+                except Student.DoesNotExist:
+                     results.append({
+                        "index": index,
+                        "status": "error",
+                        "message": "User has no student profile"
+                    })
+            else:
+                results.append({
+                    "index": index,
+                    "status": "unknown",
+                    "message": "Face not recognized"
+                })
 
-            return Response({
-                "status": "success",
-                "student_id": student_id,
-                "student_name": student_name,
-                "distance": closest_user.distance,
-                "message": f"Identified {student_name}"
-            }, status=status.HTTP_200_OK)
-
-        else:
-            return Response({
-                "status": "unknown",
-                "message": "Face not recognized",
-                "distance": closest_user.distance if closest_user else None
-            }, status=status.HTTP_404_NOT_FOUND)
+        return Response({"results": results}, status=status.HTTP_200_OK)
 
     except Exception as e:
         print(f"Recognition Error: {e}")

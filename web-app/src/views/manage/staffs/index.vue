@@ -104,9 +104,21 @@
 
 <script setup name="Staffs" lang="ts">
 import { validEmail } from '@/utils/validate';
+import { listAdminLecturers } from '@/api/admin';
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 
-const staffList = ref<any[]>([]);
+interface StaffRow {
+  staffId: string | number;
+  name: string;
+  department?: string;
+  position?: string;
+  email?: string;
+  mobile?: string;
+  status?: string;
+  leaveBalance?: number;
+}
+
+const staffList = ref<StaffRow[]>([]);
 const loading = ref(true);
 const showSearch = ref(true);
 const ids = ref<Array<number | string>>([]);
@@ -151,15 +163,52 @@ const rules = {
 
 const open = ref(false);
 
+const normalizeStaff = (item: any): StaffRow => {
+  const user = item?.user_details ?? {};
+  const fullName = `${user.first_name ?? ''} ${user.last_name ?? ''}`.trim();
+  const statusRaw = (user.status ?? item?.status ?? '').toString().toLowerCase();
+  return {
+    staffId: item?.staff_id ?? item?.lecturer_id ?? user?.id ?? item?.id ?? '',
+    name: fullName || user.username || item?.name || '-',
+    department: item?.department?.name ?? item?.department ?? '',
+    position: item?.position ?? item?.title ?? '',
+    email: user.email ?? item?.email ?? '',
+    mobile: user.phone_number ?? item?.mobile ?? '',
+    status: statusRaw === 'active' ? 'Active' : 'Inactive',
+    leaveBalance: item?.leave_balance ?? item?.leaveBalance ?? 0
+  };
+};
+
+const buildStaffQuery = () => {
+  const params: Record<string, any> = {
+    page: queryParams.value.pageNum,
+    page_size: queryParams.value.pageSize
+  };
+  if (queryParams.value.staffName) params.name = queryParams.value.staffName;
+  if (queryParams.value.staffId) params.staff_id = queryParams.value.staffId;
+  if (queryParams.value.department) params.department = queryParams.value.department;
+  params.staffName = queryParams.value.staffName;
+  params.staffId = queryParams.value.staffId;
+  return params;
+};
+
 /** Query staff list */
 const getList = async () => {
   loading.value = true;
-  // TODO: Call actual API here
-  setTimeout(() => {
+  try {
+    const params = buildStaffQuery();
+    const payload: any = await listAdminLecturers(params);
+    const pagination = payload?.data?.pagination ?? payload?.pagination;
+    const rows = payload?.data?.results ?? payload?.results ?? payload?.data ?? payload ?? [];
+    staffList.value = Array.isArray(rows) ? rows.map(normalizeStaff) : [];
+    total.value = pagination?.total_items ?? payload?.count ?? staffList.value.length ?? 0;
+  } catch (error: any) {
     staffList.value = [];
     total.value = 0;
+    proxy?.$modal?.msgError?.(error?.message || 'Failed to load staff list');
+  } finally {
     loading.value = false;
-  }, 500);
+  }
 };
 
 /** Search button action */
@@ -192,16 +241,15 @@ const handleAdd = () => {
 /** Edit button action */
 const handleUpdate = (row?: any) => {
   reset();
-  const staffId = row?.staffId || ids.value[0];
-  // TODO: Call actual API to get staff details
+  const selected = row || staffList.value.find((staff) => staff.staffId === ids.value[0]);
   form.value = {
-    staffId: row?.staffId || '',
-    name: row?.name || '',
-    department: row?.department || '',
-    position: row?.position || '',
-    email: row?.email || '',
-    mobile: row?.mobile || '',
-    status: row?.status || 'Active'
+    staffId: selected?.staffId || '',
+    name: selected?.name || '',
+    department: selected?.department || '',
+    position: selected?.position || '',
+    email: selected?.email || '',
+    mobile: selected?.mobile || '',
+    status: selected?.status || 'Active'
   };
   open.value = true;
   title.value = 'Edit Staff';
