@@ -5,7 +5,7 @@ from rest_framework import status
 from django.utils import timezone
 from django.db.models import Q
 from datetime import timedelta
-from core.models import Student, ClassSession, Semester, AttendanceRecord, Lecturer
+from core.models import Student, ClassSession, Semester, AttendanceRecord, Lecturer, User
 from pgvector.django import L2Distance
 # Serializers
 from core.interface.serializers.academics_serializers import ClassSessionSerializer, AttendanceRecordSerializer
@@ -169,23 +169,40 @@ def get_attendance_history(request):
 @permission_classes([AllowAny]) 
 def recognize_face(request):
     try:
-        # 1. Still validate that we received a real vector (good for testing)
         serializer = FaceEmbeddingSerializer(data=request.data)
-        
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        received_embedding = serializer.validated_data['embedding']
-        
-        print(f"DEBUG: Received vector starting with: {received_embedding[:5]}...")
+        query_embedding = serializer.validated_data['embedding']
 
-        return Response({
-            "status": "success",
-            "student_id": 999,
-            "student_name": "Test Student (Hardcoded)",
-            "distance": 0.0,
-            "message": "This is a hardcoded response for testing."
-        }, status=status.HTTP_200_OK)
+        closest_user = User.objects.filter(role_type='student').annotate(
+            distance=L2Distance('face_embedding_512', query_embedding)
+        ).order_by('distance').first()
+
+        THRESHOLD = 1.0 
+
+        if closest_user and closest_user.distance < THRESHOLD:
+            try:
+                student_profile = closest_user.student_profile
+                student_name = closest_user.username
+                student_id = student_profile.student_id
+            except Student.DoesNotExist:
+                return Response({"error": "User found but has no student profile"}, status=404)
+
+            return Response({
+                "status": "success",
+                "student_id": student_id,
+                "student_name": student_name,
+                "distance": closest_user.distance,
+                "message": f"Identified {student_name}"
+            }, status=status.HTTP_200_OK)
+
+        else:
+            return Response({
+                "status": "unknown",
+                "message": "Face not recognized",
+                "distance": closest_user.distance if closest_user else None
+            }, status=status.HTTP_404_NOT_FOUND)
 
     except Exception as e:
         print(f"Recognition Error: {e}")
@@ -196,23 +213,25 @@ def recognize_face(request):
 @permission_classes([AllowAny])
 def register_face(request):
     try:
-        student_id = request.data.get('student_id')
+        target_id = request.data.get('student_id')
         embedding = request.data.get('embedding')
 
-        if not student_id or not embedding:
+        if not target_id or not embedding:
             return Response({"error": "Missing student_id or embedding"}, status=400)
 
-        student = Student.objects.get(id=student_id)
-
-        student.face_vector = embedding 
-        student.save()
+        student = Student.objects.get(student_id=target_id)
+        
+        user = student.user 
+        
+        user.face_embedding_512 = embedding
+        user.save()
 
         return Response({
             "status": "success", 
-            "message": f"Face vector updated for {student.name}"
+            "message": f"Face vector updated for User: {user.username} (Student: {student.student_id})"
         }, status=200)
 
     except Student.DoesNotExist:
-        return Response({"error": "Student ID not found"}, status=404)
+        return Response({"error": f"Student ID {target_id} not found"}, status=404)
     except Exception as e:
         return Response({"error": str(e)}, status=500)
