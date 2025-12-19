@@ -6,7 +6,7 @@ from django.utils import timezone
 from django.db.models import Q
 from datetime import timedelta
 from core.models import Student, ClassSession, Semester, AttendanceRecord, Lecturer, User
-from pgvector.django import L2Distance
+from pgvector.django import CosineDistance
 # Serializers
 from core.interface.serializers.academics_serializers import ClassSessionSerializer, AttendanceRecordSerializer
 from core.interface.serializers.users_serializers import MultiFaceEmbeddingSerializer
@@ -175,13 +175,17 @@ def recognize_face(request):
 
         received_embeddings = serializer.validated_data['embeddings']
         results = []
-        THRESHOLD = 1.0
+        
+        THRESHOLD = 0.4 
 
         for index, vector in enumerate(received_embeddings):
             
             closest_user = User.objects.filter(role_type='student').annotate(
-                distance=L2Distance('face_embedding_512', vector)
+                distance=CosineDistance('face_embedding_512', vector)
             ).order_by('distance').first()
+
+            if closest_user:
+                print(f"Face {index} closest match: {closest_user.username} (Dist: {closest_user.distance:.4f})")
 
             if closest_user and closest_user.distance < THRESHOLD:
                 try:
