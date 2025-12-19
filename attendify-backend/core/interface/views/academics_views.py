@@ -190,3 +190,29 @@ def recognize_face(request):
     except Exception as e:
         print(f"Recognition Error: {e}")
         return Response({"error": str(e)}, status=500)
+    
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def register_face(request):
+    try:
+        student_id = request.data.get('student_id')
+        embedding = request.data.get('embedding')
+
+        if not student_id or not embedding:
+            return Response({"error": "Missing student_id or embedding"}, status=400)
+
+        student = Student.objects.get(id=student_id)
+
+        student.face_vector = embedding 
+        student.save()
+
+        return Response({
+            "status": "success", 
+            "message": f"Face vector updated for {student.name}"
+        }, status=200)
+
+    except Student.DoesNotExist:
+        return Response({"error": "Student ID not found"}, status=404)
+    except Exception as e:
+        return Response({"error": str(e)}, status=500)
