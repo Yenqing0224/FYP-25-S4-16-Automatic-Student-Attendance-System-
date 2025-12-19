@@ -12,7 +12,6 @@ import {
   Keyboard,
   Alert,
   ActivityIndicator,
-  Image,
   StatusBar,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -80,14 +79,9 @@ const LoginScreen = ({ navigation }) => {
           {/* HEADER (minimalist) */}
           <View style={styles.header}>
             <View style={styles.brandRow}>
-              <View style={styles.logoWrapper}>
-                <Image
-                  source={require("../../../assets/attendify.png")}
-                  style={styles.logo}
-                  resizeMode="contain"
-                />
+              <View style={styles.logoCircle}>
+                <Ionicons name="checkmark-done" size={22} color="#FFFFFF" />
               </View>
-
 
               <View style={{ flex: 1 }}>
                 <Text style={styles.appName}>Attendify</Text>
