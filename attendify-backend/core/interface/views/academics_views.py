@@ -167,7 +167,7 @@ def get_attendance_history(request):
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
-def recognize_faces(request):
+def recognize_face(request):
     try:
         serializer = MultiFaceEmbeddingSerializer(data=request.data)
         if not serializer.is_valid():
