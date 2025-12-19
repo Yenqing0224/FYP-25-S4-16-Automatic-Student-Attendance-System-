@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="p-2">
     <transition :enter-active-class="proxy?.animate.searchAnimate.enter" :leave-active-class="proxy?.animate.searchAnimate.leave">
       <div v-show="showSearch" class="mb-[10px]">
@@ -12,6 +12,20 @@
             </el-form-item>
             <el-form-item label="School Email" prop="email" label-width="100px">
               <el-input v-model="queryParams.email" placeholder="Enter school email" clearable @keyup.enter="handleQuery" />
+            </el-form-item>
+            <el-form-item label="UP" prop="up" label-width="60px">
+              <el-input v-model="queryParams.up" placeholder="Enter UP" clearable @keyup.enter="handleQuery" />
+            </el-form-item>
+            <el-form-item label="Status" prop="status" label-width="70px">
+              <el-select v-model="queryParams.status" placeholder="Select status" clearable>
+                <el-option label="Active" value="active" />
+                <el-option label="Inactive" value="inactive" />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="Attendance Rate" prop="attendanceRateMin" label-width="130px">
+              <el-input v-model="queryParams.attendanceRateMin" placeholder="Min %" style="width: 90px" />
+              <span style="margin: 0 6px">-</span>
+              <el-input v-model="queryParams.attendanceRateMax" placeholder="Max %" style="width: 90px" />
             </el-form-item>
             <el-form-item>
               <el-button type="primary" icon="Search" @click="handleQuery">Search</el-button>
@@ -59,6 +73,9 @@
         <el-table-column label="Name" prop="name" :show-overflow-tooltip="true" min-width="160" />
         <el-table-column label="Student ID" prop="studentId" min-width="120" />
         <el-table-column label="School Email" prop="email" :show-overflow-tooltip="true" min-width="180" />
+        <el-table-column label="UP" prop="up" min-width="100">
+          <template #default="scope">{{ scope.row.up || '-' }}</template>
+        </el-table-column>
         <el-table-column label="Mobile" prop="mobile" :show-overflow-tooltip="true" min-width="130" />
         <el-table-column label="Semester start day" prop="startDay" :show-overflow-tooltip="true" min-width="150" />
         <el-table-column label="Semester end day" prop="endDay" :show-overflow-tooltip="true" min-width="150" />
@@ -237,13 +254,17 @@
 </template>
 
 <script setup name="Students" lang="ts">
+import type { ComponentInternalInstance } from 'vue';
+import type { ElFormInstance, ElTableInstance } from 'element-plus';
 import { listAdminStudents } from '@/api/admin';
+
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 
 interface StudentRow {
   studentId: string | number;
   name: string;
   email?: string;
+  up?: string;
   mobile?: string;
   startDay?: string;
   endDay?: string;
@@ -264,12 +285,14 @@ const title = ref('');
 const drawerTitle = ref('');
 const drawerVisible = ref(false);
 const viewDialogVisible = ref(false);
+
 interface SemesterRecord {
   semester: string;
   startDay: string | undefined;
   endDay: string | undefined;
   attendance: string;
 }
+
 const defaultAvatar = 'https://placehold.co/120x120?text=ID';
 const viewStudent = reactive({
   name: '',
@@ -280,9 +303,11 @@ const viewStudent = reactive({
   photo: '',
   initials: ''
 });
+
 const semesterRecords = ref<SemesterRecord[]>([]);
 const moduleOptions = ref(['Intro to Python Programming', 'CSTM3 - Game Production', 'Dance Club Entry Audition']);
 const statusOptions = ref(['Active', 'Inactive']);
+
 const selectedStudent = reactive({
   firstName: '',
   lastName: '',
@@ -304,13 +329,16 @@ const selectedStudent = reactive({
 const queryFormRef = ref<ElFormInstance>();
 const studentTableRef = ref<ElTableInstance>();
 
-// Query parameters
 const queryParams = ref({
   pageNum: 1,
   pageSize: 10,
   studentName: '',
   studentId: '',
-  email: ''
+  email: '',
+  up: '',
+  status: '',
+  attendanceRateMin: '',
+  attendanceRateMax: ''
 });
 
 const normalizeStudent = (item: any): StudentRow => {
@@ -319,8 +347,9 @@ const normalizeStudent = (item: any): StudentRow => {
   const statusRaw = (user.status ?? item?.status ?? '').toString().toLowerCase();
   return {
     studentId: item?.student_id ?? item?.studentId ?? user?.id ?? item?.id ?? '',
-    name: fullName || user.username || item?.name || '—',
+    name: fullName || user.username || item?.name || '-',
     email: user.email ?? item?.email ?? '',
+    up: item?.up ?? item?.up_code ?? '',
     mobile: user.phone_number ?? item?.mobile ?? '',
     startDay: item?.start_day ?? item?.startDay ?? item?.semester?.start_date,
     endDay: item?.end_day ?? item?.endDay ?? item?.semester?.end_date,
@@ -339,13 +368,15 @@ const buildStudentQuery = () => {
   if (queryParams.value.studentName) params.name = queryParams.value.studentName;
   if (queryParams.value.studentId) params.student_id = queryParams.value.studentId;
   if (queryParams.value.email) params.email = queryParams.value.email;
-  // 兼容旧字段，避免后端字段差异
+  if (queryParams.value.up) params.up = queryParams.value.up;
+  if (queryParams.value.status) params.status = queryParams.value.status;
+  if (queryParams.value.attendanceRateMin) params.attendance_rate_min = queryParams.value.attendanceRateMin;
+  if (queryParams.value.attendanceRateMax) params.attendance_rate_max = queryParams.value.attendanceRateMax;
   params.studentName = queryParams.value.studentName;
   params.studentId = queryParams.value.studentId;
   return params;
 };
 
-/** Query student list */
 const getList = async () => {
   loading.value = true;
   try {
@@ -364,34 +395,29 @@ const getList = async () => {
   }
 };
 
-/** Search button action */
 const handleQuery = () => {
   queryParams.value.pageNum = 1;
   getList();
 };
 
-/** Reset button action */
 const resetQuery = () => {
   queryFormRef.value?.resetFields();
   queryParams.value.pageNum = 1;
   getList();
 };
 
-/** Multiple selection change */
 const handleSelectionChange = (selection: any[]) => {
   ids.value = selection.map((item) => item.studentId);
   multiple.value = !selection.length;
   single.value = selection.length != 1;
 };
 
-/** Add button action */
 const handleAdd = () => {
   populateDrawer();
   drawerTitle.value = 'Add Student';
   drawerVisible.value = true;
 };
 
-/** Edit button action */
 const handleUpdate = (row?: any) => {
   const targetRow = row || studentList.value.find((item) => item.studentId === (ids.value[0] as string));
   if (targetRow?.status === 'Inactive') {
@@ -424,9 +450,9 @@ const buildSemesterRecords = (row: any) => {
   const now = new Date();
   const currentYear = now.getFullYear();
   const semesterTemplates = [
-    { semester: `Semester 1`, year: currentYear },
-    { semester: `Semester 2`, year: currentYear },
-    { semester: `Semester 1`, year: currentYear - 1 }
+    { semester: 'Semester 1', year: currentYear },
+    { semester: 'Semester 2', year: currentYear },
+    { semester: 'Semester 1', year: currentYear - 1 }
   ];
   semesterRecords.value = semesterTemplates.map((template, index) => ({
     semester: `${template.year} ${template.semester}`,
@@ -457,11 +483,9 @@ const populateDrawer = (student?: any) => {
   });
 };
 
-/** Delete button action */
 const handleDelete = async (row?: any) => {
   const studentIds = row?.studentId || ids.value;
   await proxy?.$modal.confirm('Are you sure you want to delete student ID "' + studentIds + '"?');
-  // TODO: Call actual API to delete student
   await getList();
   proxy?.$modal.msgSuccess('Delete successful');
 };

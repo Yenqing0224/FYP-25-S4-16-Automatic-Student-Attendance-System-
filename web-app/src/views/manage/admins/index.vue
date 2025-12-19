@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="p-2">
     <transition :enter-active-class="proxy?.animate.searchAnimate.enter" :leave-active-class="proxy?.animate.searchAnimate.leave">
       <div v-show="showSearch" class="mb-[10px]">
@@ -12,6 +12,9 @@
             </el-form-item>
             <el-form-item label="Role" prop="role">
               <el-input v-model="queryParams.role" placeholder="Enter role" clearable @keyup.enter="handleQuery" />
+            </el-form-item>
+            <el-form-item label="UP" prop="up" label-width="50px">
+              <el-input v-model="queryParams.up" placeholder="Enter UP" clearable @keyup.enter="handleQuery" />
             </el-form-item>
             <el-form-item>
               <el-button type="primary" icon="Search" @click="handleQuery">Search</el-button>
@@ -43,6 +46,9 @@
         <el-table-column label="Name" prop="name" :show-overflow-tooltip="true" min-width="160" />
         <el-table-column label="Role" prop="role" :show-overflow-tooltip="true" min-width="140" />
         <el-table-column label="Staff ID" prop="adminId" min-width="130" />
+        <el-table-column label="UP" prop="up" min-width="100">
+          <template #default="scope">{{ scope.row.up || '-' }}</template>
+        </el-table-column>
         <el-table-column label="Email" prop="email" :show-overflow-tooltip="true" min-width="200" />
         <el-table-column label="Mobile" prop="mobile" :show-overflow-tooltip="true" min-width="140" />
         <el-table-column label="Leave Balance" prop="leaveBalance" min-width="150">
@@ -64,7 +70,6 @@
       <pagination v-show="total > 0" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" :total="total" @pagination="getList" />
     </el-card>
 
-    <!-- Add or Edit Admin Dialog -->
     <el-dialog :title="title" v-model="open" width="600px" append-to-body>
       <el-form ref="adminFormRef" :model="form" :rules="rules" label-width="120px">
         <el-form-item label="Staff ID" prop="adminId">
@@ -113,6 +118,7 @@ interface AdminRow {
   username?: string;
   role?: string;
   email?: string;
+  up?: string;
   mobile?: string;
   status?: string;
   leaveBalance?: number;
@@ -131,16 +137,15 @@ const queryFormRef = ref<ElFormInstance>();
 const adminFormRef = ref<ElFormInstance>();
 const adminTableRef = ref<ElTableInstance>();
 
-// Query parameters
 const queryParams = ref({
   pageNum: 1,
   pageSize: 10,
   adminName: '',
   adminId: '',
-  role: ''
+  role: '',
+  up: ''
 });
 
-// Form parameters
 const form = ref<any>({});
 const validateEmail = (_rule: any, value: string, callback: (error?: Error) => void) => {
   if (!value || validEmail(value)) {
@@ -169,17 +174,17 @@ const normalizeAdmin = (item: any): AdminRow => {
   const statusRaw = (user.status ?? item?.status ?? '').toString().toLowerCase();
   return {
     adminId: item?.admin_id ?? user?.id ?? item?.id ?? '',
-    name: fullName || user.username || '—',
+    name: fullName || user.username || '-',
     username: user.username ?? '',
     role: user.role_type ?? item?.role ?? '',
     email: user.email ?? item?.email ?? '',
+    up: item?.up ?? item?.up_code ?? '',
     mobile: user.phone_number ?? item?.mobile ?? '',
     status: statusRaw === 'active' ? 'Active' : 'Inactive',
     leaveBalance: item?.leave_balance ?? item?.leaveBalance ?? 0
   };
 };
 
-/** Query admin list */
 const getList = async () => {
   loading.value = true;
   try {
@@ -197,34 +202,29 @@ const getList = async () => {
   }
 };
 
-/** Search button action */
 const handleQuery = () => {
   queryParams.value.pageNum = 1;
   getList();
 };
 
-/** Reset button action */
 const resetQuery = () => {
   queryFormRef.value?.resetFields();
   queryParams.value.pageNum = 1;
   getList();
 };
 
-/** Multiple selection change */
 const handleSelectionChange = (selection: any[]) => {
   ids.value = selection.map((item) => item.adminId);
   multiple.value = !selection.length;
   single.value = selection.length != 1;
 };
 
-/** Add button action */
 const handleAdd = () => {
   reset();
   open.value = true;
   title.value = 'Add Admin';
 };
 
-/** Edit button action */
 const handleUpdate = (row?: any) => {
   reset();
   const selected = row || adminList.value.find((admin) => admin.adminId === ids.value[0]);
@@ -241,11 +241,9 @@ const handleUpdate = (row?: any) => {
   title.value = 'Edit Admin';
 };
 
-/** Submit button */
 const submitForm = () => {
   adminFormRef.value?.validate(async (valid: boolean) => {
     if (valid) {
-      // TODO: Call actual API to save admin information
       proxy?.$modal.msgSuccess('Operation successful');
       open.value = false;
       await getList();
@@ -253,22 +251,18 @@ const submitForm = () => {
   });
 };
 
-/** Delete button action */
 const handleDelete = async (row?: any) => {
   const adminIds = row?.adminId || ids.value;
   await proxy?.$modal.confirm('Are you sure you want to delete admin ID "' + adminIds + '"?');
-  // TODO: Call actual API to delete admin
   await getList();
   proxy?.$modal.msgSuccess('Delete successful');
 };
 
-/** Cancel button */
 const cancel = () => {
   open.value = false;
   reset();
 };
 
-/** Form reset */
 const reset = () => {
   form.value = {
     adminId: '',
