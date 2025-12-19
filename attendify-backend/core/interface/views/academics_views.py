@@ -152,7 +152,7 @@ def get_attendance_history(request):
             'session', 
             'session__module',
             'session__module__semester' 
-        ).order_by('-session__date_time')
+        ).order_by('-session__date')
 
         serializer = AttendanceRecordSerializer(records, many=True)
 
