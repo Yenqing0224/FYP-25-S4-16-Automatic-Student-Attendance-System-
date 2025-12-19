@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
+from pgvector.django import VectorField
 from django.conf import settings
 
 class User(AbstractUser):
@@ -30,7 +31,8 @@ class User(AbstractUser):
     image_url = models.CharField(max_length=500, blank=True, null=True)
     role_type = models.CharField(max_length=10, choices=ROLE_CHOICES)
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='active')
-
+    face_embedding_512 = VectorField(dimensions=512, null=True, blank=True)
+    face_embedding_128 = VectorField(dimensions=128, null=True, blank=True)
 
     def save(self, *args, **kwargs):
         if self.is_superuser:
