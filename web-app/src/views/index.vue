@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="dashboard">
     <div class="dashboard-header">
       <h3 class="dashboard-title">Dashboard</h3>
@@ -55,7 +55,7 @@
 <script setup name="Index" lang="ts">
 const stats = [
   { label: 'Total Students', value: '1,248', sub: 'Across all intakes' },
-  { label: 'Total Staff', value: '86', sub: 'Academic and admin' },
+  { label: 'Total Staffs', value: '86', sub: 'Lecturer and admins' },
   { label: 'Active Modules', value: '34', sub: 'Running this semester' },
   { label: "Today's Classes", value: '12', sub: 'Scheduled sessions' },
   { label: 'Avg Attendance', value: '92.3%', sub: 'Last 7 days' }
@@ -189,4 +189,5 @@ const activities = [
   color: #9ca3af;
 }
 </style>
+
 

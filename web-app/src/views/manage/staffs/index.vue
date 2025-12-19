@@ -5,10 +5,10 @@
         <el-card shadow="hover">
           <el-form ref="queryFormRef" :model="queryParams" :inline="true">
             <el-form-item label="Name" prop="staffName">
-              <el-input v-model="queryParams.staffName" placeholder="Enter staff name" clearable @keyup.enter="handleQuery" />
+              <el-input v-model="queryParams.staffName" placeholder="Enter lecturer name" clearable @keyup.enter="handleQuery" />
             </el-form-item>
-            <el-form-item label="Staff ID" prop="staffId">
-              <el-input v-model="queryParams.staffId" placeholder="Enter staff ID" clearable @keyup.enter="handleQuery" />
+            <el-form-item label="Lecturer ID" prop="staffId">
+              <el-input v-model="queryParams.staffId" placeholder="Enter lecturer ID" clearable @keyup.enter="handleQuery" />
             </el-form-item>
             <el-form-item label="Department" prop="department">
               <el-input v-model="queryParams.department" placeholder="Enter department" clearable @keyup.enter="handleQuery" />
@@ -26,7 +26,7 @@
       <template #header>
         <el-row :gutter="10" class="mb8">
           <el-col :span="1.5">
-            <el-button type="primary" plain icon="Plus" @click="handleAdd()">Add Staff</el-button>
+            <el-button type="primary" plain icon="Plus" @click="handleAdd()">Add Lecturer</el-button>
           </el-col>
           <el-col :span="1.5">
             <el-button type="success" plain :disabled="single" icon="Edit" @click="handleUpdate()">Edit</el-button>
@@ -42,7 +42,7 @@
         <el-table-column type="selection" width="55" align="center" />
         <el-table-column label="Name" prop="name" :show-overflow-tooltip="true" min-width="160" />
         <el-table-column label="Department" prop="department" :show-overflow-tooltip="true" min-width="140" />
-        <el-table-column label="Staff ID" prop="staffId" min-width="120" />
+        <el-table-column label="Lecturer ID" prop="staffId" min-width="120" />
         <el-table-column label="Email" prop="email" :show-overflow-tooltip="true" min-width="200" />
         <el-table-column label="Mobile" prop="mobile" :show-overflow-tooltip="true" min-width="140" />
         <el-table-column label="Leave Balance" prop="leaveBalance" min-width="150">
@@ -64,11 +64,11 @@
       <pagination v-show="total > 0" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" :total="total" @pagination="getList" />
     </el-card>
 
-    <!-- Add or Edit Staff Dialog -->
+    <!-- Add or Edit Lecturer Dialog -->
     <el-dialog :title="title" v-model="open" width="600px" append-to-body>
       <el-form ref="staffFormRef" :model="form" :rules="rules" label-width="120px">
-        <el-form-item label="Staff ID" prop="staffId">
-          <el-input v-model="form.staffId" placeholder="Enter staff ID" />
+        <el-form-item label="Lecturer ID" prop="staffId">
+          <el-input v-model="form.staffId" placeholder="Enter lecturer ID" />
         </el-form-item>
         <el-form-item label="Name" prop="name">
           <el-input v-model="form.name" placeholder="Enter name" />
@@ -150,7 +150,7 @@ const validateEmail = (_rule: any, value: string, callback: (error?: Error) => v
   }
 };
 const rules = {
-  staffId: [{ required: true, message: 'Staff ID is required', trigger: 'blur' }],
+  staffId: [{ required: true, message: 'Lecturer ID is required', trigger: 'blur' }],
   name: [{ required: true, message: 'Name is required', trigger: 'blur' }],
   department: [{ required: true, message: 'Department is required', trigger: 'blur' }],
   position: [{ required: true, message: 'Position is required', trigger: 'blur' }],
@@ -235,7 +235,7 @@ const handleSelectionChange = (selection: any[]) => {
 const handleAdd = () => {
   reset();
   open.value = true;
-  title.value = 'Add Staff';
+  title.value = 'Add Lecturer';
 };
 
 /** Edit button action */
@@ -252,7 +252,7 @@ const handleUpdate = (row?: any) => {
     status: selected?.status || 'Active'
   };
   open.value = true;
-  title.value = 'Edit Staff';
+  title.value = 'Edit Lecturer';
 };
 
 /** Submit button */
@@ -270,7 +270,7 @@ const submitForm = () => {
 /** Delete button action */
 const handleDelete = async (row?: any) => {
   const staffIds = row?.staffId || ids.value;
-  await proxy?.$modal.confirm('Are you sure you want to delete staff ID "' + staffIds + '"?');
+  await proxy?.$modal.confirm('Are you sure you want to delete lecturer ID "' + staffIds + '"?');
   // TODO: Call actual API to delete staff
   await getList();
   proxy?.$modal.msgSuccess('Delete successful');
