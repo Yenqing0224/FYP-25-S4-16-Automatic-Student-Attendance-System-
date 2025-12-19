@@ -20,7 +20,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 
 const LoginScreen = ({ navigation }) => {
-  const [username, setUsername] = useState("alice"); // testing
+  const [username, setUsername] = useState("alice");
   const [password, setPassword] = useState("attendify");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
