@@ -129,6 +129,11 @@ service.interceptors.response.use(
     if (res.request.responseType === 'blob' || res.request.responseType === 'arraybuffer') {
       return res.data;
     }
+    // AURA: Add - 适配后端Admin CRUD接口格式 {status, code, message, data}
+    if (res.data && res.data.status === 'success' && res.data.hasOwnProperty('data')) {
+      // 后端返回成功，提取data字段返回给业务层
+      return Promise.resolve(res.data.data);
+    }
     // 如果响应数据没有 code 字段，且 HTTP 状态码是 200，直接返回原始数据（兼容 Django REST Framework）
     if (!res.data.hasOwnProperty('code') && res.status === 200) {
       return Promise.resolve(res.data);

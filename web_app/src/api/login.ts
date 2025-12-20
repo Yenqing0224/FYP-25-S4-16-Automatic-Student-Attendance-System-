@@ -50,6 +50,7 @@ export function register(data: any) {
 
 /**
  * 注销
+ * AURA: Modify - 路径改为 /auth/logout/ 匹配后端
  */
 export function logout() {
   if (import.meta.env.VITE_APP_SSE === 'true') {
@@ -59,7 +60,7 @@ export function logout() {
     });
   }
   return request({
-    url: '/auth/logout',
+    url: '/auth/logout/',
     method: 'post'
   });
 }
@@ -94,15 +95,12 @@ export function callback(data: LoginData): AxiosPromise<any> {
   });
 }
 
-// 获取用户详细信息（临时跳过远端接口，直接返回空信息）
+// AURA: Modify - 调用真实后端接口获取用户信息
 export function getInfo(): AxiosPromise<UserInfo> {
-  return Promise.resolve({
-    data: {
-      user: {} as any,
-      roles: [],
-      permissions: []
-    }
-  } as any);
+  return request({
+    url: '/getInfo/',
+    method: 'get'
+  });
 }
 
 // 获取租户列表（本地环境下缺失接口时不报错）

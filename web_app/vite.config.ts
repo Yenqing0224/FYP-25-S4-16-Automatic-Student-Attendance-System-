@@ -31,11 +31,14 @@ export default defineConfig(({ mode, command }) => {
       open: true,
       proxy: {
         [baseApi]: {
+          // AURA: Modify - 连接线上后端进行接口测试
+          // 线上后端: 'https://attendify-ekg6.onrender.com'
+          // 本地后端: 'http://127.0.0.1:8000'
           target: 'https://attendify-ekg6.onrender.com',
           changeOrigin: true,
           secure: true,
           ws: true,
-          // 不再去掉前缀，后端真实路径包含 /api
+          // 不去掉前缀，后端真实路径包含 /api
           rewrite: (path) => path
         }
       }
