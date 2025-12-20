@@ -26,7 +26,7 @@ const AttendanceHistoryScreen = () => {
     const fetchHistory = async () => {
       try {
         const res = await api.get("/attendance-history/");
-        setRecords(res.data); // ✅ API returns array
+        setRecords(res.data); 
       } catch (err) {
         console.log(
           "Attendance history error:",
@@ -41,17 +41,17 @@ const AttendanceHistoryScreen = () => {
     fetchHistory();
   }, []);
 
-  const formatDateTime = (iso) => {
-    if (!iso) return { date: "-", time: "-" };
-    const d = new Date(iso);
-    return {
-      date: d.toLocaleDateString(),
-      time: d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-    };
-  };
-
   const renderItem = ({ item }) => {
-    const { date, time } = formatDateTime(item.session?.date_time);
+    // 1. Get raw values from the session object
+    const rawDate = item.session?.date;       // e.g. "2025-12-20"
+    const rawTime = item.session?.start_time; // e.g. "14:30:00"
+
+    // 2. Simple formatting
+    // If rawDate exists, formatting it to Locale string, else "-"
+    const date = rawDate ? new Date(rawDate).toLocaleDateString() : "-";
+    
+    // If rawTime exists, take first 5 chars (HH:MM), else "-"
+    const time = rawTime ? rawTime.slice(0, 5) : "-";
 
     return (
       <View style={styles.recordCard}>

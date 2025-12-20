@@ -89,7 +89,7 @@ def apply_appeals(request):
 
         try:
             student = Student.objects.get(user=request.user)
-            class_session = ClassSession.objects.get(id=session_id)
+            session = ClassSession.objects.get(id=session_id)
         except Student.DoesNotExist:
             return Response({'error': 'Student profile not found'}, status=404)
         except ClassSession.DoesNotExist:
@@ -97,7 +97,7 @@ def apply_appeals(request):
 
         appeal = AttendanceAppeal.objects.create(
             student=student,
-            class_session=class_session,
+            session=session,
             reason=reason,
             description=description,
             document_url=None,
