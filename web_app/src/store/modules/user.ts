@@ -51,31 +51,52 @@ export const useUserStore = defineStore('user', () => {
   };
 
   // 获取用户信息 - 调用真实API；若登录已写入用户信息，可直接返回
+  // AURA: Modify - 添加 fallback 处理，当 API 失败时使用本地存储的信息
   const getInfo = async (): Promise<void> => {
+    // 如果已有用户信息（登录时保存的），直接返回成功
     if (roles.value.length > 0 && name.value) {
       return Promise.resolve();
     }
-    const res = await getInfoApi();
-    if (res.data) {
-      const userInfo = res.data;
-      const user = userInfo.user;
-      const profile = user.avatar == '' || user.avatar == null ? defAva : user.avatar;
 
-      if (userInfo.roles && userInfo.roles.length > 0) {
-        roles.value = userInfo.roles;
-        permissions.value = userInfo.permissions || [];
-      } else {
+    try {
+      const res = await getInfoApi();
+      if (res.data) {
+        const userInfo = res.data;
+        const user = userInfo.user;
+        const profile = user.avatar == '' || user.avatar == null ? defAva : user.avatar;
+
+        if (userInfo.roles && userInfo.roles.length > 0) {
+          roles.value = userInfo.roles;
+          permissions.value = userInfo.permissions || [];
+        } else {
+          roles.value = ['ROLE_DEFAULT'];
+        }
+        name.value = user.userName;
+        nickname.value = user.nickName;
+        avatar.value = profile;
+        userId.value = user.userId;
+        tenantId.value = user.tenantId;
+        return Promise.resolve();
+      }
+    } catch (error) {
+      console.warn('getInfo API failed, using fallback:', error);
+    }
+
+    // Fallback: 如果有 token 但 API 失败，使用默认信息保持登录状态
+    if (token.value) {
+      if (roles.value.length === 0) {
         roles.value = ['ROLE_DEFAULT'];
       }
-      name.value = user.userName;
-      nickname.value = user.nickName;
-      avatar.value = profile;
-      userId.value = user.userId;
-      tenantId.value = user.tenantId;
+      if (!name.value) {
+        name.value = 'User';
+      }
+      if (!avatar.value) {
+        avatar.value = defAva;
+      }
       return Promise.resolve();
-    } else {
-      return Promise.reject(new Error('Failed to get user info'));
     }
+
+    return Promise.reject(new Error('Failed to get user info and no token available'));
   };
 
   // 注销 - 使用Mock数据
