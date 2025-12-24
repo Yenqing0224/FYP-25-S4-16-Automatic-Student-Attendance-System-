@@ -22,8 +22,7 @@ class CustomUserAdmin(UserAdmin):
                 'address_postal',
                 'address_country',
                 'image_url',
-                'face_embedding_512',
-                'face_embedding_128'
+                'face_embedding_512'
             )
         }),
         ('System Role', {
@@ -46,8 +45,7 @@ class CustomUserAdmin(UserAdmin):
                 'address_postal',
                 'address_country',
                 'image_url',
-                'face_embedding_512',
-                'face_embedding_128'
+                'face_embedding_512'
             ),
         }),
         ('System Role', {
