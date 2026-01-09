@@ -71,5 +71,7 @@ class Announcement(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     posted_by = models.ForeignKey('core.User', on_delete=models.SET_NULL, null=True, related_name='annoucement')
 
+    class Meta:
+        ordering = ['-created_at'] # Newest first
     def __str__(self):
         return f"{self.posted_by.username} - {self.title}"
