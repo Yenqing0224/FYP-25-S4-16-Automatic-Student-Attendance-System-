@@ -3,9 +3,9 @@ from django.contrib.auth.admin import UserAdmin
 # User
 from .models import User, Admin, Lecturer, Student
 # Academics
-from .models import Semester, Module, ClassSession, AttendanceRecord
+from .models import PartnerUni, Semester, Module, ClassSession, AttendanceRecord
 # Communication
-from .models import Notification, News, Event
+from .models import Notification, News, Event, Announcement
 # Requests
 from .models import LeaveRequest, AttendanceAppeal
 
@@ -63,6 +63,7 @@ admin.site.register(User, CustomUserAdmin)
 admin.site.register(Admin)
 admin.site.register(Lecturer)
 admin.site.register(Student)
+admin.site.register(PartnerUni)
 admin.site.register(Semester)
 admin.site.register(Module)
 admin.site.register(ClassSession)
@@ -70,5 +71,6 @@ admin.site.register(AttendanceRecord)
 admin.site.register(Notification)
 admin.site.register(News)
 admin.site.register(Event)
+admin.site.register(Announcement)
 admin.site.register(LeaveRequest)
 admin.site.register(AttendanceAppeal)
