@@ -1,5 +1,13 @@
-from django.utils import timezone
 from django.db import models
+
+
+class PartnerUni(models.Model):
+    # Attributes
+    name = models.CharField(max_length=50)
+
+    def __str__(self):
+        return self.name
+    
 
 class Semester(models.Model):
     # Attributes

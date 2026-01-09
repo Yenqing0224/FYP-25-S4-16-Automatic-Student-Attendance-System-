@@ -62,3 +62,14 @@ class Event(models.Model):
 
     def __str__(self):
         return f"{self.title} ({self.event_date.date()})"
+    
+
+class Announcement(models.Model):
+    # Attributes
+    title = models.CharField(max_length=255)
+    description = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    posted_by = models.ForeignKey('core.User', on_delete=models.SET_NULL, null=True, related_name='annoucement')
+
+    def __str__(self):
+        return f"{self.posted_by.username} - {self.title}"

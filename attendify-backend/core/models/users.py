@@ -3,6 +3,7 @@ from django.contrib.auth.models import AbstractUser
 from pgvector.django import VectorField
 from django.conf import settings
 
+
 class User(AbstractUser):
     ROLE_CHOICES = [
         ('admin', 'Admin'),
@@ -63,7 +64,8 @@ class Lecturer(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, primary_key=True, related_name='lecturer_profile')
     
     # Attributes
-    staff_id = models.CharField(max_length=20, unique=True) 
+    staff_id = models.CharField(max_length=20, unique=True)
+    partner_uni = models.ForeignKey('PartnerUni', on_delete=models.SET_NULL, null=True, blank=True,related_name='lecturers')
 
     def __str__(self):
         return f"{self.user.username} {self.staff_id}"
@@ -77,6 +79,8 @@ class Student(models.Model):
     programme = models.CharField(max_length=100)
     attendance_rate = models.FloatField(default=100.0)
     attendance_threshold = models.FloatField(default=80.0)
+    partner_uni = models.ForeignKey('PartnerUni', on_delete=models.SET_NULL, null=True, blank=True,related_name='students')
+
 
     def __str__(self):
         return f"{self.user.username} ({self.student_id})"
