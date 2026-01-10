@@ -13,7 +13,7 @@ from core.interface.serializers.users_serializers import StudentSerializer, Lect
 def get_profile(request):
     service = UserService()
     try:
-        profile = service.get_profile_instance(request.user)
+        profile = service.get_profile(request.user)
         
         serializer = None
         

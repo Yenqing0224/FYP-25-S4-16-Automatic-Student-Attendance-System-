@@ -4,7 +4,7 @@ from core.models import Student, Lecturer
 
 class UserService:
     
-    def get_profile_instance(self, user):
+    def get_profile(self, user):
         if user.role_type == 'student':
             return Student.objects.get(user=user)    
         elif user.role_type == 'lecturer':
