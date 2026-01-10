@@ -1,32 +1,40 @@
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from django.core.exceptions import ObjectDoesNotExist
+# Import Services
+from core.services.users_services import UserService
 # Import Serializers
 from core.interface.serializers.users_serializers import StudentSerializer, LecturerSerializer
-from core.models import Student, Lecturer
 
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_profile(request):
+    service = UserService()
     try:
-        user = request.user
+        profile = service.get_profile_instance(request.user)
         
-        if user.role_type == 'student':
-            profile = Student.objects.get(user=user)
-            return Response(StudentSerializer(profile).data)
-            
-        elif user.role_type == 'lecturer':
-            profile = Lecturer.objects.get(user=user)
-            return Response(LecturerSerializer(profile).data)
+        serializer = None
+        
+        if request.user.role_type == 'student':
+            serializer = StudentSerializer(profile)  
+        elif request.user.role_type == 'lecturer':
+            serializer = LecturerSerializer(profile)
 
+        if serializer:
+            return Response(serializer.data, status=200)
         else:
-            return Response({"error": "Profile details not found in database"}, status=404)
+            return Response({"error": "Unknown role type"}, status=400)
 
-    except (Student.DoesNotExist, Lecturer.DoesNotExist):
+    except ObjectDoesNotExist:
         return Response({"error": "Profile details not found in database"}, status=404)
+        
+    except ValueError as e:
+        return Response({"error": str(e)}, status=400)
+        
     except Exception as e:
-        return Response({"error": str(e)}, status=500)
+        return Response({"error": "Something went wrong!!!"}, status=500)
     
 
 @api_view(['PATCH'])
