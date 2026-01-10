@@ -13,14 +13,14 @@ from core.interface.serializers.users_serializers import StudentSerializer, Lect
 def get_profile(request):
     service = UserService()
     try:
-        profile = service.get_profile(request.user)
+        user_profile = service.get_profile(request.user)
         
         serializer = None
         
         if request.user.role_type == 'student':
-            serializer = StudentSerializer(profile)  
+            serializer = StudentSerializer(user_profile)  
         elif request.user.role_type == 'lecturer':
-            serializer = LecturerSerializer(profile)
+            serializer = LecturerSerializer(user_profile)
 
         if serializer:
             return Response(serializer.data, status=200)
