@@ -26,9 +26,12 @@ class UserService:
 
         for x in editable_field:
             if x in data:
-                setattr(user, x, data[x])
-                updated_count += 1
-        
+                current_value = getattr(user, x)
+                new_value = data[x]
+
+                if current_value != new_value:
+                        setattr(user, x, new_value)
+                        updated_count += 1
         if updated_count > 0:
             user.save()
             return f"Successfully updated {updated_count} fields."
