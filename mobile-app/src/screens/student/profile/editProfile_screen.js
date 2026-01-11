@@ -129,9 +129,9 @@ const EditProfileScreen = ({ navigation }) => {
         address_postal: postalTrim,
       };
 
-      await api.patch('/edit-profile/', payload);
+      const response = await api.patch('/edit-profile/', payload);
 
-      Alert.alert("Success", "Profile updated successfully!", [
+      Alert.alert("Success", response.data.message, [
         { text: "OK", onPress: () => navigation.goBack() },
       ]);
     } catch (err) {
