@@ -34,7 +34,7 @@ class UserService:
                         updated_count += 1
         if updated_count > 0:
             user.save()
-            return f"Successfully updated {updated_count} fields."
+            return f"Profile updated successfully!"
         else:
-            return "No changes made."
+            return f"No changes made"
 
