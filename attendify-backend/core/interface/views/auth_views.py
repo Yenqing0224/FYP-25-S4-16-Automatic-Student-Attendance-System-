@@ -3,6 +3,8 @@ from rest_framework.permissions import AllowAny
 from django.contrib.auth import authenticate
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
+# Import Services
+from core.services.auth_services import AuthService
 # Import Serializers
 from core.interface.serializers.users_serializers import UserSerializer
 
@@ -10,28 +12,21 @@ from core.interface.serializers.users_serializers import UserSerializer
 @api_view(['POST'])
 @permission_classes([AllowAny]) 
 def login_view(request):
+    service = AuthService()
+
     try:
-        # Get data from Frontend
-        username = request.data.get('username')
-        password = request.data.get('password')
+        user, token  = service.login_user(request.data)
+        serializer = UserSerializer(user)
 
-        if not username or not password:
-            return Response({"error": "Please provide both username and password"}, status=400)
+        return Response({
+            "message": "Login successful",
+            "token": token.key,
+            "user": serializer.data
+        }, status=200)
 
-        # Authentication
-        user = authenticate(username=username, password=password)
-
-        if user is not None:
-            token, created = Token.objects.get_or_create(user=user)
-            serializer = UserSerializer(user)
-            return Response({
-                "message": "Login successful",
-                "token": token.key, 
-                "user": serializer.data
-            }, status=200)
-        else:
-            return Response({"error": "Invalid Credentials"}, status=401)
-
+    except ValueError as e:
+        return Response({"error": str(e)}, status=400)
+    
     except Exception as e:
         print(f"Login Error: {str(e)}") 
         return Response({"error": "Server error. Please try again later."}, status=500)
