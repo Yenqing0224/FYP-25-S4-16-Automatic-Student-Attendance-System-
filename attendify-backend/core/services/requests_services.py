@@ -1,15 +1,15 @@
 from rest_framework.response import Response
-from core.models import LeaveRequest
+from core.models import LeaveRequest, Student, AttendanceAppeal, ClassSession
 from core.logic.requests_logics import RequestLogic
 
 class RequestService:
     
-    def get_leave(self, user):
+    def get_leaves(self, user):
         return LeaveRequest.objects.filter(user=user).order_by('-created_at')
     
 
-    def apply_leave(self, user, data):
-        is_valid, message = RequestLogic.validate_apply_leave(data)
+    def apply_leaves(self, user, data):
+        is_valid, message = RequestLogic.validate_apply_leaves(data)
 
         if not is_valid:
             raise ValueError(message)
@@ -24,3 +24,30 @@ class RequestService:
         )
 
         return leave
+    
+    
+    def get_student_appeals(self, user):
+        student = Student.objects.get(user=user)
+        return AttendanceAppeal.objects.filter(student=student).order_by('-created_at')
+    
+
+    def apply_appeals(self, user, data):
+        is_valid, message = RequestLogic.validate_apply_appeals(data)
+
+        if not is_valid:
+            raise ValueError(message)
+        
+        student = Student.objects.get(user=user)
+        session = ClassSession.objects.get(id=data['session_id'])
+
+        appeal = AttendanceAppeal.objects.create(
+            student=student,
+            session=session,
+            reason=data['reason'],
+            description=data['description'],
+            document_url=None,
+            status='pending'
+        )
+
+        return appeal
+

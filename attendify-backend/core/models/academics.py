@@ -99,7 +99,6 @@ class AttendanceRecord(models.Model):
     remarks = models.CharField(max_length=200, blank=True, null=True)
 
     class Meta:
-        # Crucial: A student can only have ONE attendance record per session
         unique_together = ('session', 'student')
 
     def __str__(self):

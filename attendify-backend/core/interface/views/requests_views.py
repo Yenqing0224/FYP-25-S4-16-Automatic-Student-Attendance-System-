@@ -2,7 +2,7 @@ from rest_framework.decorators import api_view, permission_classes, parser_class
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
-from core.models import LeaveRequest, AttendanceAppeal, Student, ClassSession
+from core.models import AttendanceAppeal, Student, ClassSession
 # Import Services
 from core.services.requests_services import RequestService
 #  Serializers
@@ -16,7 +16,7 @@ def get_leaves(request):
     service = RequestService()
 
     try:
-        leaves = service.get_leave(request.user)
+        leaves = service.get_leaves(request.user)
         serializer = LeaveRequestSerializer(leaves, many=True)
 
         return Response(serializer.data)
@@ -33,7 +33,7 @@ def apply_leaves(request):
     service = RequestService()
 
     try:
-        leave = service.apply_leave(request.user, request.data)
+        leave = service.apply_leaves(request.user, request.data)
 
         return Response({
             "message": "Leave submitted successfully", 
@@ -51,11 +51,11 @@ def apply_leaves(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_student_appeals(request):
-    try:
-        student = Student.objects.get(user=request.user)
+    service = RequestService()
 
-        appeals = AttendanceAppeal.objects.filter(student=student).order_by('-created_at')
-        serializer = AttendanceAppealSerializer(appeals, many=True)
+    try:
+        appeal = service.get_student_appeals(request.user)
+        serializer = AttendanceAppealSerializer(appeal, many=True)
         
         return Response(serializer.data)
 
@@ -70,36 +70,25 @@ def get_student_appeals(request):
 @permission_classes([IsAuthenticated])
 @parser_classes([MultiPartParser, FormParser])
 def apply_appeals(request):
+    service = RequestService()
+
     try:
-        session_id = request.data.get('session_id')
-        reason = request.data.get('reason')
-        description = request.data.get('description')
-                
-        if not session_id:
-            return Response({'error': 'Session ID is required'}, status=400)
-
-        try:
-            student = Student.objects.get(user=request.user)
-            session = ClassSession.objects.get(id=session_id)
-        except Student.DoesNotExist:
-            return Response({'error': 'Student profile not found'}, status=404)
-        except ClassSession.DoesNotExist:
-            return Response({'error': 'Class Session not found'}, status=404)
-
-        appeal = AttendanceAppeal.objects.create(
-            student=student,
-            session=session,
-            reason=reason,
-            description=description,
-            document_url=None,
-            status='pending'
-        )
+        appeal = service.apply_appeals(request.user, request.data)
 
         return Response({
             "message": "Appeal submitted successfully",
             "appeal_id": appeal.id
         }, status=201)
-
+    
+    except Student.DoesNotExist:
+        return Response({'error': 'Student profile not found'}, status=404)
+    
+    except ClassSession.DoesNotExist:
+        return Response({'error': 'Class Session not found'}, status=404)
+    
+    except ValueError as e:
+        return Response({"error": str(e)}, status=400)
+    
     except Exception as e:
         print(f"Appeal Error: {e}")
         return Response({"error": str(e)}, status=500)

@@ -3,7 +3,7 @@ from datetime import datetime
 class RequestLogic:
 
     @staticmethod
-    def validate_apply_leave(data):
+    def validate_apply_leaves(data):
 
         start_date = data.get('start_date')
         end_date = data.get('end_date')
@@ -25,3 +25,15 @@ class RequestLogic:
         except ValueError:
             return False, "Invalid date format. Use YYYY-MM-DD."
         return True, None
+    
+
+    @staticmethod
+    def validate_apply_appeals(data):
+        session_id = data.get('session_id')
+
+        if not session_id:
+            return False, "Session ID is required"
+        
+        return True, None
+
+
