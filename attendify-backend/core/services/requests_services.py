@@ -9,7 +9,6 @@ class RequestService:
     
 
     def apply_leave(self, user, data):
-
         is_valid, message = RequestLogic.validate_apply_leave(data)
 
         if not is_valid:

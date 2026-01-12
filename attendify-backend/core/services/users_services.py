@@ -16,6 +16,7 @@ class UserService:
     
     def edit_profile(self, user, data):
         is_valid, message = UserLogic.validate_edit_profile(data)
+        
         if not is_valid:
             raise ValueError(message)
         
