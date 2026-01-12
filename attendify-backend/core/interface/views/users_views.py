@@ -12,6 +12,7 @@ from core.interface.serializers.users_serializers import StudentSerializer, Lect
 @permission_classes([IsAuthenticated])
 def get_profile(request):
     service = UserService()
+    
     try:
         user_profile = service.get_profile(request.user)
         
