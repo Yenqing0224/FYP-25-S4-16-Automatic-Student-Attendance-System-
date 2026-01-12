@@ -10,6 +10,7 @@ from .views import admin_views
 urlpatterns = [
     # Auth
     path('login/', auth_views.login_view, name='login'),
+    path('logout/', auth_views.logout_view, name='logout'),
 
     # Users
     path('profile/', users_views.get_profile, name='profile'),

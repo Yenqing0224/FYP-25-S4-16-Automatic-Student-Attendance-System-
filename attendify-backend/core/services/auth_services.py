@@ -15,7 +15,7 @@ class AuthService:
         password = data['password']
         
         username = raw_input
-        
+
         if '@' in raw_input:
             try:
                 user_obj = User.objects.get(email=raw_input)
@@ -31,3 +31,13 @@ class AuthService:
         token, _ = Token.objects.get_or_create(user=user)
 
         return user, token
+    
+
+    def logout_user(self, user):
+        try:
+            user.auth_token.delete()
+            
+        except Exception:
+            pass
+            
+        return True

@@ -1,8 +1,6 @@
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import AllowAny
-from django.contrib.auth import authenticate
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
-from rest_framework.authtoken.models import Token
 # Import Services
 from core.services.auth_services import AuthService
 # Import Serializers
@@ -30,3 +28,20 @@ def login_view(request):
     except Exception as e:
         print(f"Login Error: {str(e)}") 
         return Response({"error": "Server error. Please try again later."}, status=500)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def logout_view(request):
+    service = AuthService()
+
+    try:
+        service.logout_user(request.user)
+
+        return Response({
+            "message": "Logged out successfully"
+        }, status=200)
+
+    except Exception as e:
+        print(f"Logout Error: {str(e)}")
+        return Response({"error": "Server error during logout"}, status=500)
