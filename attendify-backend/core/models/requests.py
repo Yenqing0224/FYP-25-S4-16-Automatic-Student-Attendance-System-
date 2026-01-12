@@ -21,7 +21,7 @@ class LeaveRequest(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"Leave: {self.user.user.username} ({self.start_date})"
+        return f"Leave: {self.user.username} ({self.start_date})"
 
 
 class AttendanceAppeal(models.Model):
