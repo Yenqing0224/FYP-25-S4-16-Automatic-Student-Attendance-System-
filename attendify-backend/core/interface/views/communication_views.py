@@ -2,6 +2,8 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from core.models import Notification, News, Event
+# Import Services
+from core.services.communication_services import CommunicationService
 #  Serializers
 from core.interface.serializers.communication_serializers import NotificationSerializer, NewsSerializer, EventSerializer
 
@@ -9,9 +11,10 @@ from core.interface.serializers.communication_serializers import NotificationSer
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_newsevent(request):
+    service = CommunicationService()
+    
     try:
-        news_object = News.objects.all()
-        events_object = Event.objects.filter(status__in=['upcoming', 'in_progress'])
+        news_object , events_object = service.get_newsevent()
 
         return Response({
             "news": NewsSerializer(news_object, many=True).data,
@@ -26,8 +29,10 @@ def get_newsevent(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_notifications(request):
+    service = CommunicationService()
+
     try:
-        notification_object = Notification.objects.filter(recipient=request.user)
+        notification_object = service.get_notifications(request.user)
 
         serializer = NotificationSerializer(notification_object, many=True)
         return Response(serializer.data)
@@ -40,11 +45,10 @@ def get_notifications(request):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def mark_notifications_read(request):
+    service = CommunicationService()
+
     try:
-        count = Notification.objects.filter(
-            recipient=request.user, 
-            is_read=False
-        ).update(is_read=True)
+        count = service.mark_notifications_read(request.user)
         
         return Response({"message": f"Marked {count} notifications as read"})
 
