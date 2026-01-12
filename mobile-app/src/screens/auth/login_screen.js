@@ -103,15 +103,16 @@ const LoginScreen = ({ navigation }) => {
 
           {/* CARD */}
           <View style={styles.card}>
-            <Text style={styles.label}>Username</Text>
+            <Text style={styles.label}>Username or Email</Text>
             <View style={styles.inputWrap}>
               <Ionicons name="person-outline" size={18} color={COLORS.muted} />
               <TextInput
                 style={styles.input}
-                placeholder="Enter username"
+                placeholder="Enter username or email"
                 placeholderTextColor={COLORS.placeholder}
                 value={username}
                 onChangeText={setUsername}
+                keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}
                 returnKeyType="next"
