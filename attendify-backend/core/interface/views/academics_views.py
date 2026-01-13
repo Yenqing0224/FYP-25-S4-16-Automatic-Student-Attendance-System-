@@ -52,24 +52,19 @@ def get_dashboard(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_timetable(request):
+    service = AcademicService()
+
     try:
-        user = request.user
-
-        if user.role_type == 'student':
-            profile = Student.objects.get(user=user)
-            filter_kwargs = {'module__students': profile}
-        elif user.role_type == 'lecturer':
-            profile = Lecturer.objects.get(user=user)
-            filter_kwargs = {'module__lecturer': profile}
-        else:
-            return Response({"error": "Timetable not available for this role"}, status=403)
-
-        sessions = ClassSession.objects.filter(**filter_kwargs).order_by('date', 'start_time')
+        sessions = service.get_timetable(request.user)
 
         return Response(ClassSessionSerializer(sessions, many=True).data)
 
     except (Student.DoesNotExist, Lecturer.DoesNotExist):
         return Response({"error": "Profile not found"}, status=404)
+    
+    except ValueError as e:
+        return Response({"error": str(e)}, status=403)
+                        
     except Exception as e:
         print(f"Timetable Error: {e}")
         return Response({"error": str(e)}, status=500)

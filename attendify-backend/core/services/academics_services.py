@@ -71,5 +71,19 @@ class AcademicService:
             },
             "next_class": next_class
         }
+    
+
+    def get_timetable(self, user):
+
+        if user.role_type == 'student':
+            profile = Student.objects.get(user=user)
+            filter_kwargs = {'module__students': profile}
+        elif user.role_type == 'lecturer':
+            profile = Lecturer.objects.get(user=user)
+            filter_kwargs = {'module__lecturer': profile}
+        else:
+            raise ValueError("Timetable not available for this role")
+        
+        return ClassSession.objects.filter(**filter_kwargs).order_by('date', 'start_time')
 
 
