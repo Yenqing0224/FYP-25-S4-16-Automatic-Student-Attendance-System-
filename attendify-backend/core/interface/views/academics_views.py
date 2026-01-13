@@ -73,16 +73,12 @@ def get_timetable(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_class_details(request, session_id):
-    try:
-        student = Student.objects.get(user=request.user)
+    service = AcademicService()
 
-        session = ClassSession.objects.get(id=session_id)
+    try:
+        session, attendance = service.get_class_details(request.user, session_id)
+
         session_data = ClassSessionSerializer(session).data
-        
-        attendance = AttendanceRecord.objects.filter(
-            session=session, 
-            student=student
-        ).first()
 
         session_data['entry_time'] = attendance.entry_time if attendance else None
         session_data['exit_time'] = attendance.exit_time if attendance else None
