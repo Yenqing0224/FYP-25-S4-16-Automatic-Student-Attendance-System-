@@ -74,7 +74,6 @@ class AcademicService:
     
 
     def get_timetable(self, user):
-
         if user.role_type == 'student':
             profile = Student.objects.get(user=user)
             filter_kwargs = {'module__students': profile}
@@ -88,7 +87,6 @@ class AcademicService:
     
 
     def get_class_details(self, user, session_id):
-
         student = Student.objects.get(user=user)
 
         session = ClassSession.objects.get(id=session_id)
@@ -99,5 +97,19 @@ class AcademicService:
         ).first()
 
         return session, attendance
+    
+
+    def get_attendance_history(self, user):
+        student = Student.objects.get(user=user)
+
+        records = AttendanceRecord.objects.filter(
+            student=student
+        ).select_related(
+            'session', 
+            'session__module',
+            'session__module__semester' 
+        ).order_by('-session__date')
+
+        return records
 
 

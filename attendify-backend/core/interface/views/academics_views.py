@@ -98,20 +98,12 @@ def get_class_details(request, session_id):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_attendance_history(request):
+    service = AcademicService()
+
     try:
-        student = Student.objects.get(user=request.user)
+        records = service.get_attendance_history(request.user)
 
-        records = AttendanceRecord.objects.filter(
-            student=student
-        ).select_related(
-            'session', 
-            'session__module',
-            'session__module__semester' 
-        ).order_by('-session__date')
-
-        serializer = AttendanceRecordSerializer(records, many=True)
-
-        return Response(serializer.data)
+        return Response(AttendanceRecordSerializer(records, many=True).data)
 
     except Student.DoesNotExist:
         return Response({"error": "This user is not a Student"}, status=403)
