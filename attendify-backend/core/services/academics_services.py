@@ -118,11 +118,27 @@ class AcademicService:
     def auto_create_attendance(self):
         today, start_range, end_range = AcademicLogic.get_upcoming_class_window()
 
+
+        # --- 🕵️‍♂️ DEBUGGING SPY ---
+        print(f"------------ DEBUG LOG ------------")
+        print(f"1. Search Date: {today}")
+        print(f"2. Search Window: {start_range} to {end_range}")
+        
+        # Check what classes exist TODAY regardless of time
+        all_today = ClassSession.objects.filter(date=today)
+        print(f"3. Total classes found for today: {all_today.count()}")
+        for c in all_today:
+             print(f"   - Found Class: {c.module.name} at {c.start_time}")
+        # ----------------------------------
+
         upcoming_sessions = ClassSession.objects.filter(
             date=today,
             start_time__range=(start_range, end_range)
         )
 
+        print(f"4. Classes matched in window: {upcoming_sessions.count()}")
+        print(f"-----------------------------------")
+        
         created_count = 0
 
         for session in upcoming_sessions:
