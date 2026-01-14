@@ -5,10 +5,11 @@ class AcademicLogic:
 
     @staticmethod
     def get_upcoming_class_window():
-        now = timezone.now()
-        start_range = now + timedelta(minutes=25)
-        end_range = now + timedelta(minutes=35)
-        return now.date(), start_range.time(), end_range.time()
+        utc_now = timezone.now()
+        local_now = timezone.localtime(utc_now)
+        start_range = local_now + timedelta(minutes=25)
+        end_range = local_now + timedelta(minutes=35)
+        return local_now.date(), start_range.time(), end_range.time()
 
     @staticmethod
     def determine_status(has_leave):
