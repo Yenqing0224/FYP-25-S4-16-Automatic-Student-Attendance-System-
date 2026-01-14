@@ -53,6 +53,11 @@ class AdminAdminSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 # Academics
+class AdminPartnerUniSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PartnerUni
+        fields = '__all__'
+
 class AdminSemesterSerializer(serializers.ModelSerializer):
     class Meta:
         model = Semester
@@ -87,6 +92,11 @@ class AdminNewsSerializer(serializers.ModelSerializer):
 class AdminEventSerializer(serializers.ModelSerializer):
     class Meta:
         model = Event
+        fields = '__all__'
+
+class AdminAnnouncementSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Announcement
         fields = '__all__'
 
 # Requests

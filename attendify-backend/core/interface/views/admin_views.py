@@ -71,6 +71,7 @@ lecturers_list, lecturers_detail = create_crud_views(Lecturer, AdminLecturerSeri
 admins_list, admins_detail = create_crud_views(Admin, AdminAdminSerializer)
 
 # Academics
+partnerUni_list, partnerUni_detail = create_crud_views(PartnerUni, AdminPartnerUniSerializer)
 semesters_list, semesters_detail = create_crud_views(Semester, AdminSemesterSerializer)
 modules_list, modules_detail = create_crud_views(Module, AdminModuleSerializer)
 sessions_list, sessions_detail = create_crud_views(ClassSession, AdminClassSessionSerializer)
@@ -80,6 +81,7 @@ records_list, records_detail = create_crud_views(AttendanceRecord, AdminAttendan
 notifs_list, notifs_detail = create_crud_views(Notification, AdminNotificationSerializer)
 news_list, news_detail = create_crud_views(News, AdminNewsSerializer)
 events_list, events_detail = create_crud_views(Event, AdminEventSerializer)
+announcement_list, announcement_detail = create_crud_views(Announcement, AdminAnnouncementSerializer)
 
 # Requests
 leaves_list, leaves_detail = create_crud_views(LeaveRequest, AdminLeaveRequestSerializer)

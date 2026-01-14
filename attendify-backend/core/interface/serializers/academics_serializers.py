@@ -1,6 +1,12 @@
 from rest_framework import serializers
-from core.models import Semester, Module, ClassSession, AttendanceRecord
+from core.models import Semester, Module, ClassSession, AttendanceRecord, PartnerUni
 from .users_serializers import StudentSerializer
+
+
+class PartnerUniSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PartnerUni
+        fields = '__all__'
 
 
 class SemesterSerializer(serializers.ModelSerializer):
