@@ -9,7 +9,15 @@ def start():
         task.task_auto_create_attendance,
         trigger='interval',
         minutes=1, 
-        id='jit_attendance_creation',
+        id='auto_attendance_creation',
+        replace_existing=True
+    )
+
+    scheduler.add_job(
+        task.task_update_class_status,
+        trigger='interval',
+        minutes=1,
+        id='update_class_status',
         replace_existing=True
     )
 

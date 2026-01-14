@@ -11,8 +11,22 @@ class AcademicLogic:
         end_range = local_now + timedelta(minutes=35)
         return local_now.date(), start_range.time(), end_range.time()
 
+
     @staticmethod
-    def determine_status(has_leave):
+    def determine_leave_status(has_leave):
         if has_leave:
             return 'medical'
         return 'absent'
+    
+
+    @staticmethod
+    def determine_class_status(current_time, start_time, end_time, current_status):
+        if current_status == "cancelled":
+            return 'cancelled'
+
+        if current_time < start_time:
+            return 'upcoming'
+        elif start_time <= current_time < end_time:
+            return 'in_progress'
+        else:
+            return 'completed'

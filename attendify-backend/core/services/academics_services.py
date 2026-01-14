@@ -122,7 +122,7 @@ class AcademicService:
             date=today,
             start_time__range=(start_range, end_range)
         )
-        
+
         created_count = 0
 
         for session in upcoming_sessions:
@@ -152,8 +152,32 @@ class AcademicService:
                 if created:
                     created_count += 1
 
-        return f"Generated {created_count} records."
+        return f"Generated {created_count} attendance records."
     
+    
+    def auto_update_class_status(self):
+        utc_now = timezone.now()
+        local_now = timezone.localtime(utc_now)
+        current_time = local_now.time()
+        today = local_now.date()
 
+        sessions = ClassSession.objects.filter(
+            date=today
+        ).exclude(status='completed')
 
+        updated_count = 0
+        
+        for session in sessions:
+            new_status = AcademicLogic.determine_class_status(
+                current_time, 
+                session.start_time, 
+                session.end_time
+            )
 
+            if session.status != new_status:
+                session.status = new_status
+                session.save()
+                updated_count += 1
+
+        return f"Updated status for {updated_count} sessions."
+    
