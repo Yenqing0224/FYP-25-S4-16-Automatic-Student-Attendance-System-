@@ -138,7 +138,7 @@ class AcademicService:
 
         print(f"4. Classes matched in window: {upcoming_sessions.count()}")
         print(f"-----------------------------------")
-        
+
         created_count = 0
 
         for session in upcoming_sessions:
@@ -150,7 +150,7 @@ class AcademicService:
             for student in students:
 
                 has_leave = LeaveRequest.objects.filter(
-                    user=student,
+                    user=student.user,
                     start_date__lte=today,
                     end_date__gte=today,
                     status='approved'
