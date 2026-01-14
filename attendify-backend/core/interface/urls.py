@@ -49,6 +49,8 @@ urlpatterns = [
     path('admin/crud/admins/<int:pk>/', admin_views.admins_detail, name='crud-admins-detail'),
 
     # Academics
+    path('admin/crud/uni/', admin_views.uni_list, name='crud-uni-list'),
+    path('admin/crud/uni/<int:pk>/', admin_views.uni_detail, name='crud-uni-detail'),
     path('admin/crud/semesters/', admin_views.semesters_list, name='crud-semesters-list'),
     path('admin/crud/semesters/<int:pk>/', admin_views.semesters_detail, name='crud-semesters-detail'),
     path('admin/crud/modules/', admin_views.modules_list, name='crud-modules-list'),
@@ -65,6 +67,8 @@ urlpatterns = [
     path('admin/crud/news/<int:pk>/', admin_views.news_detail, name='crud-news-detail'),
     path('admin/crud/events/', admin_views.events_list, name='crud-events-list'),
     path('admin/crud/events/<int:pk>/', admin_views.events_detail, name='crud-events-detail'),
+    path('admin/crud/announcements/', admin_views.announcement_list, name='crud-announcements-list'),
+    path('admin/crud/announcements/<int:pk>/', admin_views.announcement_detail, name='crud-announcements-detail'),
 
     # Requests
     path('admin/crud/leaves/', admin_views.leaves_list, name='crud-leaves-list'),
