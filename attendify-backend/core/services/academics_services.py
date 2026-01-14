@@ -171,7 +171,8 @@ class AcademicService:
             new_status = AcademicLogic.determine_class_status(
                 current_time, 
                 session.start_time, 
-                session.end_time
+                session.end_time,
+                session.status
             )
 
             if session.status != new_status:
