@@ -140,7 +140,7 @@ class AcademicService:
                     status='approved'
                 ).exists()
 
-                status = AcademicLogic.determine_status(has_leave)
+                status = AcademicLogic.determine_leave_status(has_leave)
 
                 _, created = AttendanceRecord.objects.get_or_create(
                     session=session,
