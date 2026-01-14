@@ -1,3 +1,4 @@
+APScheduler==3.11.2
 asgiref==3.11.0
 dj-database-url==3.0.1
 Django==6.0
@@ -10,4 +11,5 @@ pgvector==0.4.2
 psycopg2-binary==2.9.11
 sqlparse==0.5.4
 tzdata==2025.2
+tzlocal==5.3.1
 whitenoise==6.11.0

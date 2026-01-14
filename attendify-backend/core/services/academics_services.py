@@ -1,7 +1,9 @@
-from core.models import Student, ClassSession, Semester, AttendanceRecord, Lecturer, User
+from core.models import Student, ClassSession, Semester, AttendanceRecord, Lecturer, LeaveRequest
 from django.utils import timezone
 from datetime import timedelta
 from django.db.models import Q
+from core.logic.academics_logics import AcademicLogic
+
 
 class AcademicService:
 
@@ -111,5 +113,47 @@ class AcademicService:
         ).order_by('-session__date')
 
         return records
+
+
+    def auto_create_attendance(self):
+        today, start_range, end_range = AcademicLogic.get_upcoming_class_window()
+
+        upcoming_sessions = ClassSession.objects.filter(
+            date=today,
+            start_time__range=(start_range, end_range)
+        )
+
+        created_count = 0
+
+        for session in upcoming_sessions:
+            if AttendanceRecord.objects.filter(session=session).exists():
+                continue
+
+            students = session.module.students.all()
+
+            for student in students:
+
+                has_leave = LeaveRequest.objects.filter(
+                    user=student,
+                    start_date__lte=today,
+                    end_date__gte=today,
+                    status='approved'
+                ).exists()
+
+                status = AcademicLogic.determine_status(has_leave)
+
+                _, created = AttendanceRecord.objects.get_or_create(
+                    session=session,
+                    student=student,
+                    defaults={
+                        'status': status, 
+                    }
+                )
+                if created:
+                    created_count += 1
+
+        return f"Generated {created_count} records."
+    
+
 
 
