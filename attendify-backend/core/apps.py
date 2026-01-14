@@ -14,4 +14,4 @@ class CoreConfig(AppConfig):
         try:
             scheduler.start()
         except Exception as e:
-            print(f"⚠️ Scheduler failed to start: {e}")
+            print(f"Scheduler failed to start: {e}")

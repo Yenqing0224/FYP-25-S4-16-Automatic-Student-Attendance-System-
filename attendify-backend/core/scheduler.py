@@ -8,7 +8,7 @@ def start():
     scheduler.add_job(
         task.task_auto_create_attendance,
         trigger='interval',
-        minutes=5, 
+        minutes=1, 
         id='jit_attendance_creation',
         replace_existing=True
     )
