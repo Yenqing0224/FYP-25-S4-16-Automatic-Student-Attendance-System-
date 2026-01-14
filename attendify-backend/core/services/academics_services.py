@@ -158,18 +158,18 @@ class AcademicService:
     def auto_update_class_status(self):
         utc_now = timezone.now()
         local_now = timezone.localtime(utc_now)
-        current_time = local_now.time()
-        today = local_now.date()
+        current_date = local_now.date()
 
         sessions = ClassSession.objects.filter(
-            date=today
-        ).exclude(status='completed')
+            date__lte=current_date
+        ).exclude(status__in=['completed', 'cancelled'])
 
         updated_count = 0
         
         for session in sessions:
             new_status = AcademicLogic.determine_class_status(
-                current_time, 
+                local_now,
+                session.date, 
                 session.start_time, 
                 session.end_time,
                 session.status

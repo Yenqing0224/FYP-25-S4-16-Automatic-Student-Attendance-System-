@@ -1,5 +1,5 @@
 from django.utils import timezone
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 class AcademicLogic:
 
@@ -20,13 +20,22 @@ class AcademicLogic:
     
 
     @staticmethod
-    def determine_class_status(current_time, start_time, end_time, current_status):
+    def determine_class_status(current_dt, class_date, start_time, end_time, current_status):
         if current_status == "cancelled":
             return 'cancelled'
 
-        if current_time < start_time:
+        start_dt = datetime.combine(class_date, start_time)
+        end_dt = datetime.combine(class_date, end_time)
+
+        if end_dt < start_dt:
+            end_dt += timedelta(days=1)
+        
+        start_dt = start_dt.replace(tzinfo=current_dt.tzinfo)
+        end_dt = end_dt.replace(tzinfo=current_dt.tzinfo)
+
+        if current_dt < start_dt:
             return 'upcoming'
-        elif start_time <= current_time < end_time:
+        elif start_dt <= current_dt < end_dt:
             return 'in_progress'
         else:
             return 'completed'
