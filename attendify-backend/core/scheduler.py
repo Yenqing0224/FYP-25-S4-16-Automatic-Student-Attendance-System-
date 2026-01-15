@@ -21,5 +21,13 @@ def start():
         replace_existing=True
     )
 
+    scheduler.add_job(
+        task.task_auto_send_reminder,
+        trigger='cron',
+        minute='0,10,20,30,40,50', 
+        id='attendance_reminders',
+        replace_existing=True
+    )
+
     scheduler.start()
     atexit.register(lambda: scheduler.shutdown())
