@@ -20,7 +20,7 @@ class AuthLogic:
 
         current_password = data.get('current_password')
         new_password = data.get('new_password')
-        confirm_password = data.get('comfirm_password')
+        confirm_password = data.get('confirm_password')
 
         if not current_password or not current_password.strip():
             return False, "Please provide your current password."
