@@ -12,14 +12,10 @@ import {
   Keyboard,
   Alert,
   ActivityIndicator,
+  ScrollView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import axios from "axios";
-
-const CHANGE_URL =
-  "https://attendify-ekg6.onrender.com/api/change-password/"; 
-// 👆 adjust to your backend route
+import api from "../../../api/api_client";
 
 const ChangePasswordScreen = ({ navigation }) => {
   const [currentPassword, setCurrentPassword] = useState("");
@@ -39,30 +35,20 @@ const ChangePasswordScreen = ({ navigation }) => {
 
     try {
       setLoading(true);
-
-      const storedUser = await AsyncStorage.getItem("userInfo");
-      const user = storedUser ? JSON.parse(storedUser) : null;
-      if (!user) {
-        Alert.alert("Error", "User session expired. Please log in again.");
-        return;
-      }
-
-      await axios.post(CHANGE_URL, {
-        user_id: user.id, // or use token in headers, depending on your backend
+      const response = await api.post("/change-password/", {
         current_password: currentPassword,
         new_password: newPassword,
+        confirm_password: confirmPassword,
       });
 
-      Alert.alert("Success", "Your password has been updated.", [
+      Alert.alert("Success", response.data.message || "Updated successfully.", [
         { text: "OK", onPress: () => navigation.goBack() },
       ]);
     } catch (err) {
       console.log("ChangePassword error:", err.response?.data || err);
-      Alert.alert(
-        "Error",
-        err.response?.data?.detail ||
-          "Failed to change password. Please check your current password."
-      );
+      const errorMessage =
+        err.response?.data?.error || "Failed to change password.";
+      Alert.alert("Error", errorMessage);
     } finally {
       setLoading(false);
     }
@@ -73,12 +59,25 @@ const ChangePasswordScreen = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-          style={styles.innerContainer}
-        >
-          <View style={styles.topSection}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={{ flex: 1 }}
+      >
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <ScrollView 
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+          >
+            {/* Header Section */}
+            <View style={styles.header}>
+              <TouchableOpacity
+                onPress={() => navigation.goBack()}
+                style={styles.backButton}
+              >
+                <Text style={styles.backArrow}>{"<"}</Text>
+              </TouchableOpacity>
+            </View>
+
             <Text style={styles.headerTitle}>Change Password</Text>
 
             <View style={styles.inputGroup}>
@@ -116,50 +115,56 @@ const ChangePasswordScreen = ({ navigation }) => {
                 placeholderTextColor="#A0A0A0"
               />
             </View>
-          </View>
 
-          <View style={styles.bottomSection}>
-            <TouchableOpacity
-              style={[
-                styles.saveButton,
-                isDisabled && { opacity: 0.5 },
-              ]}
-              onPress={handleChangePassword}
-              disabled={isDisabled}
-            >
-              {loading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.saveButtonText}>Update Password</Text>
-              )}
-            </TouchableOpacity>
-
-            <TouchableOpacity onPress={() => navigation.goBack()}>
-              <Text style={styles.backText}>Back</Text>
-            </TouchableOpacity>
-          </View>
-        </KeyboardAvoidingView>
-      </TouchableWithoutFeedback>
+            {/* Button Container */}
+            <View style={styles.buttonContainer}>
+              <TouchableOpacity
+                style={[styles.saveButton, isDisabled && { opacity: 0.5 }]}
+                onPress={handleChangePassword}
+                disabled={isDisabled}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.saveButtonText}>Update Password</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
+        </TouchableWithoutFeedback>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#fff" },
-  innerContainer: {
-    flex: 1,
+  
+  scrollContent: {
     paddingHorizontal: 25,
-    paddingTop: 40,
-    paddingBottom: 20,
-    justifyContent: "space-between",
+    paddingBottom: 40,
   },
-  topSection: { marginTop: 20 },
+  header: {
+    marginTop: 10,
+    marginBottom: 10,
+    alignItems: "flex-start",
+  },
+  backButton: {
+    padding: 10,
+    marginLeft: -10,
+  },
+  backArrow: {
+    fontSize: 28,
+    color: "#000",
+    fontWeight: "300",
+  },
   headerTitle: {
     fontSize: 24,
     fontWeight: "bold",
     color: "#000",
     textAlign: "center",
     marginBottom: 30,
+    marginTop: 10,
   },
   inputGroup: { marginBottom: 20 },
   label: {
@@ -177,25 +182,22 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#000",
   },
-  bottomSection: { marginBottom: 20, alignItems: "center" },
+  buttonContainer: {
+    marginTop: 30,
+  },
+  // 👇 Updated to match ApplyLeaveScreen Submit Button UI
   saveButton: {
-    backgroundColor: "#8E8E93",
-    height: 55,
-    borderRadius: 10,
-    justifyContent: "center",
+    marginTop: 8,
+    backgroundColor: "#3A7AFE", // COLORS.primary
+    paddingVertical: 12,        // Matches Apply Leave padding
+    borderRadius: 999,          // Matches Apply Leave pill shape
     alignItems: "center",
     alignSelf: "stretch",
-    marginBottom: 15,
   },
   saveButtonText: {
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "bold",
-  },
-  backText: {
-    fontSize: 14,
-    color: "#333",
-    textDecorationLine: "underline",
+    color: "#FFFFFF",
+    fontSize: 15,       // Matches Apply Leave font size
+    fontWeight: "700",  // Matches Apply Leave weight
   },
 });
 
