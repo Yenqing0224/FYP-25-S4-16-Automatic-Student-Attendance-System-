@@ -31,7 +31,7 @@ class CommunicationService:
         local_now = timezone.localtime(utc_now)
         
         active_sessions = ClassSession.objects.filter(
-            date=local_now.date()
+            date=local_now.date(),
             status='in_progress'
         )
 
@@ -56,7 +56,6 @@ class CommunicationService:
                         recipient=student_user,
                         title="Attendance Pending",
                         description=f"Please scan in for {session.module.name}. You are marked absent until scanned.",
-                        related_session=session
                     )
                     sent_count += 1
                     print(f"Reminder sent to {student_user.username}")
