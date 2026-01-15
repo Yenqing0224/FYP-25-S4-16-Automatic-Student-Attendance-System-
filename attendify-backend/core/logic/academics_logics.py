@@ -9,7 +9,9 @@ class AcademicLogic:
         local_now = timezone.localtime(utc_now)
         start_range = local_now + timedelta(minutes=25)
         end_range = local_now + timedelta(minutes=35)
-        return local_now.date(), start_range.time(), end_range.time()
+        target_date = start_range.date()
+        
+        return target_date, start_range.time(), end_range.time()
 
 
     @staticmethod

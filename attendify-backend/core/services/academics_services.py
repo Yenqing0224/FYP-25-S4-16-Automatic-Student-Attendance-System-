@@ -116,10 +116,10 @@ class AcademicService:
 
 
     def auto_create_attendance(self):
-        today, start_range, end_range = AcademicLogic.get_upcoming_class_window()
+        target_date, start_range, end_range = AcademicLogic.get_upcoming_class_window()
         
         upcoming_sessions = ClassSession.objects.filter(
-            date=today,
+            date=target_date,
             start_time__range=(start_range, end_range)
         )
 

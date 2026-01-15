@@ -32,7 +32,7 @@ class CommunicationService:
         
         active_sessions = ClassSession.objects.filter(
             date=local_now.date(),
-            status='in_progress'
+            status__in=['upcoming', 'in_progress']
         )
 
         sent_count = 0
