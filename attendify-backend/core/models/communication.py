@@ -37,7 +37,7 @@ class News(models.Model):
 class Event(models.Model):
     STATUS_CHOICES = [
         ('upcoming', 'Upcoming'),
-        ('in_progress', 'Progress'),
+        ('in_progress', 'In Progress'),
         ('completed', 'Completed'),
         ('cancelled', 'Cancelled'),
     ]
