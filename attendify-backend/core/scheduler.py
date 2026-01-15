@@ -7,16 +7,18 @@ def start():
 
     scheduler.add_job(
         task.task_auto_create_attendance,
-        trigger='interval',
-        minutes=1, 
+        trigger='cron',
+        minutes='*', 
+        second='0',
         id='auto_attendance_creation',
         replace_existing=True
     )
 
     scheduler.add_job(
         task.task_update_class_status,
-        trigger='interval',
-        minutes=1,
+        trigger='cron',
+        minutes='*',
+        second='0',
         id='update_class_status',
         replace_existing=True
     )

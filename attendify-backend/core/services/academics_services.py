@@ -135,8 +135,8 @@ class AcademicService:
 
                 has_leave = LeaveRequest.objects.filter(
                     user=student.user,
-                    start_date__lte=today,
-                    end_date__gte=today,
+                    start_date__lte=target_date,
+                    end_date__gte=target_date,
                     status='approved'
                 ).exists()
 
