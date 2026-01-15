@@ -43,7 +43,7 @@ class AuthService:
         return True
     
     def change_password(self, user, data):
-        is_valid, message = AuthLogic.validate_login_data(data)
+        is_valid, message = AuthLogic.validate_change_password(data)
         if not is_valid:
             raise ValidationError(message)
         
