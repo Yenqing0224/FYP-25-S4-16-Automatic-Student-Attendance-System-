@@ -1,4 +1,5 @@
 from django.contrib.auth import authenticate
+from django.core.exceptions import ValidationError
 from core.models import User
 from rest_framework.authtoken.models import Token
 from core.logic.auth_logics import AuthLogic
@@ -6,7 +7,6 @@ from core.logic.auth_logics import AuthLogic
 class AuthService:
     
     def login_user(self, data):
-
         is_valid, message = AuthLogic.validate_login_data(data)
         if not is_valid:
             raise ValueError(message)
@@ -40,4 +40,19 @@ class AuthService:
         except Exception:
             pass
             
+        return True
+    
+    def change_password(self, user, data):
+        is_valid, message = AuthLogic.validate_login_data(data)
+        if not is_valid:
+            raise ValidationError(message)
+        
+        current_password = data.get('current_password')
+        if not user.check_password(current_password):
+            raise ValidationError("The current password you entered is incorrect.")
+
+        new_password = data.get('new_password')
+        user.set_password(new_password)
+        user.save()
+        
         return True

@@ -13,3 +13,28 @@ class AuthLogic:
             return False, "Please provide your password."
         
         return True, None
+    
+    
+    @staticmethod
+    def validate_change_password(data):
+
+        current_password = data.get('current_password')
+        new_password = data.get('new_password')
+        confirm_password = data.get('comfirm_password')
+
+        if not current_password or not current_password.strip():
+            return False, "Please provide your current password."
+
+        if not new_password or not new_password.strip():
+            return False, "Please provide a new password."
+
+        if not confirm_password or not confirm_password.strip():
+            return False, "Please confirm your new password."
+
+        if new_password != confirm_password:
+            return False, "The new passwords do not match."
+
+        if len(new_password) < 8:
+            return False, "New password must be at least 8 characters long."
+
+        return True, None

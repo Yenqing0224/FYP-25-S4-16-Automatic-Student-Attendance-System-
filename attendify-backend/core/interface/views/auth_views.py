@@ -1,4 +1,5 @@
 from rest_framework.decorators import api_view, permission_classes
+from django.core.exceptions import ValidationError
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 # Import Services
@@ -42,6 +43,28 @@ def logout_view(request):
             "message": "Logged out successfully"
         }, status=200)
 
+    except Exception as e:
+        print(f"Logout Error: {str(e)}")
+        return Response({"error": "Server error during logout"}, status=500)
+    
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def change_password(request):
+    service = AuthService()
+
+    try:
+        service.change_password(request.user, request.data)
+
+        return Response({
+            "message": "Password updated successfully"
+        }, status=200)
+    
+
+    except ValidationError as e:
+        error_message = e.message if hasattr(e, 'message') else str(e)
+        return Response({"error": error_message}, status=400)
+    
     except Exception as e:
         print(f"Logout Error: {str(e)}")
         return Response({"error": "Server error during logout"}, status=500)
