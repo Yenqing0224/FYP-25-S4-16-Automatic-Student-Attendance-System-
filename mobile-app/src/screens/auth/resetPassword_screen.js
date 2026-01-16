@@ -14,12 +14,11 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import api from "../../api/api_client"; // ✅ Use api client
+import api from "../../api/api_client"; 
 
-const RESET_URL = "/reset-password/"; // ✅ Updated Endpoint
+const RESET_URL = "/reset-password/"; 
 
 const ResetPasswordScreen = ({ route, navigation }) => {
-  // ✅ Retrieve email and otp passed from VerifyOtpScreen
   const { email, otp } = route.params || {};
 
   const [newPassword, setNewPassword] = useState("");
@@ -29,7 +28,6 @@ const ResetPasswordScreen = ({ route, navigation }) => {
   const [loading, setLoading] = useState(false);
 
   const handleResetPassword = async () => {
-    // 1. Validation
     if (!newPassword || !confirmPassword) {
       Alert.alert("Missing fields", "Please fill in all fields.");
       return;
@@ -39,17 +37,12 @@ const ResetPasswordScreen = ({ route, navigation }) => {
       return;
     }
     if (!email || !otp) {
-      Alert.alert(
-        "Error",
-        "Missing validation info (Email or OTP). Please start over."
-      );
+      Alert.alert("Error", "Missing validation info (Email or OTP).");
       return;
     }
 
     try {
       setLoading(true);
-
-      // 2. Call API with the 4 required fields
       await api.post(RESET_URL, {
         email: email,
         otp: otp,
@@ -57,11 +50,10 @@ const ResetPasswordScreen = ({ route, navigation }) => {
         confirm_password: confirmPassword,
       });
 
-      // 3. Success -> Go to Login
       Alert.alert("Success", "Your password has been updated successfully.", [
         {
           text: "Login Now",
-          onPress: () => navigation.popToTop(), // Go back to the very first screen (Login)
+          onPress: () => navigation.popToTop(), 
         },
       ]);
     } catch (err) {
@@ -78,7 +70,6 @@ const ResetPasswordScreen = ({ route, navigation }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity 
           onPress={() => navigation.goBack()}
@@ -101,7 +92,6 @@ const ResetPasswordScreen = ({ route, navigation }) => {
               <Text style={{ fontWeight: "bold", color: "#333" }}>{email}</Text>
             </Text>
 
-            {/* NEW PASSWORD INPUT */}
             <View style={styles.inputGroup}>
               <Text style={styles.label}>New Password</Text>
               <View style={styles.passwordWrapper}>
@@ -124,7 +114,6 @@ const ResetPasswordScreen = ({ route, navigation }) => {
               </View>
             </View>
 
-            {/* CONFIRM PASSWORD INPUT */}
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Confirm Password</Text>
               <View style={styles.passwordWrapper}>
@@ -148,12 +137,11 @@ const ResetPasswordScreen = ({ route, navigation }) => {
             </View>
           </View>
 
-          {/* BUTTONS */}
           <View style={styles.bottomSection}>
             <TouchableOpacity
               style={[
-                styles.resetButton,
-                isButtonDisabled && styles.resetButtonDisabled,
+                styles.submitButton, // ✅ Updated Style Name
+                isButtonDisabled && styles.submitButtonDisabled,
               ]}
               onPress={handleResetPassword}
               disabled={isButtonDisabled}
@@ -161,7 +149,7 @@ const ResetPasswordScreen = ({ route, navigation }) => {
               {loading ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <Text style={styles.resetButtonText}>Update Password</Text>
+                <Text style={styles.submitText}>Update Password</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -229,24 +217,33 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   eyeText: {
-    color: "#3A7AFE", // Changed to your app's primary blue
+    color: "#3A7AFE", 
     fontSize: 14,
     fontWeight: "600",
   },
   bottomSection: { marginBottom: 20, alignItems: "center" },
-  resetButton: {
-    backgroundColor: "#8E8E93",
-    height: 55,
-    borderRadius: 10,
-    justifyContent: "center",
+
+  // ✅ New "Pill Shape" Button Style
+  submitButton: {
+    backgroundColor: "#3A7AFE",
+    paddingVertical: 14,
+    borderRadius: 999,
     alignItems: "center",
     alignSelf: "stretch",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
   },
-  resetButtonDisabled: { opacity: 0.5 },
-  resetButtonText: {
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "bold",
+  submitButtonDisabled: { 
+    backgroundColor: "#A6C2FF" 
+  },
+  submitText: { 
+    color: "#fff", 
+    fontSize: 16, 
+    fontWeight: "700" 
   },
 });
 
