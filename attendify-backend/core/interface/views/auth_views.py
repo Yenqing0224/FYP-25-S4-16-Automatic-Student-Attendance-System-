@@ -101,7 +101,6 @@ def verify_otp(request):
 
         return Response({
             "message": "OTP verified successfully.",
-            "email": request.data.get('email')
         }, status=200)
 
     except ValueError as e:

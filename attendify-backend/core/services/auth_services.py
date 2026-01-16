@@ -81,7 +81,7 @@ class AuthService:
             send_mail(
                 subject='Attendify Password Reset',
                 message=f'Your verification code is: {otp}. It expires in 10 minutes.',
-                from_email=settings.EMAIL_HOST_USER,
+                from_email="attendify2026@outlook.com",
                 recipient_list=[email],
                 fail_silently=False,
             )
