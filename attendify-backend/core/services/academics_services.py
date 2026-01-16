@@ -166,8 +166,7 @@ class AcademicService:
     
     
     def auto_update_class_status(self):
-        utc_now = timezone.now()
-        local_now = timezone.localtime(utc_now)
+        local_now = timezone.localtime(timezone.now())
         current_date = local_now.date()
 
         sessions = ClassSession.objects.filter(

@@ -27,8 +27,7 @@ class CommunicationService:
     
 
     def auto_update_event_status(self):
-        utc_now = timezone.now()
-        local_now = timezone.localtime(utc_now)
+        local_now = timezone.localtime(timezone.now())
         current_date = local_now.date()
 
         events = Event.objects.filter(
@@ -52,8 +51,7 @@ class CommunicationService:
         return f"Updated status for {updated_count} events."
 
     def auto_send_reminder(self):
-        utc_now = timezone.now()
-        local_now = timezone.localtime(utc_now)
+        local_now = timezone.localtime(timezone.now())
         
         active_sessions = ClassSession.objects.filter(
             date=local_now.date(),
