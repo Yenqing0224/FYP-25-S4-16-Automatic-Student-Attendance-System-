@@ -192,6 +192,7 @@ const LoginScreen = ({ navigation }) => {
       </TouchableWithoutFeedback>
     </SafeAreaView>
   );
+
 };
 
 export default LoginScreen;
