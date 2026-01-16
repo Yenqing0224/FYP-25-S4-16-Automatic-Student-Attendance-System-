@@ -9,3 +9,20 @@ class CommunicationLogic:
         window_end = session_start_dt + timedelta(minutes=30)
 
         return window_start <= current_dt <= window_end
+    
+
+    @staticmethod
+    def determine_event_status(local_now, event_datetime, current_status):
+
+        if current_status == 'cancelled':
+            return 'cancelled'
+
+        current_date = local_now.date()
+        event_date = event_datetime.date()
+
+        if event_date < current_date:
+            return 'completed'
+        elif event_date == current_date:
+            return 'happening_today'
+        else:
+            return 'upcoming'

@@ -31,5 +31,15 @@ def start():
         replace_existing=True
     )
 
+    scheduler.add_job(
+        task.task_update_event_status,
+        trigger='cron',
+        hour='0',
+        minute='0', 
+        timezone='Asia/Singapore',
+        id='daily_update_event_status',
+        replace_existing=True
+    )
+
     scheduler.start()
     atexit.register(lambda: scheduler.shutdown())

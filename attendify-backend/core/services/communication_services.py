@@ -26,6 +26,31 @@ class CommunicationService:
         return count
     
 
+    def auto_update_event_status(self):
+        utc_now = timezone.now()
+        local_now = timezone.localtime(utc_now)
+        current_date = local_now.date()
+
+        events = Event.objects.filter(
+            event_date__date__lte=current_date
+        ).exclude(status__in=['completed', 'cancelled'])
+
+        updated_count = 0
+
+        for event in events:
+            new_status = CommunicationLogic.determine_event_status(
+            local_now,
+            event.event_date,
+            event.status
+        )
+
+            if event.status != new_status:
+                event.status = new_status
+                event.save()
+                updated_count += 1
+
+        return f"Updated status for {updated_count} events."
+
     def auto_send_reminder(self):
         utc_now = timezone.now()
         local_now = timezone.localtime(utc_now)

@@ -15,7 +15,7 @@ def task_update_class_status():
     service = AcademicService()
     try:
         message = service.auto_update_class_status()
-        if "Updated status for 0" not in message:
+        if "Updated status for 0 sessions." not in message:
              print(f"[Task] {message}")
     except Exception as e:
         print(f"[Task Error] Update Status Failed: {e}")
@@ -29,3 +29,13 @@ def task_auto_send_reminder():
             print(f"[Task] {message}")
     except Exception as e:
         print(f"[Task Error] Auto Send Notification Failed: {e}")
+
+
+def task_update_event_status():
+    service = CommunicationService()
+    try:
+        message = service.auto_update_event_status()
+        if "Updated status for 0 events." not in message:
+             print(f"[Task] {message}")
+    except Exception as e:
+        print(f"[Task Error] Update Status Failed: {e}")
