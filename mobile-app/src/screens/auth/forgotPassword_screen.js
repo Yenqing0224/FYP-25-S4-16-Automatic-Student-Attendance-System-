@@ -30,14 +30,8 @@ const ForgotPasswordScreen = ({ navigation }) => {
 
     try {
       setLoading(true);
-
-      // Call API
       await api.post(REQUEST_URL, { email: email.trim() });
-
-      // ✅ Navigate IMMEDIATELY (No Alert)
-      navigation.navigate("VerifyOtp", {
-        email: email.trim(),
-      });
+      navigation.navigate("VerifyOtp", { email: email.trim() });
 
     } catch (err) {
       console.log("ForgotPassword error:", err.response?.data || err);
@@ -87,8 +81,8 @@ const ForgotPasswordScreen = ({ navigation }) => {
           <View style={styles.bottomSection}>
             <TouchableOpacity
               style={[
-                styles.resetButton,
-                (!email.trim() || loading) && styles.resetButtonDisabled,
+                styles.submitButton, // ✅ Updated Style Name
+                (!email.trim() || loading) && styles.submitButtonDisabled,
               ]}
               onPress={handleSendReset}
               disabled={!email.trim() || loading}
@@ -96,7 +90,7 @@ const ForgotPasswordScreen = ({ navigation }) => {
               {loading ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <Text style={styles.resetButtonText}>Send OTP</Text>
+                <Text style={styles.submitText}>Send OTP</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -118,9 +112,29 @@ const styles = StyleSheet.create({
   label: { fontSize: 14, color: "#333", marginBottom: 8, fontWeight: "500" },
   input: { height: 50, borderWidth: 1, borderColor: "#333", borderRadius: 10, paddingHorizontal: 15, fontSize: 16, color: "#000" },
   bottomSection: { marginBottom: 20, alignItems: "center" },
-  resetButton: { backgroundColor: "#8E8E93", height: 55, borderRadius: 10, justifyContent: "center", alignItems: "center", alignSelf: "stretch" },
-  resetButtonDisabled: { opacity: 0.5 },
-  resetButtonText: { color: "#fff", fontSize: 18, fontWeight: "bold" },
+
+  // ✅ New "Pill Shape" Button Style matching ApplyLeaveScreen
+  submitButton: {
+    backgroundColor: "#3A7AFE", // Primary Blue
+    paddingVertical: 14,
+    borderRadius: 999, // Pill shape
+    alignItems: "center",
+    alignSelf: "stretch",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
+  },
+  submitButtonDisabled: { 
+    backgroundColor: "#A6C2FF" // Lighter blue for disabled
+  },
+  submitText: { 
+    color: "#fff", 
+    fontSize: 16, 
+    fontWeight: "700" 
+  },
 });
 
 export default ForgotPasswordScreen;
