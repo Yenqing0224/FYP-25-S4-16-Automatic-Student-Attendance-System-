@@ -12,6 +12,7 @@ urlpatterns = [
     path('login/', auth_views.login_view, name='login'),
     path('logout/', auth_views.logout_view, name='logout'),
     path('change-password/', auth_views.change_password, name='change-password'),
+    path('request-otp/', auth_views.request_password_reset, name='request-otp'),
 
     # Users
     path('profile/', users_views.get_profile, name='profile'),

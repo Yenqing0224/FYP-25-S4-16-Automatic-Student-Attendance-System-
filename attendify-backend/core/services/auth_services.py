@@ -1,3 +1,6 @@
+from django.conf import settings
+from django.core.cache import cache
+from django.core.mail import send_mail
 from django.contrib.auth import authenticate
 from django.core.exceptions import ValidationError
 from core.models import User
@@ -55,4 +58,33 @@ class AuthService:
         user.set_password(new_password)
         user.save()
         
+        return True
+    
+
+    def request_password_reset(self, email):
+        if not email:
+            raise ValueError("Email address is required")
+        
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            return True
+        
+        otp = AuthLogic.generate_otp()
+
+        cache_key = f"password_reset_{email}"
+        cache.set(cache_key, otp, timeout=600)
+
+        try:
+            send_mail(
+                subject='Attendify Password Reset',
+                message=f'Your verification code is: {otp}. It expires in 10 minutes.',
+                from_email=settings.EMAIL_HOST_USER,
+                recipient_list=[email],
+                fail_silently=False,
+            )
+        except Exception as e:
+            print(f"Email Sending Error: {str(e)}")
+            raise ValueError("Failed to send email. Please try again later.")
+            
         return True

@@ -1,3 +1,5 @@
+import random
+
 class AuthLogic:
 
     @staticmethod
@@ -38,3 +40,8 @@ class AuthLogic:
             return False, "New password must be at least 8 characters long."
 
         return True, None
+    
+
+    @staticmethod
+    def generate_otp():
+        return str(random.randint(100000, 999999))

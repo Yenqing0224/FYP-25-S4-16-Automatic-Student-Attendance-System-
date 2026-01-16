@@ -68,3 +68,24 @@ def change_password(request):
     except Exception as e:
         print(f"Logout Error: {str(e)}")
         return Response({"error": "Server error during logout"}, status=500)
+    
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def request_password_reset(request):
+    service = AuthService()
+
+    try:
+        email = request.data.get('email')
+        service.request_password_reset(email)
+
+        return Response({
+            "message": "OTP has been sent to your email"
+        }, status=200)
+
+    except ValueError as e:
+        return Response({"error": str(e)}, status=400)
+    
+    except Exception as e:
+        print(f"Password Reset Error: {str(e)}")
+        return Response({"error": "Server error processing request"}, status=500)
