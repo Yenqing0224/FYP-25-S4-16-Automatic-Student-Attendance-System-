@@ -34,8 +34,6 @@ const VerifyOtpScreen = ({ route, navigation }) => {
     try {
       setLoading(true);
       await api.post(VERIFY_URL, { email, otp });
-
-      // Navigate to Reset Password
       navigation.navigate("ResetPassword", { email, otp });
 
     } catch (err) {
@@ -51,7 +49,7 @@ const VerifyOtpScreen = ({ route, navigation }) => {
     const boxes = [];
     for (let i = 0; i < 6; i++) {
       const digit = otp[i] || "";
-      const isFocused = i === otp.length; // The current box typing into
+      const isFocused = i === otp.length; 
       const isFilled = i < otp.length;
 
       boxes.push(
@@ -59,8 +57,8 @@ const VerifyOtpScreen = ({ route, navigation }) => {
           key={i} 
           style={[
             styles.otpBox, 
-            isFocused ? styles.otpBoxFocused : null, // Border color when active
-            isFilled ? styles.otpBoxFilled : null,   // Optional: different style when filled
+            isFocused ? styles.otpBoxFocused : null, 
+            isFilled ? styles.otpBoxFilled : null,   
           ]}
         >
           <Text style={styles.otpText}>{digit}</Text>
@@ -72,7 +70,6 @@ const VerifyOtpScreen = ({ route, navigation }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* 1. Original Header Design */}
       <View style={styles.header}>
         <TouchableOpacity 
           onPress={() => navigation.goBack()}
@@ -95,12 +92,10 @@ const VerifyOtpScreen = ({ route, navigation }) => {
             </Text>
 
             <View style={styles.otpWrapper}>
-              {/* 2. The 6-Box Layout (Reference Style) */}
               <View style={styles.boxesRow}>
                 {renderOtpBoxes()}
               </View>
 
-              {/* Invisible Input for typing */}
               <TextInput
                 ref={inputRef}
                 value={otp}
@@ -115,7 +110,6 @@ const VerifyOtpScreen = ({ route, navigation }) => {
               />
             </View>
 
-            {/* Resend Link (Like in reference) */}
             <TouchableOpacity style={styles.resendContainer}>
               <Text style={styles.resendText}>Resend</Text>
             </TouchableOpacity>
@@ -124,8 +118,8 @@ const VerifyOtpScreen = ({ route, navigation }) => {
           <View style={styles.bottomSection}>
             <TouchableOpacity
               style={[
-                styles.verifyButton,
-                (otp.length < 6 || loading) && styles.verifyButtonDisabled,
+                styles.submitButton, // ✅ Updated Style Name
+                (otp.length < 6 || loading) && styles.submitButtonDisabled,
               ]}
               onPress={handleVerify}
               disabled={otp.length < 6 || loading}
@@ -133,7 +127,7 @@ const VerifyOtpScreen = ({ route, navigation }) => {
               {loading ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <Text style={styles.verifyButtonText}>Verify OTP</Text>
+                <Text style={styles.submitText}>Verify OTP</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -145,8 +139,6 @@ const VerifyOtpScreen = ({ route, navigation }) => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#fff" },
-  
-  // Original Header
   header: {
     paddingHorizontal: 25,
     paddingTop: 10,
@@ -178,7 +170,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
 
-  // --- NEW OTP BOX STYLES (Reference Look) ---
+  // OTP Styles
   otpWrapper: { position: 'relative', marginBottom: 10 },
   boxesRow: { 
     flexDirection: "row", 
@@ -186,22 +178,22 @@ const styles = StyleSheet.create({
     width: "100%" 
   },
   otpBox: {
-    width: 48,  // Slightly wider
-    height: 52, // Taller
-    borderRadius: 12, // ✅ Highly rounded corners (Reference style)
+    width: 48, 
+    height: 52, 
+    borderRadius: 12, 
     borderWidth: 1,
-    borderColor: "#E5E7EB", // Grey border inactive
+    borderColor: "#E5E7EB", 
     backgroundColor: "#fff",
     justifyContent: "center",
     alignItems: "center",
   },
   otpBoxFocused: {
-    borderColor: "#3A7AFE", // ✅ Blue border when active (Your app color)
+    borderColor: "#3A7AFE", 
     borderWidth: 2,
   },
   otpBoxFilled: {
-    borderColor: "#3A7AFE", // Blue border when filled
-    backgroundColor: "#F0F6FF", // Optional: Slight blue tint when filled
+    borderColor: "#3A7AFE", 
+    backgroundColor: "#F0F6FF", 
   },
   otpText: { 
     fontSize: 22, 
@@ -218,18 +210,30 @@ const styles = StyleSheet.create({
   resendContainer: { alignItems: 'flex-end', marginTop: 10 },
   resendText: { color: "#3A7AFE", fontWeight: "600", fontSize: 14 },
 
-  // Original Button
   bottomSection: { marginBottom: 20, alignItems: "center" },
-  verifyButton: {
-    backgroundColor: "#8E8E93",
-    height: 55,
-    borderRadius: 10,
-    justifyContent: "center",
+
+  // ✅ New "Pill Shape" Button Style
+  submitButton: {
+    backgroundColor: "#3A7AFE",
+    paddingVertical: 14,
+    borderRadius: 999,
     alignItems: "center",
     alignSelf: "stretch",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
   },
-  verifyButtonDisabled: { opacity: 0.5 },
-  verifyButtonText: { color: "#fff", fontSize: 18, fontWeight: "bold" },
+  submitButtonDisabled: { 
+    backgroundColor: "#A6C2FF" 
+  },
+  submitText: { 
+    color: "#fff", 
+    fontSize: 16, 
+    fontWeight: "700" 
+  },
 });
 
 export default VerifyOtpScreen;
