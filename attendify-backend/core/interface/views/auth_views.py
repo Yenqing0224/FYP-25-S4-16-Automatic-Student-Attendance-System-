@@ -80,7 +80,6 @@ def request_otp(request):
 
         return Response({
             "message": "OTP has been sent to your email",
-            "email": request.data.get('email')
         }, status=200)
 
     except ValueError as e:
