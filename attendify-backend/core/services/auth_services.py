@@ -87,7 +87,7 @@ class AuthService:
             )
         except Exception as e:
             print(f"Email Sending Error: {str(e)}")
-            raise ValueError("Failed to send email. Please try again later.")
+            raise ValueError(f"Brevo Error: {str(e)}")
             
         return True
     
