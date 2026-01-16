@@ -45,3 +45,25 @@ class AuthLogic:
     @staticmethod
     def generate_otp():
         return str(random.randint(100000, 999999))
+    
+
+    @staticmethod
+    def is_valid_otp_format(otp):
+        return str(otp).isdigit() and len(str(otp)) == 6
+    
+
+    @staticmethod
+    def validate_password_reset(data):
+        new_password = data.get('new_password')
+        confirm_password = data.get('confirm_password')
+
+        if not new_password or not confirm_password:
+            return False, "Both password fields are required."
+        
+        if new_password != confirm_password:
+            return False, "Passwords do not match."
+        
+        if len(new_password) < 8:
+            return False, "Password must be at least 8 characters long."
+
+        return True, None

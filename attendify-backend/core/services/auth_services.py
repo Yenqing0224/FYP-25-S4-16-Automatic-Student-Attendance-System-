@@ -61,7 +61,9 @@ class AuthService:
         return True
     
 
-    def request_password_reset(self, email):
+    def request_otp(self, data):
+        email = data['email']
+
         if not email:
             raise ValueError("Email address is required")
         
@@ -88,3 +90,56 @@ class AuthService:
             raise ValueError("Failed to send email. Please try again later.")
             
         return True
+    
+
+    def verify_otp(self, data):
+        email = data.get('email')
+        submitted_otp = data.get('otp')
+
+        if not email or not submitted_otp:
+            raise ValueError("Email and OTP are required.")
+        
+        if not AuthLogic.is_valid_otp_format(submitted_otp):
+            raise ValueError("Invalid OTP format. It must be 6 digits.")
+
+        cache_key = f"password_reset_{email}"
+        stored_otp = cache.get(cache_key)
+
+        if not stored_otp:
+            raise ValueError("OTP has expired or does not exist.")
+        
+        if str(stored_otp) != str(submitted_otp):
+            raise ValueError("Invalid OTP code.")
+        
+        return True
+    
+
+    def reset_password(self, data):
+        email = data.get('email')
+        otp = data.get('otp')
+        new_password = data.get('new_password')
+
+        is_valid, message = AuthLogic.validate_password_reset(data)
+        if not is_valid:
+            raise ValueError(message)
+
+        cache_key = f"password_reset_{email}"
+        stored_otp = cache.get(cache_key)
+
+        if not stored_otp:
+            raise ValueError("OTP has expired. Please request a new one.")
+        
+        if str(stored_otp) != str(otp):
+            raise ValueError("Invalid OTP provided.")
+
+        try:
+            user = User.objects.get(email=email)
+            user.set_password(new_password)
+            user.save()
+        except User.DoesNotExist:
+            raise ValueError("User account not found.")
+
+        cache.delete(cache_key)
+
+        return True
+    

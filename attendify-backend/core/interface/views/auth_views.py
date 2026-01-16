@@ -72,15 +72,15 @@ def change_password(request):
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
-def request_password_reset(request):
+def request_otp(request):
     service = AuthService()
 
     try:
-        email = request.data.get('email')
-        service.request_password_reset(email)
+        service.request_otp(request.data)
 
         return Response({
-            "message": "OTP has been sent to your email"
+            "message": "OTP has been sent to your email",
+            "email": request.data.get('email')
         }, status=200)
 
     except ValueError as e:
@@ -88,4 +88,45 @@ def request_password_reset(request):
     
     except Exception as e:
         print(f"Password Reset Error: {str(e)}")
+        return Response({"error": "Server error processing request"}, status=500)
+    
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def verify_otp(request):
+    service = AuthService()
+
+    try:
+        service.verify_otp(request.data)
+
+        return Response({
+            "message": "OTP verified successfully.",
+            "email": request.data.get('email')
+        }, status=200)
+
+    except ValueError as e:
+        return Response({"error": str(e)}, status=400)
+    
+    except Exception as e:
+        print(f"Verify OTP Error: {str(e)}")
+        return Response({"error": "Server error processing request"}, status=500)
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def reset_password(request):
+    service = AuthService()
+
+    try:
+        service.reset_password(request.data)
+
+        return Response({
+            "message": "Password has been reset successfully. You can now login."
+        }, status=200)
+
+    except ValueError as e:
+        return Response({"error": str(e)}, status=400)
+    
+    except Exception as e:
+        print(f"Reset Password Error: {str(e)}")
         return Response({"error": "Server error processing request"}, status=500)
