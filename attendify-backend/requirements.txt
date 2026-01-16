@@ -3,12 +3,14 @@ asgiref==3.11.0
 dj-database-url==3.0.1
 Django==6.0
 django-cors-headers==4.9.0
+django-redis==6.0.0
 djangorestframework==3.16.1
 gunicorn==23.0.0
 numpy==2.3.5
 packaging==25.0
 pgvector==0.4.2
 psycopg2-binary==2.9.11
+redis==7.1.0
 sqlparse==0.5.4
 tzdata==2025.2
 tzlocal==5.3.1
