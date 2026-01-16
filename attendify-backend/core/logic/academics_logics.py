@@ -17,7 +17,7 @@ class AcademicLogic:
     @staticmethod
     def determine_leave_status(has_leave):
         if has_leave:
-            return 'medical'
+            return 'on_leave'
         return 'absent'
     
 

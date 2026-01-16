@@ -84,7 +84,7 @@ class AttendanceRecord(models.Model):
     ATTENDANCE_STATUS = [
         ('present', 'Present'),
         ('absent', 'Absent'),
-        ('medical', 'Medical Leave'),
+        ('on_leave', 'On Leave'),
     ]
 
     # Relationships
