@@ -23,6 +23,7 @@ def get_dashboard(request):
             return Response({
                 "attendance_rate": data['attendance_rate'],
                 "semester_range": data['semester_range'],
+                "announcements" : data['announcements'],
                 "today_classes": ClassSessionSerializer(data['todays_sessions'], many=True).data,
                 "upcoming_classes": ClassSessionSerializer(data['upcoming_sessions'], many=True).data
             })
@@ -37,6 +38,7 @@ def get_dashboard(request):
             return Response({
                 "stats": data['stats'],
                 "next_class": next_class_data,
+                "announcements": data['announcements']
             })
         else:
             return Response({"error": "Role not supported"}, status=403)

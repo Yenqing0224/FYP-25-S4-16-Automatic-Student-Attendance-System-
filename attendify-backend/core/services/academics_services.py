@@ -1,4 +1,4 @@
-from core.models import Student, ClassSession, Semester, AttendanceRecord, Lecturer, LeaveRequest
+from core.models import Student, ClassSession, Semester, AttendanceRecord, Lecturer, LeaveRequest, Announcement
 from django.utils import timezone
 from datetime import timedelta
 from django.db.models import Q
@@ -23,6 +23,10 @@ class AcademicService:
             s_end = current_semester.end_date.strftime("%b %Y")
             semester_range = f"{s_start} - {s_end}"
 
+        todays_announcements = Announcement.objects.filter(
+            created_at__date=today_date
+        )
+
         todays_sessions = ClassSession.objects.filter(
             module__students=profile,
             date=today_date
@@ -36,8 +40,9 @@ class AcademicService:
         return {
             "attendance_rate": profile.attendance_rate,
             "semester_range": semester_range,
+            "announcements": todays_announcements,
             "todays_sessions": todays_sessions,    
-            "upcoming_sessions": upcoming_sessions  
+            "upcoming_sessions": upcoming_sessions
         }
     
 
@@ -66,12 +71,17 @@ class AcademicService:
             Q(date__gt=today_date) | Q(date=today_date, start_time__gte=today.time())
         ).order_by('date', 'start_time').first()
 
+        todays_announcements = Announcement.objects.filter(
+            created_at__date=today_date
+        )
+
         return {
             "stats": {
                 "today": today_count,
                 "week": week_count
             },
-            "next_class": next_class
+            "next_class": next_class,
+            "announcements": todays_announcements
         }
     
 
