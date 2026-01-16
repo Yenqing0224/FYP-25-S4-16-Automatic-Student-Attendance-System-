@@ -77,10 +77,24 @@ class AuthService:
         cache_key = f"password_reset_{email}"
         cache.set(cache_key, otp, timeout=600)
 
+        message = f"""Dear {user.get_full_name()},
+        You are receiving this message as you have requested an OTP to reset your password.
+
+        Do Not share this OTP with anyone.
+
+        Your Verification Code:
+        {otp}
+
+        The OTP is valid for 10 minutes.
+
+        This is a system generated message. Do not reply to this email.
+
+        """
+
         try:
             send_mail(
                 subject='Attendify Password Reset',
-                message=f'Your verification code is: {otp}. It expires in 10 minutes.',
+                message=message,
                 from_email="attendify2026@outlook.com",
                 recipient_list=[email],
                 fail_silently=False,
