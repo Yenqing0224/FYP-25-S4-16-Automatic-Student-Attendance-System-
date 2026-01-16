@@ -23,9 +23,7 @@ class AcademicService:
             s_end = current_semester.end_date.strftime("%b %Y")
             semester_range = f"{s_start} - {s_end}"
 
-        todays_announcements = Announcement.objects.filter(
-            created_at__date=today_date
-        )
+        todays_announcements = Announcement.objects.all().order_by('-created_at')[:5]
 
         todays_sessions = ClassSession.objects.filter(
             module__students=profile,
