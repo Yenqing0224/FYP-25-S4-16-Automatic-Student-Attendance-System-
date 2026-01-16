@@ -6,6 +6,7 @@ import SplashScreen from "../screens/splash/splash_screen";
 import LoginScreen from "../screens/auth/login_screen";
 import WelcomeScreen from "../screens/student/onboarding/welcome_screen";
 import ForgotPasswordScreen from "../screens/auth/forgotPassword_screen";
+import VerifyOtpScreen from "../screens/auth/verifyOtp_screen";
 import ResetPasswordScreen from "../screens/auth/resetPassword_screen";
 import ContactUsScreen from "../screens/auth/contactUs_screen";
 
@@ -26,6 +27,7 @@ export default function RootNavigator() {
       {/* Auth */}
       <Stack.Screen name="Login" component={LoginScreen} />
       <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+      <Stack.Screen name="VerifyOtp" component={VerifyOtpScreen} />
       <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
       <Stack.Screen name="ContactUs" component={ContactUsScreen} />
 

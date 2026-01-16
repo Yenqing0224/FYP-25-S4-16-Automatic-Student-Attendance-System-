@@ -14,14 +14,13 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import axios from "axios";
+import api from "../../api/api_client"; // ✅ Use api client
 
-const CONFIRM_URL =
-  "https://attendify-ekg6.onrender.com/api/password-reset-confirm/";
-// 👆 adjust to your backend
+const RESET_URL = "/reset-password/"; // ✅ Updated Endpoint
 
 const ResetPasswordScreen = ({ route, navigation }) => {
-  const { email, token } = route.params || {};
+  // ✅ Retrieve email and otp passed from VerifyOtpScreen
+  const { email, otp } = route.params || {};
 
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -30,6 +29,7 @@ const ResetPasswordScreen = ({ route, navigation }) => {
   const [loading, setLoading] = useState(false);
 
   const handleResetPassword = async () => {
+    // 1. Validation
     if (!newPassword || !confirmPassword) {
       Alert.alert("Missing fields", "Please fill in all fields.");
       return;
@@ -38,10 +38,10 @@ const ResetPasswordScreen = ({ route, navigation }) => {
       Alert.alert("Password mismatch", "Passwords do not match.");
       return;
     }
-    if (!token) {
+    if (!email || !otp) {
       Alert.alert(
-        "Invalid link",
-        "Reset token is missing. Please request a new reset link."
+        "Error",
+        "Missing validation info (Email or OTP). Please start over."
       );
       return;
     }
@@ -49,25 +49,26 @@ const ResetPasswordScreen = ({ route, navigation }) => {
     try {
       setLoading(true);
 
-      await axios.post(CONFIRM_URL, {
-        token,
+      // 2. Call API with the 4 required fields
+      await api.post(RESET_URL, {
+        email: email,
+        otp: otp,
         new_password: newPassword,
-        confirm_password: confirmPassword, // remove if backend doesn't need it
+        confirm_password: confirmPassword,
       });
 
-      Alert.alert("Success", "Your password has been updated.", [
+      // 3. Success -> Go to Login
+      Alert.alert("Success", "Your password has been updated successfully.", [
         {
-          text: "OK",
-          onPress: () => navigation.replace("Login"),
+          text: "Login Now",
+          onPress: () => navigation.popToTop(), // Go back to the very first screen (Login)
         },
       ]);
     } catch (err) {
       console.log("ResetPassword error:", err.response?.data || err);
-      Alert.alert(
-        "Error",
-        err.response?.data?.detail ||
-          "Failed to reset password. Please try again."
-      );
+      const errorMessage =
+        err.response?.data?.error || "Failed to reset password. Please try again.";
+      Alert.alert("Error", errorMessage);
     } finally {
       setLoading(false);
     }
@@ -77,6 +78,16 @@ const ResetPasswordScreen = ({ route, navigation }) => {
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity 
+          onPress={() => navigation.goBack()}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Text style={styles.backArrow}>{'<'}</Text>
+        </TouchableOpacity>
+      </View>
+
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -86,16 +97,16 @@ const ResetPasswordScreen = ({ route, navigation }) => {
             <Text style={styles.headerTitle}>Reset Password</Text>
 
             <Text style={styles.subtitle}>
-              Enter a new password for{" "}
-              <Text style={{ fontWeight: "600" }}>{email || "your account"}</Text>.
+              Create a new password for{"\n"}
+              <Text style={{ fontWeight: "bold", color: "#333" }}>{email}</Text>
             </Text>
 
-            {/* NEW PASSWORD */}
+            {/* NEW PASSWORD INPUT */}
             <View style={styles.inputGroup}>
               <Text style={styles.label}>New Password</Text>
               <View style={styles.passwordWrapper}>
                 <TextInput
-                  style={[styles.input, { paddingRight: 70 }]}
+                  style={[styles.input, { paddingRight: 50 }]}
                   placeholder="Enter new password"
                   placeholderTextColor="#A0A0A0"
                   secureTextEntry={!showNewPassword}
@@ -104,7 +115,7 @@ const ResetPasswordScreen = ({ route, navigation }) => {
                 />
                 <TouchableOpacity
                   style={styles.eyeButton}
-                  onPress={() => setShowNewPassword((prev) => !prev)}
+                  onPress={() => setShowNewPassword(!showNewPassword)}
                 >
                   <Text style={styles.eyeText}>
                     {showNewPassword ? "Hide" : "Show"}
@@ -113,12 +124,12 @@ const ResetPasswordScreen = ({ route, navigation }) => {
               </View>
             </View>
 
-            {/* CONFIRM PASSWORD */}
+            {/* CONFIRM PASSWORD INPUT */}
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Confirm New Password</Text>
+              <Text style={styles.label}>Confirm Password</Text>
               <View style={styles.passwordWrapper}>
                 <TextInput
-                  style={[styles.input, { paddingRight: 70 }]}
+                  style={[styles.input, { paddingRight: 50 }]}
                   placeholder="Re-enter new password"
                   placeholderTextColor="#A0A0A0"
                   secureTextEntry={!showConfirmPassword}
@@ -127,7 +138,7 @@ const ResetPasswordScreen = ({ route, navigation }) => {
                 />
                 <TouchableOpacity
                   style={styles.eyeButton}
-                  onPress={() => setShowConfirmPassword((prev) => !prev)}
+                  onPress={() => setShowConfirmPassword(!showConfirmPassword)}
                 >
                   <Text style={styles.eyeText}>
                     {showConfirmPassword ? "Hide" : "Show"}
@@ -153,10 +164,6 @@ const ResetPasswordScreen = ({ route, navigation }) => {
                 <Text style={styles.resetButtonText}>Update Password</Text>
               )}
             </TouchableOpacity>
-
-            <TouchableOpacity onPress={() => navigation.goBack()}>
-              <Text style={styles.backText}>Back</Text>
-            </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>
       </TouchableWithoutFeedback>
@@ -166,14 +173,21 @@ const ResetPasswordScreen = ({ route, navigation }) => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#fff" },
+  header: {
+    paddingHorizontal: 25,
+    paddingTop: 10,
+    paddingBottom: 5,
+    justifyContent: 'center',
+  },
+  backArrow: { fontSize: 28, color: "#000", fontWeight: '300' },
   innerContainer: {
     flex: 1,
     paddingHorizontal: 25,
-    paddingTop: 40,
+    paddingTop: 20,
     paddingBottom: 20,
     justifyContent: "space-between",
   },
-  topSection: { marginTop: 20 },
+  topSection: { marginTop: 10 },
   headerTitle: {
     fontSize: 24,
     fontWeight: "bold",
@@ -186,6 +200,7 @@ const styles = StyleSheet.create({
     color: "#555",
     textAlign: "center",
     marginBottom: 30,
+    lineHeight: 20,
   },
   inputGroup: { marginBottom: 20 },
   label: {
@@ -193,6 +208,10 @@ const styles = StyleSheet.create({
     color: "#333",
     marginBottom: 8,
     fontWeight: "500",
+  },
+  passwordWrapper: {
+    position: "relative",
+    justifyContent: "center",
   },
   input: {
     height: 50,
@@ -203,10 +222,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#000",
   },
-  passwordWrapper: {
-    position: "relative",
-    justifyContent: "center",
-  },
   eyeButton: {
     position: "absolute",
     right: 15,
@@ -214,9 +229,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   eyeText: {
-    color: "#0078D7",
+    color: "#3A7AFE", // Changed to your app's primary blue
     fontSize: 14,
-    fontWeight: "500",
+    fontWeight: "600",
   },
   bottomSection: { marginBottom: 20, alignItems: "center" },
   resetButton: {
@@ -226,18 +241,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     alignSelf: "stretch",
-    marginBottom: 15,
   },
   resetButtonDisabled: { opacity: 0.5 },
   resetButtonText: {
     color: "#fff",
     fontSize: 18,
     fontWeight: "bold",
-  },
-  backText: {
-    fontSize: 14,
-    color: "#333",
-    textDecorationLine: "underline",
   },
 });
 

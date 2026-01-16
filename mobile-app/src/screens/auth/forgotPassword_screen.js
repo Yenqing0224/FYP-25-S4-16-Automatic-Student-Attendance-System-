@@ -10,15 +10,13 @@ import {
   Platform,
   TouchableWithoutFeedback,
   Keyboard,
-  Alert,
   ActivityIndicator,
+  Alert
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import axios from "axios";
+import api from "../../api/api_client"; 
 
-const REQUEST_URL =
-  "https://attendify-ekg6.onrender.com/api/password-reset-request/"; 
-// 👆 change to your actual endpoint
+const REQUEST_URL = "/request-otp/"; 
 
 const ForgotPasswordScreen = ({ navigation }) => {
   const [email, setEmail] = useState("");
@@ -33,40 +31,18 @@ const ForgotPasswordScreen = ({ navigation }) => {
     try {
       setLoading(true);
 
-      const res = await axios.post(REQUEST_URL, {
+      // Call API
+      await api.post(REQUEST_URL, { email: email.trim() });
+
+      // ✅ Navigate IMMEDIATELY (No Alert)
+      navigation.navigate("VerifyOtp", {
         email: email.trim(),
       });
 
-      // If your backend ALSO returns a token (for demo), grab it here:
-      const token = res.data?.token; // optional
-
-      Alert.alert(
-        "Reset link sent",
-        "If this email is registered, a password reset link has been sent.",
-        [
-          {
-            text: token ? "Reset Now" : "OK",
-            onPress: () => {
-              if (token) {
-                // For demo / testing deep link:
-                navigation.navigate("ResetPassword", {
-                  email: email.trim(),
-                  token,
-                });
-              } else {
-                navigation.navigate("Login");
-              }
-            },
-          },
-        ]
-      );
     } catch (err) {
       console.log("ForgotPassword error:", err.response?.data || err);
-      Alert.alert(
-        "Error",
-        err.response?.data?.detail ||
-          "Failed to send reset link. Please try again."
-      );
+      const errorMessage = err.response?.data?.error || "Failed to send OTP. Please try again.";
+      Alert.alert("Error", errorMessage);
     } finally {
       setLoading(false);
     }
@@ -74,6 +50,15 @@ const ForgotPasswordScreen = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <TouchableOpacity 
+          onPress={() => navigation.goBack()}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Text style={styles.backArrow}>{'<'}</Text>
+        </TouchableOpacity>
+      </View>
+
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -82,7 +67,7 @@ const ForgotPasswordScreen = ({ navigation }) => {
           <View style={styles.topSection}>
             <Text style={styles.headerTitle}>Forgot Password</Text>
             <Text style={styles.subtitle}>
-              Enter your registered email and we’ll send you a reset link.
+              Enter your email and we'll send you an OTP code.
             </Text>
 
             <View style={styles.inputGroup}>
@@ -111,12 +96,8 @@ const ForgotPasswordScreen = ({ navigation }) => {
               {loading ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <Text style={styles.resetButtonText}>Send Reset Link</Text>
+                <Text style={styles.resetButtonText}>Send OTP</Text>
               )}
-            </TouchableOpacity>
-
-            <TouchableOpacity onPress={() => navigation.goBack()}>
-              <Text style={styles.backText}>Back to Login</Text>
             </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>
@@ -127,64 +108,19 @@ const ForgotPasswordScreen = ({ navigation }) => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#fff" },
-  innerContainer: {
-    flex: 1,
-    paddingHorizontal: 25,
-    paddingTop: 40,
-    paddingBottom: 20,
-    justifyContent: "space-between",
-  },
-  topSection: { marginTop: 20 },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#000",
-    textAlign: "center",
-    marginBottom: 10,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: "#555",
-    textAlign: "center",
-    marginBottom: 30,
-  },
+  header: { paddingHorizontal: 25, paddingTop: 10, paddingBottom: 5, justifyContent: 'center' },
+  backArrow: { fontSize: 28, color: "#000", fontWeight: '300' },
+  innerContainer: { flex: 1, paddingHorizontal: 25, paddingTop: 20, paddingBottom: 20, justifyContent: "space-between" },
+  topSection: { marginTop: 10 },
+  headerTitle: { fontSize: 24, fontWeight: "bold", color: "#000", textAlign: "center", marginBottom: 10 },
+  subtitle: { fontSize: 14, color: "#555", textAlign: "center", marginBottom: 30, paddingHorizontal: 20 },
   inputGroup: { marginBottom: 20 },
-  label: {
-    fontSize: 14,
-    color: "#333",
-    marginBottom: 8,
-    fontWeight: "500",
-  },
-  input: {
-    height: 50,
-    borderWidth: 1,
-    borderColor: "#333",
-    borderRadius: 10,
-    paddingHorizontal: 15,
-    fontSize: 16,
-    color: "#000",
-  },
+  label: { fontSize: 14, color: "#333", marginBottom: 8, fontWeight: "500" },
+  input: { height: 50, borderWidth: 1, borderColor: "#333", borderRadius: 10, paddingHorizontal: 15, fontSize: 16, color: "#000" },
   bottomSection: { marginBottom: 20, alignItems: "center" },
-  resetButton: {
-    backgroundColor: "#8E8E93",
-    height: 55,
-    borderRadius: 10,
-    justifyContent: "center",
-    alignItems: "center",
-    alignSelf: "stretch",
-    marginBottom: 15,
-  },
+  resetButton: { backgroundColor: "#8E8E93", height: 55, borderRadius: 10, justifyContent: "center", alignItems: "center", alignSelf: "stretch" },
   resetButtonDisabled: { opacity: 0.5 },
-  resetButtonText: {
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "bold",
-  },
-  backText: {
-    fontSize: 14,
-    color: "#333",
-    textDecorationLine: "underline",
-  },
+  resetButtonText: { color: "#fff", fontSize: 18, fontWeight: "bold" },
 });
 
 export default ForgotPasswordScreen;
