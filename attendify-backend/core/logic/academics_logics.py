@@ -5,8 +5,7 @@ class AcademicLogic:
 
     @staticmethod
     def get_upcoming_class_window():
-        utc_now = timezone.now()
-        local_now = timezone.localtime(utc_now)
+        local_now = timezone.localtime(timezone.now())
         start_range = local_now
         end_range = local_now + timedelta(minutes=30)
         target_date = start_range.date()

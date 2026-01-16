@@ -9,7 +9,7 @@ class AcademicService:
 
     def get_student_dashboard(self, user):
         profile = Student.objects.get(user=user)
-        today = timezone.now()
+        today = timezone.localtime(timezone.now())
         today_date = today.date()
 
         current_semester = Semester.objects.filter(
@@ -23,7 +23,9 @@ class AcademicService:
             s_end = current_semester.end_date.strftime("%b %Y")
             semester_range = f"{s_start} - {s_end}"
 
-        todays_announcements = Announcement.objects.all().order_by('-created_at')[:5]
+        todays_announcements = Announcement.objects.filter(
+            created_at__date=today_date
+        )
 
         todays_sessions = ClassSession.objects.filter(
             module__students=profile,
@@ -46,7 +48,7 @@ class AcademicService:
 
     def get_lecturer_dashboard(self, user):
         profile = Lecturer.objects.get(user=user)
-        today = timezone.now()
+        today = timezone.localtime(timezone.now())
         today_date = today.date()
 
         # 1. Stats
