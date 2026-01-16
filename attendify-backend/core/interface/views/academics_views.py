@@ -7,6 +7,7 @@ from core.services.academics_services import AcademicService
 from pgvector.django import CosineDistance
 # Serializers
 from core.interface.serializers.academics_serializers import ClassSessionSerializer, AttendanceRecordSerializer
+from core.interface.serializers.communication_serializers import AnnouncementSerializer
 from core.interface.serializers.users_serializers import MultiFaceEmbeddingSerializer
 
 
@@ -23,7 +24,7 @@ def get_dashboard(request):
             return Response({
                 "attendance_rate": data['attendance_rate'],
                 "semester_range": data['semester_range'],
-                "announcements" : data['announcements'],
+                "announcements" : AnnouncementSerializer(data['announcements'], many=True).data,
                 "today_classes": ClassSessionSerializer(data['todays_sessions'], many=True).data,
                 "upcoming_classes": ClassSessionSerializer(data['upcoming_sessions'], many=True).data
             })
