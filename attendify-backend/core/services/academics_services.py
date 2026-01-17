@@ -52,18 +52,18 @@ class AcademicService:
         today_date = today.date()
 
         # 1. Stats
-        today_count = ClassSession.objects.filter(
+        today_sessions = ClassSession.objects.filter(
             module__lecturer=profile, 
             date=today_date
-        ).count()
+        ).order_by('start_time')
 
         start_week = today_date - timedelta(days=today_date.weekday())
         end_week = start_week + timedelta(days=6)
         
-        week_count = ClassSession.objects.filter(
+        week_sessions = ClassSession.objects.filter(
             module__lecturer=profile,
             date__range=[start_week, end_week]
-        ).count()
+        ).order_by('date', 'start_time')
 
         next_class = ClassSession.objects.filter(
             module__lecturer=profile
@@ -77,8 +77,8 @@ class AcademicService:
 
         return {
             "stats": {
-                "today": today_count,
-                "week": week_count
+                "today": today_sessions,
+                "week": week_sessions
             },
             "next_class": next_class,
             "announcements": todays_announcements
