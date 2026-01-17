@@ -20,6 +20,7 @@ class AdminSerializer(serializers.ModelSerializer):
 
 class LecturerSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
+    partner_uni = serializers.CharField(source='partner_uni.name', read_only=True)
 
     class Meta:
         model = Lecturer
@@ -28,7 +29,8 @@ class LecturerSerializer(serializers.ModelSerializer):
 
 class StudentSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
-
+    partner_uni = serializers.CharField(source='partner_uni.name', read_only=True)
+    
     class Meta:
         model = Student
         fields = '__all__'
