@@ -34,7 +34,7 @@ class AcademicService:
         
         upcoming_sessions = ClassSession.objects.filter(
             module__students=profile,
-            date__gt=today_date
+            date=today_date
         ).order_by('date', 'start_time')[:5]
 
         return {
