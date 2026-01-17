@@ -1,14 +1,23 @@
-// src/screens/lecturer/sessions/sessions_screen.js
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, StatusBar, Alert } from "react-native";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  TouchableOpacity, 
+  StatusBar, 
+  Alert, 
+  ActivityIndicator 
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as Calendar from "expo-calendar";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useFocusEffect } from "@react-navigation/native";
 
 import UpcomingTab from "./tabs/upcoming_tab";
 import PastTab from "./tabs/past_tab";
 import CalendarTab from "./tabs/calendar_tab";
+import api from "../../../api/api_client"; 
 
 const COLORS = {
   primary: "#6D5EF5",
@@ -22,43 +31,110 @@ const COLORS = {
 
 const REMINDER_KEY = "lecturerReminderIds_v1";
 
-export default function LecturerSessionsScreen({ navigation }) {
-  const [activeTab, setActiveTab] = useState("Upcoming"); // Upcoming | Past | Calendar
+const LecturerSessionsScreen = ({ navigation, route }) => {
+  const [activeTab, setActiveTab] = useState("Upcoming");
   const [selectedDate, setSelectedDate] = useState(null);
+  
+  // Data State
+  const [fullTimetable, setFullTimetable] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // Calendar Logic State
   const [savedReminderIds, setSavedReminderIds] = useState(new Set());
   const [savingId, setSavingId] = useState(null);
+
+  // 1. Handle "Jump" from Home Screen
+  useFocusEffect(
+    useCallback(() => {
+      // If Home passed a specific tab (e.g. "Upcoming")
+      if (route.params?.tab) {
+        setActiveTab(route.params.tab);
+        navigation.setParams({ tab: null });
+      }
+      // If Home passed a date (e.g. "2026-01-17")
+      if (route.params?.targetDate) {
+        setActiveTab("Calendar");
+        const iso = route.params.targetDate;
+        const datePart = iso.includes("T") ? iso.split("T")[0] : iso;
+        setSelectedDate(datePart);
+        navigation.setParams({ targetDate: null });
+      }
+    }, [route.params?.tab, route.params?.targetDate])
+  );
+
+  // Set default selected date
   useEffect(() => {
     if (!selectedDate) {
-      setSelectedDate(new Date().toISOString().slice(0, 10));
+      const sgTime = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Singapore" });
+      setSelectedDate(sgTime); 
     }
   }, [selectedDate]);
-  // ✅ Dummy data now (replace with API later)
-  const upcoming = useMemo(() => ([
-    { id: "1", module: "CSIT321", title: "Lecture", time: "10:00 – 12:00", venue: "LT27", startISO: "2025-12-16T10:00:00+08:00", endISO: "2025-12-16T12:00:00+08:00" },
-    { id: "2", module: "IS312", title: "Tutorial", time: "14:00 – 16:00", venue: "COM2-02-15", startISO: "2025-12-16T14:00:00+08:00", endISO: "2025-12-16T16:00:00+08:00" },
-  ]), []);
 
-  const past = useMemo(() => ([
-    { id: "3", module: "CSIT321", title: "Lecture", time: "Mon 10:00 – 12:00", venue: "LT27", startISO: "2025-12-09T10:00:00+08:00", endISO: "2025-12-09T12:00:00+08:00" },
-  ]), []);
-
-
-  const reminderIdFor = (cls) => `${cls.module}|${cls.startISO}|${cls.venue}`;
-  const isAdded = (cls) => savedReminderIds.has(reminderIdFor(cls));
-  const isSavingThis = (cls) => savingId === reminderIdFor(cls);
-
+  // Load Reminders
   useEffect(() => {
     (async () => {
       try {
         const raw = await AsyncStorage.getItem(REMINDER_KEY);
-        if (!raw) return;
-        const arr = JSON.parse(raw);
-        if (Array.isArray(arr)) setSavedReminderIds(new Set(arr));
+        if (raw) {
+          const arr = JSON.parse(raw);
+          if (Array.isArray(arr)) setSavedReminderIds(new Set(arr));
+        }
       } catch (e) {
         console.error("Failed to load reminder ids", e);
       }
     })();
   }, []);
+
+  // Fetch Timetable on Focus
+  useFocusEffect(
+    useCallback(() => {
+      fetchTimetable();
+    }, [])
+  );
+
+  const fetchTimetable = async () => {
+    try {
+      const res = await api.get("/timetable/");
+      const rawData = res.data;
+
+      const formatted = rawData.map((c) => ({
+        id: String(c.id),
+        module: c.module?.code || "MOD",
+        title: c.module?.name || "Class",
+        venue: c.venue || "TBA",
+        time: `${c.start_time.slice(0,5)} – ${c.end_time.slice(0,5)}`,
+        startISO: `${c.date}T${c.start_time}`, 
+        endISO: `${c.date}T${c.end_time}`,
+        date: c.date, 
+      }));
+
+      setFullTimetable(formatted);
+    } catch (err) {
+      console.error("Timetable Fetch Error:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // --- Derived Lists ---
+  const upcoming = useMemo(() => {
+    const now = new Date();
+    return fullTimetable
+      .filter((c) => new Date(c.startISO) >= now)
+      .sort((a, b) => new Date(a.startISO) - new Date(b.startISO));
+  }, [fullTimetable]);
+
+  const past = useMemo(() => {
+    const now = new Date();
+    return fullTimetable
+      .filter((c) => new Date(c.startISO) < now)
+      .sort((a, b) => new Date(b.startISO) - new Date(a.startISO)); 
+  }, [fullTimetable]);
+
+  // --- Reminder Logic ---
+  const reminderIdFor = (cls) => `${cls.module}|${cls.startISO}|${cls.venue}`;
+  const isAdded = (cls) => savedReminderIds.has(reminderIdFor(cls));
+  const isSavingThis = (cls) => savingId === reminderIdFor(cls);
 
   const persistReminderIds = async (nextSet) => {
     await AsyncStorage.setItem(REMINDER_KEY, JSON.stringify(Array.from(nextSet)));
@@ -131,19 +207,25 @@ export default function LecturerSessionsScreen({ navigation }) {
     );
   };
 
-  const isTodayISO = (iso) => {
-    const d = new Date(iso);
-    const now = new Date();
-    return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
-  };
-
   const remindersAddedTodayCount = useMemo(() => {
     let count = 0;
+    const now = new Date();
     upcoming.forEach((cls) => {
-      if (isAdded(cls) && isTodayISO(cls.startISO)) count += 1;
+      if (isAdded(cls)) {
+         const d = new Date(cls.startISO);
+         if(d.getDate() === now.getDate()) count++;
+      }
     });
     return count;
-  }, [savedReminderIds]);
+  }, [upcoming, savedReminderIds]);
+
+  if (loading) {
+     return (
+        <SafeAreaView style={[styles.container, {justifyContent: 'center', alignItems: 'center'}]}>
+             <ActivityIndicator size="large" color={COLORS.primary} />
+        </SafeAreaView>
+     )
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -198,7 +280,7 @@ export default function LecturerSessionsScreen({ navigation }) {
         <CalendarTab
           COLORS={COLORS}
           navigation={navigation}
-          upcoming={upcoming}
+          upcoming={fullTimetable} 
           selectedDate={selectedDate}
           setSelectedDate={setSelectedDate}
           isAdded={isAdded}
@@ -209,35 +291,25 @@ export default function LecturerSessionsScreen({ navigation }) {
       )}
     </SafeAreaView>
   );
-}
+};
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
-
   headerRow: {
-    paddingHorizontal: 20,
-    paddingTop: 14,
-    paddingBottom: 10,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+    paddingHorizontal: 20, paddingTop: 14, paddingBottom: 10,
+    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
   },
   headerTitle: { fontSize: 22, fontWeight: "900", color: COLORS.textDark },
-
   badgePill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
-    backgroundColor: COLORS.soft,
+    flexDirection: "row", alignItems: "center", gap: 6,
+    paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, backgroundColor: COLORS.soft,
   },
   badgeText: { fontWeight: "900", color: COLORS.primary, fontSize: 12 },
-
   tabRow: { flexDirection: "row", paddingHorizontal: 20, gap: 10, marginBottom: 8 },
   tab: { flex: 1, paddingVertical: 10, borderRadius: 14, backgroundColor: COLORS.soft, alignItems: "center" },
   tabActive: { backgroundColor: COLORS.primary },
   tabText: { fontWeight: "800", color: COLORS.primary },
   tabTextActive: { color: "#fff" },
 });
+
+export default LecturerSessionsScreen;

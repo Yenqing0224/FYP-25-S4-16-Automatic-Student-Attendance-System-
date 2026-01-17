@@ -1,3 +1,4 @@
+// src/screens/lecturer/classes/class_detail_screen.js
 import React, { useMemo } from "react";
 import {
   View,
@@ -15,7 +16,6 @@ import * as Clipboard from "expo-clipboard";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const COLORS = {
-  // Lecturer theme (keep same structure as student, but different primary)
   primary: "#6D5EF5",
   background: "#F6F5FF",
   card: "#FFFFFF",
@@ -27,7 +27,7 @@ const COLORS = {
 
 const REMINDER_KEY = "lecturerReminderIds_v1";
 
-export default function LecturerClassDetailScreen({ route, navigation }) {
+const LecturerClassDetailScreen = ({ route, navigation }) => {
   const cls = route?.params?.cls;
 
   const titleText = cls?.title || "Class Details";
@@ -37,18 +37,32 @@ export default function LecturerClassDetailScreen({ route, navigation }) {
   const startISO = cls?.startISO || null;
   const endISO = cls?.endISO || null;
 
+  // ✅ Helper to fix the "-" date issue
+  const getDisplayDate = () => {
+    // 1. If passed pre-formatted
+    if (cls?.fullDate) return cls.fullDate;
+    
+    // 2. Fallback: Format raw date string
+    if (cls?.date) {
+      const parts = cls.date.split('-'); // YYYY-MM-DD
+      const d = new Date(parts[0], parts[1]-1, parts[2]);
+      return d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+    }
+    return "-";
+  };
+  
+  const dateText = getDisplayDate();
+
   const isNextClass = useMemo(() => {
-    // simple highlight: if class is today and in the future
     if (!startISO) return false;
     const start = new Date(startISO).getTime();
     const now = Date.now();
     const diff = start - now;
-    // next class if within next 24h and not started yet
     return diff > 0 && diff <= 24 * 60 * 60 * 1000;
   }, [startISO]);
 
   const formatCopyText = () =>
-    `${moduleText} - ${titleText}\n${timeText}\n${venueText}`;
+    `${moduleText} - ${titleText}\nDate: ${dateText}\nTime: ${timeText}\nVenue: ${venueText}`;
 
   const copyDetails = async () => {
     try {
@@ -69,7 +83,6 @@ export default function LecturerClassDetailScreen({ route, navigation }) {
     }
 
     try {
-      // optional: prevent duplicate in Attendify tracking
       const raw = await AsyncStorage.getItem(REMINDER_KEY);
       const arr = raw ? JSON.parse(raw) : [];
       const rid = reminderIdFor();
@@ -101,7 +114,6 @@ export default function LecturerClassDetailScreen({ route, navigation }) {
         timeZone: "Asia/Singapore",
       });
 
-      // Save tracking id (so Sessions/Home shows Added ✅)
       const next = Array.isArray(arr) ? arr : [];
       next.push(rid);
       await AsyncStorage.setItem(REMINDER_KEY, JSON.stringify(next));
@@ -141,7 +153,6 @@ export default function LecturerClassDetailScreen({ route, navigation }) {
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
-        {/* Next class highlight */}
         {isNextClass && (
           <View style={styles.nextPill}>
             <Ionicons name="sparkles-outline" size={16} color={COLORS.primary} />
@@ -155,6 +166,15 @@ export default function LecturerClassDetailScreen({ route, navigation }) {
           <Text style={styles.title}>{titleText}</Text>
 
           <View style={styles.divider} />
+
+          {/* ✅ Date Row Added */}
+          <View style={styles.infoRow}>
+            <View style={styles.infoLeft}>
+              <Ionicons name="calendar-outline" size={18} color={COLORS.textMuted} />
+              <Text style={styles.label}>Date</Text>
+            </View>
+            <Text style={styles.value}>{dateText}</Text>
+          </View>
 
           <View style={styles.infoRow}>
             <View style={styles.infoLeft}>
@@ -172,7 +192,6 @@ export default function LecturerClassDetailScreen({ route, navigation }) {
             <Text style={styles.value}>{venueText}</Text>
           </View>
 
-          {/* Optional info (safe for lecturer) */}
           {cls?.enrolledCount != null && (
             <View style={styles.infoRow}>
               <View style={styles.infoLeft}>
@@ -200,8 +219,6 @@ export default function LecturerClassDetailScreen({ route, navigation }) {
               <Ionicons name="copy-outline" size={16} color={COLORS.primary} />
               <Text style={styles.secondaryBtnText}>Copy details</Text>
             </TouchableOpacity>
-
-    
           </View>
         </View>
 
@@ -209,7 +226,7 @@ export default function LecturerClassDetailScreen({ route, navigation }) {
       </ScrollView>
     </SafeAreaView>
   );
-}
+};
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
@@ -295,3 +312,5 @@ const styles = StyleSheet.create({
 
   emptyText: { color: COLORS.textMuted, fontWeight: "700", textAlign: "center", marginBottom: 12 },
 });
+
+export default LecturerClassDetailScreen;

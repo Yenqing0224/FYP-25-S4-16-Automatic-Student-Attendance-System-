@@ -1,18 +1,20 @@
 // src/screens/lecturer/profile/profile_screen.js
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
-  Alert,
   StatusBar,
   ScrollView,
   Pressable,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useFocusEffect } from "@react-navigation/native";
+import api from "../../../api/api_client"; 
 
 const COLORS = {
   primary: "#6D5EF5",
@@ -24,60 +26,66 @@ const COLORS = {
   chipBg: "#ECE9FF",
 };
 
-export default function LecturerProfileScreen({ navigation }) {
-  const [lecturer, setLecturer] = useState({
-    name: "Lecturer Name",
-    email: "staff@uow.edu",
-    staffId: "L123456",
-    department: "School of Computing",
-  });
+const LecturerProfileScreen = ({ navigation }) => {
+  const [loading, setLoading] = useState(true);
+  const [lecturer, setLecturer] = useState(null);
 
+  // Mock stats (Since /profile/ doesn't return these yet)
   const [teaching, setTeaching] = useState({
     modules: ["CSIT321 – Software Design", "CSIT314 – Agile Methods"],
     activeClasses: 3,
     totalStudents: 128,
   });
 
-  useEffect(() => {
-    const loadProfile = async () => {
-      try {
-        const raw = await AsyncStorage.getItem("userInfo");
-        if (raw) {
-          const info = JSON.parse(raw);
-          setLecturer((prev) => ({
-            ...prev,
-            name: info?.name || prev.name,
-            email: info?.email || prev.email,
-            staffId: info?.staffId || prev.staffId,
-            department: info?.department || prev.department,
-          }));
-        }
-      } catch (e) {}
-    };
+  // Fetch Profile from API
+  const fetchProfile = async () => {
+    try {
+      const res = await api.get("/profile/");
+      setLecturer(res.data);
+    } catch (err) {
+      console.error("Profile fetch error:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    loadProfile();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      fetchProfile();
+    }, [])
+  );
 
   const handleLogout = async () => {
-    await AsyncStorage.multiRemove(["userToken", "userInfo"]);
-    Alert.alert("Logged out", "You have been logged out.");
-    navigation.reset({ index: 0, routes: [{ name: "Login" }] });
+    try {
+      await AsyncStorage.multiRemove(["userToken", "userInfo"]);
+      navigation.reset({ index: 0, routes: [{ name: "Login" }] });
+    } catch (e) {
+      console.error("Logout error:", e);
+    }
   };
 
   const goChangePassword = () => {
-    navigation.navigate("ForgotPassword"); // change if needed
+    const email = lecturer?.user?.email || "";
+    navigation.navigate("ForgotPassword", { email }); 
   };
-
 
   const goActiveClasses = () => {
-    navigation.navigate("LecturerActiveClasses"); 
+    navigation.navigate("LecturerActiveClasses");
   };
+
+  if (loading) {
+    return (
+      <View style={[styles.container, { justifyContent: "center", alignItems: "center" }]}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+      </View>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
 
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24 }}>
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Profile</Text>
@@ -87,11 +95,15 @@ export default function LecturerProfileScreen({ navigation }) {
         <View style={styles.card}>
           <View style={styles.row}>
             <View style={styles.avatar}>
-              <Ionicons name="person" size={20} color={COLORS.primary} />
+              <Ionicons name="person" size={24} color={COLORS.primary} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.name}>{lecturer.name}</Text>
-              <Text style={styles.sub}>{lecturer.email}</Text>
+              <Text style={styles.name}>
+                {lecturer?.user 
+                  ? `${lecturer.user.first_name} ${lecturer.user.last_name}` 
+                  : "Lecturer"}
+              </Text>
+              <Text style={styles.sub}>{lecturer?.user?.email || "No Email"}</Text>
             </View>
             <View style={styles.roleChip}>
               <Text style={styles.roleChipText}>Lecturer</Text>
@@ -102,12 +114,12 @@ export default function LecturerProfileScreen({ navigation }) {
 
           <View style={styles.infoRow}>
             <Text style={styles.label}>Staff ID</Text>
-            <Text style={styles.value}>{lecturer.staffId}</Text>
+            <Text style={styles.value}>{lecturer?.staff_id || "N/A"}</Text>
           </View>
 
           <View style={styles.infoRow}>
-            <Text style={styles.label}>Department</Text>
-            <Text style={styles.value}>{lecturer.department}</Text>
+            <Text style={styles.label}>Partner Uni</Text>
+            <Text style={styles.value}>{lecturer?.partner_uni || "N/A"}</Text>
           </View>
         </View>
 
@@ -116,7 +128,7 @@ export default function LecturerProfileScreen({ navigation }) {
           <Text style={styles.cardTitle}>Teaching Overview</Text>
 
           <View style={styles.kpiRow}>
-            {/* ✅ Clickable KPI */}
+            {/* Clickable KPI */}
             <Pressable style={styles.kpiBox} onPress={goActiveClasses}>
               <View style={styles.kpiTopRow}>
                 <Text style={styles.kpiNumber}>{teaching.activeClasses}</Text>
@@ -126,9 +138,11 @@ export default function LecturerProfileScreen({ navigation }) {
               <Text style={styles.kpiHint}>Tap to view</Text>
             </Pressable>
 
-            {/* Not clickable */}
+            {/* Static KPI */}
             <View style={styles.kpiBox}>
-              <Text style={styles.kpiNumber}>{teaching.totalStudents}</Text>
+              <View style={styles.kpiTopRow}>
+                <Text style={styles.kpiNumber}>{teaching.totalStudents}</Text>
+              </View>
               <Text style={styles.kpiLabel}>Students</Text>
             </View>
           </View>
@@ -158,12 +172,10 @@ export default function LecturerProfileScreen({ navigation }) {
           <Ionicons name="log-out-outline" size={18} color="#fff" />
           <Text style={styles.logoutText}>Logout</Text>
         </TouchableOpacity>
-
-        <View style={{ height: 20 }} />
       </ScrollView>
     </SafeAreaView>
   );
-}
+};
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background, paddingHorizontal: 20 },
@@ -183,8 +195,8 @@ const styles = StyleSheet.create({
   row: { flexDirection: "row", alignItems: "center", gap: 12 },
 
   avatar: {
-    width: 44,
-    height: 44,
+    width: 48,
+    height: 48,
     borderRadius: 16,
     backgroundColor: COLORS.chipBg,
     alignItems: "center",
@@ -200,7 +212,7 @@ const styles = StyleSheet.create({
   roleChipText: { color: COLORS.primary, fontWeight: "900", fontSize: 12 },
 
   name: { fontSize: 16, fontWeight: "900", color: COLORS.textDark },
-  sub: { marginTop: 2, color: COLORS.textMuted, fontWeight: "600" },
+  sub: { marginTop: 2, color: COLORS.textMuted, fontWeight: "600", fontSize: 13 },
 
   divider: { height: 1, backgroundColor: COLORS.border, marginVertical: 12 },
 
@@ -221,24 +233,24 @@ const styles = StyleSheet.create({
     backgroundColor: "#FAFAFF",
   },
 
-  kpiTopRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  kpiNumber: { fontSize: 18, fontWeight: "900", color: COLORS.textDark },
-  kpiLabel: { marginTop: 4, color: COLORS.textMuted, fontWeight: "700" },
-  kpiHint: { marginTop: 2, color: COLORS.textMuted, fontWeight: "600", fontSize: 12 },
+  kpiTopRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", height: 24 },
+  kpiNumber: { fontSize: 20, fontWeight: "900", color: COLORS.textDark },
+  kpiLabel: { marginTop: 4, color: COLORS.textMuted, fontWeight: "700", fontSize: 13 },
+  kpiHint: { marginTop: 2, color: COLORS.primary, fontWeight: "700", fontSize: 11 },
 
-  moduleRow: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 6 },
+  moduleRow: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 8 },
   moduleText: { color: COLORS.textDark, fontWeight: "700" },
 
   tapRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: 8,
+    paddingVertical: 12,
   },
-  tapTitle: { fontWeight: "900", color: COLORS.textDark },
+  tapTitle: { fontWeight: "700", color: COLORS.textDark },
 
   logoutBtn: {
-    marginTop: 18,
+    marginTop: 24,
     backgroundColor: "#111827",
     paddingVertical: 14,
     borderRadius: 16,
@@ -249,3 +261,5 @@ const styles = StyleSheet.create({
   },
   logoutText: { color: "#fff", fontWeight: "900" },
 });
+
+export default LecturerProfileScreen;

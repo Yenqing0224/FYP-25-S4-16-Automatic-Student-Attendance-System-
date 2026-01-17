@@ -1,10 +1,9 @@
-// src/screens/lecturer/sessions/tabs/calendar_tab.js
 import React, { useMemo, useRef } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { CalendarList } from "react-native-calendars";
 
-export default function CalendarTab({
+const CalendarTab = ({
   COLORS,
   navigation,
   upcoming,
@@ -13,10 +12,16 @@ export default function CalendarTab({
   isAdded,
   isSavingThis,
   addReminderToCalendar,
-}) {
+}) => {
   const dayListRef = useRef(null);
 
   const getISODate = (iso) => (iso ? iso.slice(0, 10) : "");
+  
+  const formatDate = (dateStr) => {
+    if (!dateStr) return "";
+    const d = new Date(dateStr);
+    return d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+  };
 
   const markedDates = useMemo(() => {
     const marks = {};
@@ -46,7 +51,6 @@ export default function CalendarTab({
       style={{ flex: 1 }}
       contentContainerStyle={{ paddingBottom: 24 }}
     >
-      {/* ✅ Calendar: FULL WIDTH (no padding wrapper) */}
       <CalendarList
         horizontal
         pagingEnabled
@@ -54,9 +58,9 @@ export default function CalendarTab({
         futureScrollRange={6}
         markedDates={markedDates}
         onDayPress={(day) => {
-          if (day.dateString === selectedDate) return; // ✅ guard
+          if (day.dateString === selectedDate) return;
           setSelectedDate(day.dateString);
-          setTimeout(scrollToDetails, 80); // ✅ manual scroll to details
+          setTimeout(scrollToDetails, 80);
         }}
         theme={{
           calendarBackground: "#fff",
@@ -70,7 +74,6 @@ export default function CalendarTab({
         }}
       />
 
-      {/* ✅ Cards: PADDED */}
       <View style={styles.content}>
         <View style={styles.detailsHeader}>
           <Text style={styles.detailsTitle}>
@@ -87,9 +90,20 @@ export default function CalendarTab({
         )}
 
         {dayClasses.map((s) => (
-          <View key={s.id} style={[styles.sessionCard, { borderColor: COLORS.border }]}>
+          <TouchableOpacity 
+            key={s.id} 
+            activeOpacity={0.9}
+            style={[styles.sessionCard, { borderColor: COLORS.border }]}
+            onPress={() => navigation.navigate("LecturerClassDetail", { cls: s })} 
+          >
             <Text style={[styles.module, { color: COLORS.primary }]}>{s.module}</Text>
             <Text style={styles.sessionTitle}>{s.title}</Text>
+
+            {/* Date Row */}
+            <View style={styles.metaRow}>
+                <Ionicons name="calendar-outline" size={16} color={COLORS.textMuted} />
+                <Text style={styles.metaText}>{formatDate(s.date)}</Text>
+            </View>
 
             <View style={styles.metaRow}>
               <Ionicons name="time-outline" size={16} color={COLORS.textMuted} />
@@ -102,13 +116,10 @@ export default function CalendarTab({
             </View>
 
             <View style={styles.actionsRow}>
-              <TouchableOpacity
-                style={[styles.primaryBtn, { backgroundColor: COLORS.primary }]}
-                onPress={() => navigation.navigate("LecturerClassDetail", { cls: s })}
-              >
+              <View style={[styles.primaryBtn, { backgroundColor: COLORS.primary }]}>
                 <Ionicons name="information-circle-outline" size={16} color="#fff" />
                 <Text style={styles.primaryBtnText}>Details</Text>
-              </TouchableOpacity>
+              </View>
 
               <TouchableOpacity
                 style={[styles.secondaryBtn, isAdded(s) && styles.secondaryBtnDisabled]}
@@ -126,79 +137,39 @@ export default function CalendarTab({
               </TouchableOpacity>
             </View>
 
-            {isAdded(s) && (
-              <View style={styles.swipeHintRow}>
-                <Ionicons name="arrow-back-outline" size={14} color={COLORS.textMuted} />
-                <Text style={styles.swipeHintText}>Swipe left to remove (Upcoming tab)</Text>
-              </View>
-            )}
-          </View>
+            {/* Tap Hint */}
+            <View style={styles.tapHintRow}>
+                <Ionicons name="hand-left-outline" size={14} color={COLORS.textMuted} />
+                <Text style={styles.tapHintText}>Tap card for details</Text>
+                <Ionicons name="chevron-forward" size={16} color={COLORS.primary} />
+            </View>
+          </TouchableOpacity>
         ))}
       </View>
     </ScrollView>
   );
-}
+};
 
 const styles = StyleSheet.create({
-  // ✅ padding ONLY for content/cards (NOT the calendar)
   content: { paddingHorizontal: 20, paddingTop: 6 },
-
   detailsHeader: { marginTop: 14, marginBottom: 6 },
   detailsTitle: { fontSize: 16, fontWeight: "900", color: "#111827" },
-
-  sessionCard: {
-    backgroundColor: "#fff",
-    borderRadius: 18,
-    padding: 16,
-    borderWidth: 1,
-    marginTop: 12,
-  },
-
+  sessionCard: { backgroundColor: "#fff", borderRadius: 18, padding: 16, borderWidth: 1, marginTop: 12 },
   module: { fontWeight: "900" },
   sessionTitle: { marginTop: 2, fontSize: 16, fontWeight: "900", color: "#111827" },
-
   metaRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 8 },
   metaText: { color: "#6B7280", fontWeight: "600" },
-
   actionsRow: { flexDirection: "row", gap: 10, marginTop: 14 },
-
-  primaryBtn: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 14,
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    gap: 8,
-  },
+  primaryBtn: { flex: 1, paddingVertical: 12, borderRadius: 14, flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 8 },
   primaryBtnText: { color: "#fff", fontWeight: "900" },
-
-  secondaryBtn: {
-    flex: 1,
-    backgroundColor: "#ECE9FF",
-    paddingVertical: 12,
-    borderRadius: 14,
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    gap: 8,
-  },
+  secondaryBtn: { flex: 1, backgroundColor: "#ECE9FF", paddingVertical: 12, borderRadius: 14, flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 8 },
   secondaryBtnDisabled: { opacity: 0.65 },
   secondaryBtnText: { fontWeight: "900" },
-
-  swipeHintRow: { marginTop: 10, flexDirection: "row", alignItems: "center", gap: 6 },
-  swipeHintText: { color: "#6B7280", fontWeight: "700", fontSize: 12 },
-
-  emptyBox: {
-    marginTop: 12,
-    backgroundColor: "#fff",
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-    padding: 18,
-    alignItems: "center",
-    gap: 6,
-  },
+  emptyBox: { marginTop: 12, backgroundColor: "#fff", borderRadius: 18, borderWidth: 1, borderColor: "#E5E7EB", padding: 18, alignItems: "center", gap: 6 },
   emptyTitle: { fontWeight: "900", color: "#111827", marginTop: 4 },
   emptySub: { color: "#6B7280", fontWeight: "700", textAlign: "center" },
+  tapHintRow: { marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: "#E5E7EB", flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  tapHintText: { flex: 1, marginLeft: 8, color: "#6B7280", fontWeight: "700" },
 });
+
+export default CalendarTab;
