@@ -77,9 +77,11 @@ class AcademicService:
 
         return {
             "stats": {
-                "today": today_sessions,
-                "week": week_sessions
+                "today": today_sessions.count(),
+                "week": week_sessions.count()
             },
+            "today_sessions": today_sessions,
+            "week_sessions": week_sessions,
             "next_class": next_class,
             "announcements": todays_announcements
         }

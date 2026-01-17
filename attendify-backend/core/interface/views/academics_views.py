@@ -38,6 +38,8 @@ def get_dashboard(request):
 
             return Response({
                 "stats": data['stats'],
+                "today_sessions": ClassSessionSerializer(data['today_sessions'], many=True).data,
+                "week_sessions": ClassSessionSerializer(data['week_sessions'], many=True).data,
                 "next_class": next_class_data,
                 "announcements": AnnouncementSerializer(data['announcements'], many=True).data
             })
