@@ -8,9 +8,10 @@ from core.logic.academics_logics import AcademicLogic
 class AcademicService:
 
     def get_student_dashboard(self, user):
-        profile = Student.objects.get(user=user)
+        student = Student.objects.get(user=user)
         today = timezone.localtime(timezone.now())
         today_date = today.date()
+        current_time = today.time()
 
         current_semester = Semester.objects.filter(
             start_date__lte=today, 
@@ -28,17 +29,18 @@ class AcademicService:
         )
 
         todays_sessions = ClassSession.objects.filter(
-            module__students=profile,
+            module__students=student,
             date=today_date
         ).order_by('start_time')
         
         upcoming_sessions = ClassSession.objects.filter(
-            module__students=profile,
-            date=today_date
-        ).order_by('date', 'start_time')[:5]
+            module__students=student,
+            date=today_date,
+            start_time__gte=current_time
+        ).order_by('start_time')[:5]
 
         return {
-            "attendance_rate": profile.attendance_rate,
+            "attendance_rate": student.attendance_rate,
             "semester_range": semester_range,
             "announcements": todays_announcements,
             "todays_sessions": todays_sessions,    
@@ -47,13 +49,13 @@ class AcademicService:
     
 
     def get_lecturer_dashboard(self, user):
-        profile = Lecturer.objects.get(user=user)
+        lecturer = Lecturer.objects.get(user=user)
         today = timezone.localtime(timezone.now())
         today_date = today.date()
 
         # 1. Stats
         today_sessions = ClassSession.objects.filter(
-            module__lecturer=profile, 
+            module__lecturer=lecturer, 
             date=today_date
         ).order_by('start_time')
 
@@ -61,12 +63,12 @@ class AcademicService:
         end_week = start_week + timedelta(days=6)
         
         week_sessions = ClassSession.objects.filter(
-            module__lecturer=profile,
+            module__lecturer=lecturer,
             date__range=[start_week, end_week]
         ).order_by('date', 'start_time')
 
         next_class = ClassSession.objects.filter(
-            module__lecturer=profile
+            module__lecturer=lecturer
         ).filter(
             Q(date__gt=today_date) | Q(date=today_date, start_time__gte=today.time())
         ).order_by('date', 'start_time').first()
