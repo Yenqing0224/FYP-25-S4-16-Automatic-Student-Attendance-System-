@@ -39,7 +39,7 @@ def get_dashboard(request):
             return Response({
                 "stats": data['stats'],
                 "next_class": next_class_data,
-                "announcements": data['announcements']
+                "announcements": AnnouncementSerializer(data['announcements'], many=True).data
             })
         else:
             return Response({"error": "Role not supported"}, status=403)
