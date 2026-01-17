@@ -9,6 +9,7 @@ import {
   ScrollView,
   Pressable,
   ActivityIndicator,
+  Alert, // ✅ Added Alert
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -30,7 +31,7 @@ const LecturerProfileScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
   const [lecturer, setLecturer] = useState(null);
 
-  // Mock stats (Since /profile/ doesn't return these yet)
+  // Mock stats
   const [teaching, setTeaching] = useState({
     modules: ["CSIT321 – Software Design", "CSIT314 – Agile Methods"],
     activeClasses: 3,
@@ -55,18 +56,44 @@ const LecturerProfileScreen = ({ navigation }) => {
     }, [])
   );
 
+  // ✅ Updated Logout Logic
   const handleLogout = async () => {
-    try {
-      await AsyncStorage.multiRemove(["userToken", "userInfo"]);
-      navigation.reset({ index: 0, routes: [{ name: "Login" }] });
-    } catch (e) {
-      console.error("Logout error:", e);
-    }
+    Alert.alert(
+      "Log Out",
+      "Are you sure you want to log out?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Log Out",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              // 1. Call Logout API
+              await api.post('/logout/');
+
+              // 2. Clear Storage
+              await AsyncStorage.multiRemove(["userToken", "userInfo"]);
+              
+              // 3. Reset Navigation
+              navigation.reset({
+                index: 0,
+                routes: [{ name: 'Login' }],
+              });
+            } catch (e) {
+              console.error("Logout failed:", e);
+              // Fallback: Force local logout on error or show alert
+              Alert.alert("Error", "Failed to communicate with server. Logging out locally.");
+              await AsyncStorage.multiRemove(["userToken", "userInfo"]);
+              navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
+            }
+          }
+        }
+      ]
+    );
   };
 
   const goChangePassword = () => {
-    const email = lecturer?.user?.email || "";
-    navigation.navigate("ForgotPassword", { email }); 
+    navigation.navigate("LecturerChangePassword");
   };
 
   const goActiveClasses = () => {

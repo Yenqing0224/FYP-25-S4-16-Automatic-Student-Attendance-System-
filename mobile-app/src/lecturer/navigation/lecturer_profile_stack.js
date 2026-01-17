@@ -4,6 +4,7 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
 import LecturerProfileScreen from "../../screens/lecturer/profile/profile_screen";
 import LecturerActiveClassesScreen from "../../screens/lecturer/profile/active_classes_screen";
+import LecturerChangePasswordScreen from "../../screens/lecturer/profile/changePassword_screen";
 
 const Stack = createNativeStackNavigator();
 
@@ -15,6 +16,10 @@ export default function LecturerProfileStack() {
         component={LecturerProfileScreen}
       />
 
+      <Stack.Screen
+        name="LecturerChangePassword"
+        component={LecturerChangePasswordScreen}
+      />
      
       <Stack.Screen
         name="LecturerActiveClasses"
