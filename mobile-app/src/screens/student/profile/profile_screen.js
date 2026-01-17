@@ -57,15 +57,30 @@ const ProfileScreen = ({ navigation }) => {
           style: "destructive",
           onPress: async () => {
             try {
+              // 1. Call the Logout API
+              await api.post('/logout/');
+
+              // 2. If successful, clear local storage
               await AsyncStorage.removeItem('userInfo');
-              await AsyncStorage.removeItem('userToken'); // Don't forget to clear the token!
+              await AsyncStorage.removeItem('userToken');
               
+              // 3. Reset Navigation to Login
               navigation.reset({
                 index: 0,
                 routes: [{ name: 'Login' }],
               });
             } catch (e) {
               console.error("Logout failed:", e);
+              // Optional: You can choose to force logout here even if API fails
+              // or show an alert. 
+              Alert.alert("Error", "Failed to communicate with the server. Please check your connection.");
+              
+              // If you want to force logout even on server error, uncomment below:
+              /*
+              await AsyncStorage.removeItem('userInfo');
+              await AsyncStorage.removeItem('userToken');
+              navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
+              */
             }
           }
         }

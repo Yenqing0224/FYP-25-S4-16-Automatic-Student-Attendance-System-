@@ -1,3 +1,4 @@
+// src/screens/student/home/home_screen.js
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -23,30 +24,47 @@ const COLORS = {
   card: '#FFFFFF',
 };
 
+const READ_ANNOUNCEMENTS_KEY = "studentReadAnnouncements_v1";
+
 const HomeScreen = ({ navigation }) => {
   const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  // Dashboard Data
   const [semesterRange, setSemesterRange] = useState('Loading...');
   const [attendanceRate, setAttendanceRate] = useState(0);
   const [todayClasses, setTodayClasses] = useState([]);
   const [upcomingClasses, setUpcomingClasses] = useState([]);
-  const [loading, setLoading] = useState(true);
+  
+  // ✅ Announcements State
+  const [announcements, setAnnouncements] = useState([]);
+  const [isAnnounceExpanded, setIsAnnounceExpanded] = useState(false);
+  const [readAnnouncementIds, setReadAnnouncementIds] = useState(new Set());
 
-  // load user + dashboard
+  // 1. Load User & Read Announcements IDs
   useEffect(() => {
-    const initDashboard = async () => {
+    const init = async () => {
       try {
+        // Load User
         const storedUser = await AsyncStorage.getItem('userInfo');
-        if (storedUser) {
-          setUser(JSON.parse(storedUser));
+        if (storedUser) setUser(JSON.parse(storedUser));
+
+        // Load Read Announcements
+        const rawRead = await AsyncStorage.getItem(READ_ANNOUNCEMENTS_KEY);
+        if (rawRead) {
+          const arr = JSON.parse(rawRead);
+          if (Array.isArray(arr)) setReadAnnouncementIds(new Set(arr.map(String)));
         }
+
         fetchDashboardData();
       } catch (error) {
         console.error('Init Error:', error);
       }
     };
-    initDashboard();
+    init();
   }, []);
 
+  // 2. Fetch Dashboard Data
   const fetchDashboardData = async () => {
     try {
       const response = await api.get('/dashboard/');
@@ -54,8 +72,20 @@ const HomeScreen = ({ navigation }) => {
 
       setSemesterRange(data.semester_range);
       setAttendanceRate(data.attendance_rate);
-      setTodayClasses(data.today_classes);
-      setUpcomingClasses(data.upcoming_classes);
+      setTodayClasses(data.today_classes || []);
+      setUpcomingClasses(data.upcoming_classes || []);
+
+      // ✅ Process Announcements from Dashboard API
+      if (data.announcements && Array.isArray(data.announcements)) {
+        const formattedAnnouncements = data.announcements.map(a => ({
+          id: a.id,
+          title: a.title,
+          desc: a.message || a.description || "", // Handle different key names if necessary
+          date: formatDate(a.created_at) || "Recent"
+        }));
+        setAnnouncements(formattedAnnouncements);
+      }
+
     } catch (error) {
       console.error('Dashboard Fetch Error:', error);
     } finally {
@@ -63,15 +93,35 @@ const HomeScreen = ({ navigation }) => {
     }
   };
 
-  // --- UPDATED HELPERS ---
+  // 3. Announcement Helpers
+  const persistReadIds = async (nextSet) => {
+    try {
+      await AsyncStorage.setItem(READ_ANNOUNCEMENTS_KEY, JSON.stringify(Array.from(nextSet)));
+    } catch (e) {
+      console.log("Failed to save read announcements:", e);
+    }
+  };
 
-  // Format "14:00:00" -> "14:00"
+  const markAnnouncementRead = async (id) => {
+    const next = new Set(readAnnouncementIds);
+    next.add(String(id));
+    setReadAnnouncementIds(next);
+    await persistReadIds(next);
+  };
+
+  const markAllRead = async () => {
+    const next = new Set(readAnnouncementIds);
+    announcements.forEach((a) => next.add(String(a.id)));
+    setReadAnnouncementIds(next);
+    await persistReadIds(next);
+  };
+
+  // --- UI Helpers ---
   const formatTime = (timeString) => {
     if (!timeString) return '';
     return timeString.slice(0, 5);
   };
 
-  // Format "2025-12-17" -> "17 Dec"
   const formatDate = (dateString) => {
     if (!dateString) return '';
     const date = new Date(dateString);
@@ -89,6 +139,17 @@ const HomeScreen = ({ navigation }) => {
       dateString: `${now.getDate()}-${months[now.getMonth()]}-${now.getFullYear()}`,
     });
   }, []);
+
+  // Filter Announcements
+  const unreadAnnouncements = announcements.filter(
+    (a) => !readAnnouncementIds.has(String(a.id))
+  );
+  
+  // Decide what to show (Expand logic)
+  // If expanded, show ALL unread. If collapsed, show max 3 unread.
+  const visibleAnnouncements = isAnnounceExpanded
+    ? unreadAnnouncements
+    : unreadAnnouncements.slice(0, 3);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -115,7 +176,6 @@ const HomeScreen = ({ navigation }) => {
         </View>
 
         {/* ATTENDANCE CARD */}
-        {/* Only show if rate exists (Students) */}
         {attendanceRate !== null && attendanceRate !== undefined && (
           <TouchableOpacity
             activeOpacity={0.9}
@@ -133,6 +193,105 @@ const HomeScreen = ({ navigation }) => {
             </View>
           </TouchableOpacity>
         )}
+
+        {/* ✅ ANNOUNCEMENTS SECTION */}
+        <View style={styles.sectionHeaderRow}>
+          <Text style={styles.sectionHeaderText}>Announcements</Text>
+        </View>
+
+        <View style={[styles.announcementCard]}>
+          {/* Header Row (Collapsible) */}
+          <TouchableOpacity
+            activeOpacity={0.85}
+            onPress={() => setIsAnnounceExpanded((v) => !v)}
+            style={styles.announceHeaderRow}
+          >
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <Ionicons name="megaphone-outline" size={18} color={COLORS.primary} />
+              <Text style={{ fontSize: 16, fontWeight: "800", color: COLORS.textDark }}>
+                Unread ({unreadAnnouncements.length})
+              </Text>
+            </View>
+
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <Text style={{ color: COLORS.textMuted, fontWeight: "700", fontSize: 12 }}>
+                {isAnnounceExpanded ? "Collapse" : "Expand"}
+              </Text>
+              <Ionicons
+                name={isAnnounceExpanded ? "chevron-up" : "chevron-down"}
+                size={18}
+                color={COLORS.textMuted}
+              />
+            </View>
+          </TouchableOpacity>
+
+          {/* Mark All Read Button */}
+          {!loading && unreadAnnouncements.length > 0 && (
+            <TouchableOpacity onPress={markAllRead} style={{ marginTop: 10, alignSelf: "flex-start" }}>
+              <Text style={{ color: COLORS.primary, fontWeight: "900", fontSize: 13 }}>
+                Mark all as read
+              </Text>
+            </TouchableOpacity>
+          )}
+
+          <View style={{ height: 10 }} />
+
+          {/* List */}
+          {loading ? (
+            <ActivityIndicator color={COLORS.primary} />
+          ) : unreadAnnouncements.length === 0 ? (
+            <View style={{ paddingVertical: 10 }}>
+              <Text style={{ color: COLORS.textMuted, fontWeight: "700" }}>
+                You’re all caught up ✅
+              </Text>
+            </View>
+          ) : (
+            visibleAnnouncements.map((a, idx) => (
+              <View key={a.id}>
+                <TouchableOpacity
+                  style={{ paddingVertical: 12 }}
+                  onPress={async () => {
+                    await markAnnouncementRead(a.id);
+                    // Ensure you have this screen registered in App.js or remove navigation if just marking read
+                    navigation.navigate("StudentAnnouncementDetail", { announcement: a }); 
+                  }}
+                >
+                  <Text style={{ fontWeight: "900", color: COLORS.textDark, fontSize: 15 }} numberOfLines={1}>
+                    {a.title}
+                  </Text>
+
+                  <Text
+                    style={{ marginTop: 4, color: COLORS.textMuted, fontWeight: "500", lineHeight: 20, fontSize: 13 }}
+                    numberOfLines={2}
+                  >
+                    {a.desc}
+                  </Text>
+
+                  <Text style={{ marginTop: 6, color: COLORS.textMuted, fontWeight: "800", fontSize: 11 }}>
+                    {a.date}
+                  </Text>
+                </TouchableOpacity>
+
+                {/* Divider */}
+                {idx !== visibleAnnouncements.length - 1 && (
+                  <View style={{ height: 1, backgroundColor: "#F3F4F6" }} />
+                )}
+              </View>
+            ))
+          )}
+
+          {/* View More Button */}
+          {!loading && !isAnnounceExpanded && unreadAnnouncements.length > 3 && (
+            <TouchableOpacity
+              onPress={() => setIsAnnounceExpanded(true)}
+              style={{ marginTop: 8, paddingVertical: 8, alignItems: "center", borderTopWidth: 1, borderTopColor: '#F3F4F6' }}
+            >
+              <Text style={{ color: COLORS.primary, fontWeight: "900", fontSize: 13 }}>
+                View {unreadAnnouncements.length - 3} more
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
 
         {/* TODAY */}
         <View style={styles.sectionHeaderRow}>
@@ -156,7 +315,6 @@ const HomeScreen = ({ navigation }) => {
 
                   <View style={styles.row}>
                     <Ionicons name="time-outline" size={16} color="#1E1B4B" />
-                    {/* ✅ UPDATED: Use start_time */}
                     <Text style={styles.cardDetail}>{formatTime(item.start_time)}</Text>
                   </View>
 
@@ -190,7 +348,6 @@ const HomeScreen = ({ navigation }) => {
                 key={item.id}
                 style={styles.upcomingCard}
                 onPress={async () => {
-                  // ✅ UPDATED: Use item.date directly
                   const dateToJump = item.date;
                   await AsyncStorage.setItem('jumpToDate', dateToJump);
                   navigation.navigate('Timetable', {
@@ -198,16 +355,13 @@ const HomeScreen = ({ navigation }) => {
                   });
                 }}
               >
-                {/* LABEL + VALUE */}
                 <View style={{ marginBottom: 8 }}>
                   <Text style={styles.upcomingLabel}>Date</Text>
-                  {/* ✅ UPDATED: Use item.date */}
                   <Text style={styles.upcomingValue}>{formatDate(item.date)}</Text>
                 </View>
 
                 <View style={{ marginBottom: 8 }}>
                   <Text style={styles.upcomingLabel}>Time</Text>
-                  {/* ✅ UPDATED: Use item.start_time */}
                   <Text style={styles.upcomingValue}>{formatTime(item.start_time)}</Text>
                 </View>
 
@@ -230,7 +384,6 @@ const HomeScreen = ({ navigation }) => {
   );
 };
 
-// ... STYLES (Keep exactly the same as you had) ...
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
@@ -292,7 +445,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
 
-  // ATTENDANCE
+  // ATTENDANCE CARD
   attendanceCard: {
     marginHorizontal: 20,
     marginTop: 12,
@@ -342,6 +495,26 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: COLORS.textDark,
+  },
+
+  // ✅ ANNOUNCEMENT STYLES
+  announcementCard: {
+    marginHorizontal: 20,
+    marginBottom: 22,
+    backgroundColor: COLORS.card,
+    borderRadius: 20,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowOffset: { width: 0, height: 3 },
+    shadowRadius: 6,
+  },
+  announceHeaderRow: {
+    flexDirection: "row", 
+    justifyContent: "space-between", 
+    alignItems: "center" 
   },
 
   // TODAY CARDS
