@@ -164,6 +164,8 @@ STORAGES = {
 AUTH_USER_MODEL = 'core.User'
 TIME_ZONE = 'Asia/Singapore'
 
+CORS_ALLOW_CREDENTIALS = True
+
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:8899',
@@ -174,3 +176,8 @@ CORS_ALLOWED_ORIGINS = [
 CSRF_TRUSTED_ORIGINS = [
     "https://attendify-app.netlify.app",
 ]
+
+SESSION_COOKIE_SAMESITE = 'None'
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SAMESITE = 'None'
+CSRF_COOKIE_SECURE = True
