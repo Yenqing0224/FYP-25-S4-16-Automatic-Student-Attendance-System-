@@ -164,9 +164,10 @@ STORAGES = {
 AUTH_USER_MODEL = 'core.User'
 TIME_ZONE = 'Asia/Singapore'
 
-CORS_ALLOW_CREDENTIALS = False
+CORS_ALLOW_CREDENTIALS = True
 
-CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_ALL_ORIGINS = False
+
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:8899',
     'http://127.0.0.1:8899',
