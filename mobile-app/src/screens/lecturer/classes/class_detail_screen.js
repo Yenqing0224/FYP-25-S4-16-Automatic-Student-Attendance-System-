@@ -1,4 +1,4 @@
-// src/screens/lecturer/classes/class_detail_screen.js
+// src/screens/lecturer/classes/
 import React, { useMemo } from "react";
 import {
   View,
