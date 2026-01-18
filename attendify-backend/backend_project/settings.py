@@ -168,5 +168,9 @@ CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:8899',
     'http://127.0.0.1:8899',
-    'https://attendify-app.netlify.app'
+    'https://attendify-app.netlify.app',
+]
+
+CSRF_TRUSTED_ORIGINS = [
+    "https://attendify-app.netlify.app",
 ]
