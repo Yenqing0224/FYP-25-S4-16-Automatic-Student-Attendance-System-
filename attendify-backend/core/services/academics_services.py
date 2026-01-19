@@ -1,8 +1,8 @@
 from core.models import Student, ClassSession, Semester, AttendanceRecord, Lecturer, LeaveRequest, Announcement, Notification
 from django.utils import timezone
-from datetime import timedelta
+from datetime import timedelta, datetime, time
 from django.db.models import Q
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from core.logic.academics_logics import AcademicLogic
 
 
@@ -212,9 +212,94 @@ class AcademicService:
         except Lecturer.DoesNotExist:
              raise PermissionDenied("User is not a lecturer.")
         
+        session_start_dt = datetime.combine(session.date, session.start_time)
+        session_start_dt = timezone.make_aware(session_start_dt)
+        deadline = session_start_dt - timedelta(hours=1)
+        
+        if timezone.now() > deadline:
+            raise ValidationError(f"You can only reschedule up to 1 hour before the class starts")
+        
         session.status = 'cancelled'
         session.save()
+
+        duration = datetime.combine(session.date, session.end_time) - datetime.combine(session.date, session.start_time)
     
+        start_date = timezone.now().date() + timedelta(days=1)
+        days_to_check = 7 
+        possible_slots = []
+        students = session.module.students.all()
+
+        for i in range(days_to_check):
+            current_date = start_date + timedelta(days=i)
+            
+            if current_date.weekday() > 4: 
+                continue
+
+            for hour in range(9, 17): 
+                slot_start = time(hour, 0)
+                slot_end = (datetime.combine(current_date, slot_start) + duration).time()
+                
+                lecturer_busy = ClassSession.objects.filter(
+                    module__lecturer=lecturer, 
+                    date=current_date,
+                    status='upcoming',
+                    start_time__lt=slot_end,
+                    end_time__gt=slot_start
+                ).exists()
+
+                if lecturer_busy:
+                    continue
+
+                conflict_count = ClassSession.objects.filter(
+                    module__students__in=students, 
+                    date=current_date,
+                    status='upcoming',
+                    start_time__lt=slot_end,
+                    end_time__gt=slot_start
+                ).values('module__students').distinct().count()
+
+                possible_slots.append({
+                    'date': current_date,
+                    'start_time': slot_start,
+                    'end_time': slot_end,
+                    'conflicts': conflict_count
+                })
+
+        if not possible_slots:
+            raise ValidationError("No available slots found for the lecturer in the next 7 days.")
+            
+        best_slot = sorted(possible_slots, key=lambda x: x['conflicts'])[0]
+
+        new_session = ClassSession.objects.create(
+            module=session.module,
+            type=session.type,
+            name=f"{session.name} (Rescheduled)",
+            date=best_slot['date'],
+            start_time=best_slot['start_time'],
+            end_time=best_slot['end_time'],
+            venue=session.venue, 
+            status='upcoming'
+        )
+
+        notifications = []
+        for student in students:
+            notifications.append(Notification(
+                user=student.user,
+                title="Class Rescheduled",
+                message=f"Your class {session.name} has been moved to {new_session.date} at {new_session.start_time}."
+            ))
+        Notification.objects.bulk_create(notifications)
+
+        return {
+            "status": "success",
+            "message": "Class rescheduled successfully.",
+            "old_session": f"{session.date} (Cancelled)",
+            "new_session": {
+                "date": new_session.date,
+                "time": new_session.start_time,
+                "conflicts_found": best_slot['conflicts']
+            }
+        }
 
     def mark_attendance(self, student_id, time_stamp):
         try:
