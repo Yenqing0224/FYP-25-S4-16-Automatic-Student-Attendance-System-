@@ -176,7 +176,7 @@ CORS_ALLOWED_ORIGINS = [
 
 
 CORS_ALLOWED_ORIGIN_REGEXES = [
-    r"^https://.*--attendify-app\.netlify\.app$",
+    r"^https://.*\.netlify\.app$",
 ]
 
 
@@ -199,4 +199,5 @@ CORS_ALLOW_HEADERS = [
 
 CSRF_TRUSTED_ORIGINS = [
     "https://attendify-app.netlify.app",
+    "https://*.netlify.app",
 ]
