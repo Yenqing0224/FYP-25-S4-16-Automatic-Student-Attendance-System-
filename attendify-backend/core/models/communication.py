@@ -54,8 +54,7 @@ class Event(models.Model):
 
     # Stats
     total_student = models.IntegerField(default=0)
-    present_student = models.IntegerField(default=0)
-    absent_student = models.IntegerField(default=0)
+
 
     class Meta:
         ordering = ['-event_date']
