@@ -172,6 +172,7 @@ CORS_ALLOWED_ORIGINS = [
     'http://localhost:8899',
     'http://127.0.0.1:8899',
     'https://attendify-app.netlify.app',
+    'https://hoppscotch.io/',
 ]
 
 
