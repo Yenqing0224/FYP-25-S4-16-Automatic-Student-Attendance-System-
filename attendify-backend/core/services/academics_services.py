@@ -237,7 +237,7 @@ class AcademicService:
             "status": "success",
             "student": student.user.username,
             "session": active_session.name,
-            "action": message,
+            "message": message,
             "entry": attendance.entry_time,
             "exit": attendance.exit_time
         }
