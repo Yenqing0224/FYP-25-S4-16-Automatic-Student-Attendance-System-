@@ -42,4 +42,4 @@ class AttendanceRecordSerializer(serializers.ModelSerializer):
 
 class FaceRecognitionSerializer(serializers.Serializer):
     student_id = serializers.CharField(max_length=50)
-    timestamp = serializers.DateTimeField()
+    time_stamp = serializers.DateTimeField()
