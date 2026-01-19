@@ -38,3 +38,8 @@ class AttendanceRecordSerializer(serializers.ModelSerializer):
     class Meta:
         model = AttendanceRecord
         fields = '__all__'
+
+
+class FaceRecognitionSerializer(serializers.Serializer):
+    student_id = serializers.CharField(max_length=50)
+    timestamp = serializers.DateTimeField()

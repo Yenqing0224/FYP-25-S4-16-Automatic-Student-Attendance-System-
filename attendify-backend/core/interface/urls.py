@@ -26,6 +26,8 @@ urlpatterns = [
     path('timetable/', academics_views.get_timetable, name='timetable'),
     path('class-details/<int:session_id>/', academics_views.get_class_details, name='class-details'),
     path('attendance-history/', academics_views.get_attendance_history, name='attendance-history'),
+    path('mark-attendance/', academics_views.mark_attendance, name='mark-attendance'),
+
     # path('recognize/', academics_views.recognize_face, name='recognize_face'),
     # path('register-face/', academics_views.register_face, name='register_face'),
 

@@ -195,3 +195,49 @@ class AcademicService:
 
         return f"Updated status for {updated_count} sessions."
     
+
+    def mark_attendance(self, student_id, time_stamp):
+        try:
+            student = Student.objects.get(student_id=student_id)
+        except Student.DoesNotExist:
+            raise Exception(f"Student with ID {student_id} not found.")
+        
+        active_session = ClassSession.objects.filter(
+            module__students=student,          
+            date=time_stamp.date(),             
+            start_time__lte=time_stamp.time(), 
+            end_time__gte=time_stamp.time()     
+        ).first()
+
+        if not active_session:
+            return {
+                "status": "ignored",
+                "message": f"Student {student.user.username} is not enrolled in any active session at this time."
+            }
+        
+        attendance, created = AttendanceRecord.objects.get_or_create(
+            session=active_session,
+            student=student,
+            defaults={'status': 'absent'}
+        )
+
+        message = ""
+
+        if attendance.entry_time is None:
+            attendance.entry_time = time_stamp
+            attendance.status = 'present'
+            attendance.save()
+            message = f"Entry marked for {student.user.username}"
+        else:
+            attendance.exit_time = time_stamp
+            attendance.save()
+            message = f"Exit time updated for {student.user.username}"
+
+        return {
+            "status": "success",
+            "student": student.user.username,
+            "session": active_session.name,
+            "action": message,
+            "entry": attendance.entry_time,
+            "exit": attendance.exit_time
+        }

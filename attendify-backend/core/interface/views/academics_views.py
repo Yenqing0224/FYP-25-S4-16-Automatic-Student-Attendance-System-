@@ -6,7 +6,7 @@ from core.models import Student, ClassSession, Semester, AttendanceRecord, Lectu
 from core.services.academics_services import AcademicService
 from pgvector.django import CosineDistance
 # Serializers
-from core.interface.serializers.academics_serializers import ClassSessionSerializer, AttendanceRecordSerializer
+from core.interface.serializers.academics_serializers import ClassSessionSerializer, AttendanceRecordSerializer, FaceRecognitionSerializer
 from core.interface.serializers.communication_serializers import AnnouncementSerializer
 from core.interface.serializers.users_serializers import MultiFaceEmbeddingSerializer
 
@@ -115,6 +115,25 @@ def get_attendance_history(request):
     except Exception as e:
         print(f"Attendance History Error: {e}")
         return Response({"error": str(e)}, status=500)
+
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def mark_attendance(request):
+    serializer = FaceRecognitionSerializer(data=request.data)
+    if not serializer.is_valid():
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    student_id = serializer.validated_data['student_id']
+    timestamp = serializer.validated_data['timestamp']
+
+    try:
+        result = AcademicService.mark_attendance(student_id, timestamp)
+        return Response(result, status=status.HTTP_200_OK)
+
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
 # @api_view(['POST'])
