@@ -202,10 +202,11 @@ class AcademicService:
         except Student.DoesNotExist:
             raise Exception(f"Student with ID {student_id} not found.")
         
+
         active_session = ClassSession.objects.filter(
             module__students=student,          
             date=time_stamp.date(),             
-            start_time__lte=time_stamp.time(), 
+            start_time__lte=(time_stamp + timedelta(minutes=30)).time(),
             end_time__gte=time_stamp.time()     
         ).first()
 
@@ -225,9 +226,13 @@ class AcademicService:
 
         if attendance.entry_time is None:
             attendance.entry_time = time_stamp
-            attendance.status = 'present'
-            attendance.save()
-            message = f"Entry marked for {student.user.username}"
+            if AcademicLogic.is_valid_attendance_window(time_stamp, active_session):
+                attendance.status = 'present'
+                message = f"Entry marked for {student.user.username}"
+                attendance.save()
+            else:
+                message = f"Entry rejected. You must scan within +/- 30 mins of {active_session.start_time}"
+                attendance.save()
         else:
             attendance.exit_time = time_stamp
             attendance.save()
@@ -238,6 +243,6 @@ class AcademicService:
             "student": student.user.username,
             "session": active_session.name,
             "message": message,
-            "entry": attendance.entry_time,
-            "exit": attendance.exit_time
+            "entry": timezone.localtime(attendance.entry_time).isoformat() if attendance.entry_time else None,
+            "exit": timezone.localtime(attendance.exit_time).isoformat() if attendance.exit_time else None
         }

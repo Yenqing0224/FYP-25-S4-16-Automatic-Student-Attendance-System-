@@ -40,3 +40,16 @@ class AcademicLogic:
             return 'in_progress'
         else:
             return 'completed'
+        
+
+    @staticmethod
+    def is_valid_attendance_window(current_time, session):
+        session_start_dt = datetime.combine(session.date, session.start_time)
+
+        if timezone.is_aware(current_time):
+            session_start_dt = timezone.make_aware(session_start_dt)
+
+        earliest_allowed = session_start_dt - timedelta(minutes=30)
+        latest_allowed = session_start_dt + timedelta(minutes=30)
+
+        return earliest_allowed <= current_time <= latest_allowed
