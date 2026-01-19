@@ -126,10 +126,10 @@ def mark_attendance(request):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     student_id = serializer.validated_data['student_id']
-    timestamp = serializer.validated_data['timestamp']
+    time_stamp = serializer.validated_data['time_stamp']
 
     try:
-        result = AcademicService.mark_attendance(student_id, timestamp)
+        result = AcademicService.mark_attendance(student_id, time_stamp)
         return Response(result, status=status.HTTP_200_OK)
 
     except Exception as e:
