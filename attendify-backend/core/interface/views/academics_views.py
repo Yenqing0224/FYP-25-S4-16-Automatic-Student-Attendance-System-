@@ -121,15 +121,18 @@ def get_attendance_history(request):
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def mark_attendance(request):
-    serializer = FaceRecognitionSerializer(data=request.data)
-    if not serializer.is_valid():
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    student_id = serializer.validated_data['student_id']
-    time_stamp = serializer.validated_data['time_stamp']
+    service = AcademicService()
 
     try:
-        result = AcademicService.mark_attendance(student_id, time_stamp)
+        serializer = FaceRecognitionSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        student_id = serializer.validated_data['student_id']
+        time_stamp = serializer.validated_data['time_stamp']
+
+        result = service.mark_attendance(student_id, time_stamp)
+        
         return Response(result, status=status.HTTP_200_OK)
 
     except Exception as e:
