@@ -117,6 +117,20 @@ def get_attendance_history(request):
         return Response({"error": str(e)}, status=500)
 
 
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def reschedule_class(request):
+    service = AcademicService()
+
+    try:
+        result = service.reschedule_class(request.user, request.data)
+
+        return Response(result, status=200)
+
+    except Exception as e:
+        return Response(
+            {"status": "error", "message": str(e)}, status=400)
+
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
@@ -126,17 +140,17 @@ def mark_attendance(request):
     try:
         serializer = FaceRecognitionSerializer(data=request.data)
         if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return Response(serializer.errors, status=400)
 
         student_id = serializer.validated_data['student_id']
         time_stamp = serializer.validated_data['time_stamp']
 
         result = service.mark_attendance(student_id, time_stamp)
         
-        return Response(result, status=status.HTTP_200_OK)
+        return Response(result, status=200)
 
     except Exception as e:
-        return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"error": str(e)}, status=400)
 
 
 # @api_view(['POST'])

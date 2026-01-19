@@ -1,7 +1,8 @@
-from core.models import Student, ClassSession, Semester, AttendanceRecord, Lecturer, LeaveRequest, Announcement
+from core.models import Student, ClassSession, Semester, AttendanceRecord, Lecturer, LeaveRequest, Announcement, Notification
 from django.utils import timezone
 from datetime import timedelta
 from django.db.models import Q
+from rest_framework.exceptions import PermissionDenied
 from core.logic.academics_logics import AcademicLogic
 
 
@@ -196,11 +197,31 @@ class AcademicService:
         return f"Updated status for {updated_count} sessions."
     
 
+    def reschedule_class(self, lecturer, data):
+        session_id = data.get('session_id')
+
+        try:
+            session = ClassSession.objects.get(id=session_id)
+        except ClassSession.DoesNotExist:
+            raise ValueError("Class session not found.")
+        
+        try:
+            lecturer = Lecturer.objects.get(user=lecturer)
+            if session.module.lecturer != lecturer:
+                raise PermissionDenied("You are not the lecturer for this module.")
+        except Lecturer.DoesNotExist:
+             raise PermissionDenied("User is not a lecturer.")
+        
+        session.status = 'cancelled'
+        session.save()
+    
+
     def mark_attendance(self, student_id, time_stamp):
         try:
             student = Student.objects.get(student_id=student_id)
         except Student.DoesNotExist:
             raise Exception(f"Student with ID {student_id} not found.")
+            
         
 
         active_session = ClassSession.objects.filter(
@@ -226,13 +247,25 @@ class AcademicService:
 
         if attendance.entry_time is None:
             attendance.entry_time = time_stamp
+            attendance.exit_time = time_stamp
             if AcademicLogic.is_valid_attendance_window(time_stamp, active_session):
                 attendance.status = 'present'
                 message = f"Entry marked for {student.user.username}"
-                attendance.save()
+
+                Notification.objects.create(
+                    user=student.user,
+                    title="Attendance Marked",
+                    message=f"You have successfully marked attendance for {active_session.name}."
+                )
             else:
                 message = f"Entry rejected. You must scan within +/- 30 mins of {active_session.start_time}"
-                attendance.save()
+                Notification.objects.create(
+                    user=student.user,
+                    title="Attendance Alert",
+                    message=f"Your attendance for {active_session.name} was recorded but marked as ABSENT/LATE due to timing."
+                )
+            
+            attendance.save()
         else:
             attendance.exit_time = time_stamp
             attendance.save()
@@ -246,3 +279,4 @@ class AcademicService:
             "entry": timezone.localtime(attendance.entry_time).isoformat() if attendance.entry_time else None,
             "exit": timezone.localtime(attendance.exit_time).isoformat() if attendance.exit_time else None
         }
+    
