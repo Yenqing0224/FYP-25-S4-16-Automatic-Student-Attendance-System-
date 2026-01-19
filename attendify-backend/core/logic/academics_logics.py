@@ -7,7 +7,7 @@ class AcademicLogic:
     def get_upcoming_class_window():
         local_now = timezone.localtime(timezone.now())
         start_range = local_now
-        end_range = local_now + timedelta(minutes=30)
+        end_range = local_now + timedelta(minutes=40)
         target_date = start_range.date()
         
         return target_date, start_range.time(), end_range.time()
