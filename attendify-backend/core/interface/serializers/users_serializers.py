@@ -1,6 +1,5 @@
 from rest_framework import serializers
 from core.models import User, Admin, Lecturer, Student
-from core.interface.serializers.academics_serializers import PartnerUniSerializer
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -20,6 +19,8 @@ class AdminSerializer(serializers.ModelSerializer):
 
 class LecturerSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
+    from core.interface.serializers.academics_serializers import PartnerUniSerializer
+
     partner_uni = PartnerUniSerializer(read_only=True)    
 
     class Meta:
@@ -29,6 +30,8 @@ class LecturerSerializer(serializers.ModelSerializer):
 
 class StudentSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
+    from core.interface.serializers.academics_serializers import PartnerUniSerializer
+
     partner_uni = PartnerUniSerializer(read_only=True)    
 
     class Meta:
