@@ -284,9 +284,9 @@ class AcademicService:
         notifications = []
         for student in students:
             notifications.append(Notification(
-                user=student.user,
+                recipient=student.user,
                 title="Class Rescheduled",
-                message=f"Your class {session.name} has been moved to {new_session.date} at {new_session.start_time}."
+                description=f"Your class {session.name} has been moved to {new_session.date} at {new_session.start_time}."
             ))
         Notification.objects.bulk_create(notifications)
 
@@ -338,9 +338,9 @@ class AcademicService:
                 message = f"Entry marked for {student.user.username}"
 
                 Notification.objects.create(
-                    user=student.user,
+                    recipient=student.user,
                     title="Attendance Marked",
-                    message=f"You have successfully marked attendance for {active_session.name}."
+                    description=f"You have successfully marked attendance for {active_session.name}."
                 )
             else:
                 message = f"Entry rejected. You must scan within +/- 30 mins of {active_session.start_time}"
