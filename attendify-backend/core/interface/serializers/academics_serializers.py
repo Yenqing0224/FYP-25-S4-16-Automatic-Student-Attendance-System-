@@ -23,19 +23,19 @@ class ModuleSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
-class ClassSessionSerializer(serializers.ModelSerializer):
-    module = ModuleSerializer(read_only=True)
-    venue = serializers.CharField(source='venue.name', read_only=True)
-
-    class Meta:
-        model = ClassSession
-        fields = '__all__'
-
-
 class ClassRoomSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = ClassRoom
+        fields = '__all__'
+
+
+class ClassSessionSerializer(serializers.ModelSerializer):
+    module = ModuleSerializer(read_only=True)
+    venue = ClassRoomSerializer(read_only=True)
+
+    class Meta:
+        model = ClassSession
         fields = '__all__'
 
 
