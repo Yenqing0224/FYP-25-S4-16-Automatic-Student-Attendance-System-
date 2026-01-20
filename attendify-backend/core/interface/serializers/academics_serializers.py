@@ -32,6 +32,8 @@ class ClassSessionSerializer(serializers.ModelSerializer):
 
 
 class ClassRoomSerializer(serializers.ModelSerializer):
+    venue = serializers.CharField(source='venue.name', read_only=True)
+    
     class Meta:
         model = ClassRoom
         fields = '__all__'
