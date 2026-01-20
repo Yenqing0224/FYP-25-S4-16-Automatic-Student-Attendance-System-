@@ -345,9 +345,9 @@ class AcademicService:
             else:
                 message = f"Entry rejected. You must scan within +/- 30 mins of {active_session.start_time}"
                 Notification.objects.create(
-                    user=student.user,
+                    recipient=student.user,
                     title="Attendance Alert",
-                    message=f"Your attendance for {active_session.name} was recorded but marked as ABSENT/LATE due to timing."
+                    description=f"Your attendance for {active_session.name} was recorded but marked as ABSENT/LATE due to timing."
                 )
             
             attendance.save()
