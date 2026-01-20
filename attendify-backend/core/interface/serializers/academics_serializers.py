@@ -25,6 +25,7 @@ class ModuleSerializer(serializers.ModelSerializer):
 
 class ClassSessionSerializer(serializers.ModelSerializer):
     module = ModuleSerializer(read_only=True)
+    venue = serializers.CharField(source='venue.name', read_only=True)
 
     class Meta:
         model = ClassSession
@@ -32,7 +33,6 @@ class ClassSessionSerializer(serializers.ModelSerializer):
 
 
 class ClassRoomSerializer(serializers.ModelSerializer):
-    venue = serializers.CharField(source='venue.name', read_only=True)
     
     class Meta:
         model = ClassRoom
