@@ -7,6 +7,7 @@ import LecturerClassListScreen from "../../screens/lecturer/classes/class_list_s
 import LecturerClassDetailScreen from "../../screens/lecturer/classes/class_detail_screen";
 import LecturerAnnouncementDetailScreen from "../../screens/lecturer/announcements/announcement_detail_screen";
 
+
 const Stack = createNativeStackNavigator();
 
 export default function LecturerHomeStack() {

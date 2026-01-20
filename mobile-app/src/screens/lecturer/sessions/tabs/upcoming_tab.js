@@ -1,5 +1,6 @@
+// src/screens/lecturer/sessions/tabs/upcoming_tab.js
 import React from "react";
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from "react-native";
 import { Swipeable } from "react-native-gesture-handler";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -19,10 +20,39 @@ const UpcomingTab = ({
     </TouchableOpacity>
   );
 
+  // ✅ safer date formatting (handles "YYYY-MM-DD" properly)
   const formatDate = (dateStr) => {
     if (!dateStr) return "";
-    const d = new Date(dateStr);
-    return d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+    // if backend sends YYYY-MM-DD
+    if (dateStr.includes("-") && dateStr.length >= 10) {
+      const [y, m, d] = dateStr.slice(0, 10).split("-");
+      const dt = new Date(Number(y), Number(m) - 1, Number(d));
+      return dt.toLocaleDateString("en-GB", {
+        weekday: "short",
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      });
+    }
+    const dt = new Date(dateStr);
+    return dt.toLocaleDateString("en-GB", {
+      weekday: "short",
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+  };
+
+  const goReschedule = (cls) => {
+    // extra safety: only allow if upcoming
+    if (cls?.startISO) {
+      const startMs = new Date(cls.startISO).getTime();
+      if (!isNaN(startMs) && startMs <= Date.now()) {
+        Alert.alert("Not allowed", "You can only reschedule upcoming classes.");
+        return;
+      }
+    }
+    navigation.navigate("LecturerReschedule", { cls });
   };
 
   return (
@@ -65,14 +95,21 @@ const UpcomingTab = ({
                 <Text style={styles.metaText}>{s.venue}</Text>
               </View>
 
+              {/* ✅ Actions */}
+              {/* ✅ Actions (same row) */}
               <View style={styles.actionsRow}>
-                <View style={[styles.primaryBtnCompact, { backgroundColor: COLORS.primary }]}>
+                {/* Details */}
+                <TouchableOpacity
+                  style={[styles.primaryBtnCompact, { backgroundColor: COLORS.primary }]}
+                  onPress={() => navigation.navigate("LecturerClassDetail", { cls: s })}
+                >
                   <Ionicons name="information-circle-outline" size={16} color="#fff" />
                   <Text style={styles.primaryBtnText}>Details</Text>
-                </View>
+                </TouchableOpacity>
 
+                {/* Add reminder */}
                 <TouchableOpacity
-                  style={[styles.secondaryBtn, isAdded(s) && styles.secondaryBtnDisabled]}
+                  style={[styles.secondaryBtnSmall, isAdded(s) && styles.secondaryBtnDisabled]}
                   disabled={isAdded(s) || isSavingThis(s)}
                   onPress={() => addReminderToCalendar(s)}
                 >
@@ -81,11 +118,21 @@ const UpcomingTab = ({
                     size={16}
                     color={COLORS.primary}
                   />
-                  <Text style={[styles.secondaryBtnText, { color: COLORS.primary }]}>
-                    {isSavingThis(s) ? "Adding..." : isAdded(s) ? "Added" : "Add reminder"}
+                  <Text style={[styles.secondaryBtnTextSmall, { color: COLORS.primary }]}>
+                    {isSavingThis(s) ? "..." : isAdded(s) ? "Added" : "Reminder"}
                   </Text>
                 </TouchableOpacity>
+
+                {/* Reschedule */}
+                <TouchableOpacity
+                  style={styles.secondaryBtnSmall}
+                  onPress={() => navigation.navigate("LecturerReschedule", { cls: s })}
+                >
+                  <Ionicons name="calendar-outline" size={16} color={COLORS.primary} />
+                  <Text style={[styles.secondaryBtnTextSmall, { color: COLORS.primary }]}>Move</Text>
+                </TouchableOpacity>
               </View>
+
 
               {isAdded(s) && (
                 <View style={styles.swipeHintRow}>
@@ -122,27 +169,92 @@ const UpcomingTab = ({
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: 20, paddingTop: 6 },
-  sessionCard: { borderRadius: 18, padding: 16, borderWidth: 1, marginBottom: 12, backgroundColor: "#fff", borderColor: "#E5E7EB" },
+  sessionCard: {
+    borderRadius: 18,
+    padding: 16,
+    borderWidth: 1,
+    marginBottom: 12,
+    backgroundColor: "#fff",
+    borderColor: "#E5E7EB",
+  },
   sessionTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   module: { fontWeight: "900" },
   sessionTitle: { marginTop: 2, fontSize: 16, fontWeight: "900", color: "#111827" },
   statusPill: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, backgroundColor: "#ECE9FF" },
   statusText: { fontWeight: "900", fontSize: 12 },
+
   metaRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 8 },
   metaText: { color: "#6B7280", fontWeight: "600" },
+
   actionsRow: { flexDirection: "row", gap: 10, marginTop: 14 },
-  primaryBtnCompact: { flex: 1, paddingVertical: 12, borderRadius: 14, flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 8 },
+
+  primaryBtnCompact: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 14,
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 8,
+  },
   primaryBtnText: { color: "#fff", fontWeight: "900" },
-  secondaryBtn: { flex: 1, backgroundColor: "#ECE9FF", paddingVertical: 12, borderRadius: 14, flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 8 },
+
+  secondaryBtn: {
+    flex: 1,
+    backgroundColor: "#ECE9FF",
+    paddingVertical: 12,
+    borderRadius: 14,
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 8,
+  },
   secondaryBtnDisabled: { opacity: 0.65 },
   secondaryBtnText: { fontWeight: "900" },
+
   swipeHintRow: { marginTop: 10, flexDirection: "row", alignItems: "center", gap: 6 },
   swipeHintText: { color: "#6B7280", fontWeight: "700", fontSize: 12 },
-  swipeDelete: { width: 110, marginBottom: 12, borderRadius: 18, backgroundColor: "#DC2626", alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 6 },
+
+  swipeDelete: {
+    width: 110,
+    marginBottom: 12,
+    borderRadius: 18,
+    backgroundColor: "#DC2626",
+    alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
+    gap: 6,
+  },
+  secondaryBtnSmall: {
+    flex: 1,
+    backgroundColor: "#ECE9FF",
+    paddingVertical: 12,
+    borderRadius: 14,
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 6,
+  },
+
+  secondaryBtnTextSmall: {
+    fontWeight: "900",
+    fontSize: 12,
+  },
+
   swipeDeleteText: { color: "#fff", fontWeight: "900" },
+
   emptyBox: { marginTop: 30, alignItems: "center" },
   emptyTitle: { color: "#6B7280", fontWeight: "700" },
-  tapHintRow: { marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: "#E5E7EB", flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+
+  tapHintRow: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: "#E5E7EB",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
   tapHintText: { flex: 1, marginLeft: 8, color: "#6B7280", fontWeight: "700" },
 });
 

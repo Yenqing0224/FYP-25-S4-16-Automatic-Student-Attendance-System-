@@ -1,5 +1,5 @@
 // src/screens/student/home/home_screen.js
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -8,92 +8,143 @@ import {
   TouchableOpacity,
   StatusBar,
   ActivityIndicator,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Ionicons } from '@expo/vector-icons';
-import api from '../../../api/api_client';
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Ionicons } from "@expo/vector-icons";
+import api from "../../../api/api_client";
 
 const COLORS = {
-  primary: '#3A7AFE',
-  teal: '#2EC4B6',
-  lilac: '#A6C2FF',
-  background: '#F5F7FB',
-  textDark: '#111827',
-  textMuted: '#6B7280',
-  card: '#FFFFFF',
+  primary: "#3A7AFE",
+  teal: "#2EC4B6",
+  lilac: "#A6C2FF",
+  background: "#F5F7FB",
+  textDark: "#111827",
+  textMuted: "#6B7280",
+  card: "#FFFFFF",
+  border: "#E5E7EB",
+  danger: "#EF4444",
 };
 
 const READ_ANNOUNCEMENTS_KEY = "studentReadAnnouncements_v1";
+const ANNOUNCEMENT_EXPIRE_DAYS = 14;
 
-const HomeScreen = ({ navigation }) => {
+// ✅ student fallback (keep student-relevant stuff like assignment/reschedule)
+const SAMPLE_STUDENT_ANNOUNCEMENTS = [
+  {
+    id: "s-new-1",
+    title: "📢 New Make-up Class Announced",
+    desc: "A make-up class has been scheduled for CSIT321 on Thursday, 2:00–4:00 PM at LT19.",
+    date: "Today",
+    created_at: new Date().toISOString(), // ✅ NEW
+  },
+  {
+    id: "s-new-2",
+    title: "📝 Assignment 2 Released",
+    desc: "Assignment 2 is now available on the LMS. Submission deadline is next Sunday.",
+    date: "Today",
+    created_at: new Date().toISOString(), // ✅ NEW
+  },
+  {
+    id: "s-old-1",
+    title: "Attendify System Maintenance",
+    desc: "Attendify may be unavailable on Friday from 8:00–10:00 PM.",
+    date: "Fri",
+    created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), // old
+  },
+  {
+    id: "s-old-2",
+    title: "Attendance Reminder",
+    desc: "Attendance below 75% may affect course eligibility. Please monitor your attendance.",
+    date: "Ongoing",
+    created_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(), // old
+  },
+];
+
+
+export default function HomeScreen({ navigation }) {
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
 
-  // Dashboard Data
-  const [semesterRange, setSemesterRange] = useState('Loading...');
+  const [semesterRange, setSemesterRange] = useState("Loading...");
   const [attendanceRate, setAttendanceRate] = useState(0);
+
   const [todayClasses, setTodayClasses] = useState([]);
   const [upcomingClasses, setUpcomingClasses] = useState([]);
-  
-  // ✅ Announcements State
+
+  const [loading, setLoading] = useState(true);
+
+  // ✅ announcements
   const [announcements, setAnnouncements] = useState([]);
+  const [loadingAnnouncements, setLoadingAnnouncements] = useState(true);
   const [isAnnounceExpanded, setIsAnnounceExpanded] = useState(false);
   const [readAnnouncementIds, setReadAnnouncementIds] = useState(new Set());
 
-  // 1. Load User & Read Announcements IDs
-  useEffect(() => {
-    const init = async () => {
-      try {
-        // Load User
-        const storedUser = await AsyncStorage.getItem('userInfo');
-        if (storedUser) setUser(JSON.parse(storedUser));
+  // ✅ Option 1: toggle UNREAD vs ALL (same as lecturer)
+  const [showAllAnnouncements, setShowAllAnnouncements] = useState(false);
 
-        // Load Read Announcements
-        const rawRead = await AsyncStorage.getItem(READ_ANNOUNCEMENTS_KEY);
-        if (rawRead) {
-          const arr = JSON.parse(rawRead);
-          if (Array.isArray(arr)) setReadAnnouncementIds(new Set(arr.map(String)));
-        }
+  // ---------------- helpers ----------------
+  const formatTime = (timeString) => (timeString ? String(timeString).slice(0, 5) : "");
 
-        fetchDashboardData();
-      } catch (error) {
-        console.error('Init Error:', error);
-      }
-    };
-    init();
-  }, []);
-
-  // 2. Fetch Dashboard Data
-  const fetchDashboardData = async () => {
-    try {
-      const response = await api.get('/dashboard/');
-      const data = response.data;
-
-      setSemesterRange(data.semester_range);
-      setAttendanceRate(data.attendance_rate);
-      setTodayClasses(data.today_classes || []);
-      setUpcomingClasses(data.upcoming_classes || []);
-
-      // ✅ Process Announcements from Dashboard API
-      if (data.announcements && Array.isArray(data.announcements)) {
-        const formattedAnnouncements = data.announcements.map(a => ({
-          id: a.id,
-          title: a.title,
-          desc: a.message || a.description || "", // Handle different key names if necessary
-          date: formatDate(a.created_at) || "Recent"
-        }));
-        setAnnouncements(formattedAnnouncements);
-      }
-
-    } catch (error) {
-      console.error('Dashboard Fetch Error:', error);
-    } finally {
-      setLoading(false);
-    }
+  const formatDate = (dateString) => {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
   };
 
-  // 3. Announcement Helpers
+  const formatDateLabel = (dStr) => {
+    if (!dStr) return "";
+    const d = new Date(dStr);
+    const today = new Date();
+    return d.toDateString() === today.toDateString()
+      ? "Today"
+      : d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+  };
+
+  const isCreatedToday = (createdAt) => {
+    if (!createdAt) return false;
+    const d = new Date(createdAt);
+    const today = new Date();
+    return d.toDateString() === today.toDateString();
+  };
+
+  const isExpired = (createdAt) => {
+    if (!createdAt) return false;
+    const d = new Date(createdAt);
+    const cutoff = Date.now() - ANNOUNCEMENT_EXPIRE_DAYS * 24 * 60 * 60 * 1000;
+    return d.getTime() < cutoff;
+  };
+
+  const normalizeAnnouncement = (a) => {
+    const createdAt = a.created_at || a.createdAt || a.created || null;
+    return {
+      id: String(a.id),
+      title: a.title || "Untitled",
+      desc: a.desc || a.body || a.description || a.message || "",
+      created_at: createdAt,
+      date: a.dateLabel || a.date || (createdAt ? formatDateLabel(createdAt) : "Recent"),
+    };
+  };
+
+  const uniqById = (arr) => {
+    const map = new Map();
+    arr.forEach((x) => map.set(String(x.id), x));
+    return Array.from(map.values());
+  };
+
+  // ---------------- read/unread persistence ----------------
+  useEffect(() => {
+    (async () => {
+      try {
+        const raw = await AsyncStorage.getItem(READ_ANNOUNCEMENTS_KEY);
+        if (!raw) return;
+        const arr = JSON.parse(raw);
+        if (Array.isArray(arr)) setReadAnnouncementIds(new Set(arr.map(String)));
+      } catch (e) {
+        console.log("Failed to load read announcements:", e);
+      }
+    })();
+  }, []);
+
   const persistReadIds = async (nextSet) => {
     try {
       await AsyncStorage.setItem(READ_ANNOUNCEMENTS_KEY, JSON.stringify(Array.from(nextSet)));
@@ -116,41 +167,92 @@ const HomeScreen = ({ navigation }) => {
     await persistReadIds(next);
   };
 
-  // --- UI Helpers ---
-  const formatTime = (timeString) => {
-    if (!timeString) return '';
-    return timeString.slice(0, 5);
+  // ---------------- init (load user + dashboard) ----------------
+  useEffect(() => {
+    const initDashboard = async () => {
+      try {
+        const storedUser = await AsyncStorage.getItem("userInfo");
+        if (storedUser) setUser(JSON.parse(storedUser));
+      } catch (error) {
+        console.error("Init Error:", error);
+      } finally {
+        fetchDashboardData();
+      }
+    };
+    initDashboard();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const fetchDashboardData = async () => {
+    // A) Dashboard
+    try {
+      const dashRes = await api.get("/dashboard/");
+      const data = dashRes.data;
+
+      setSemesterRange(data.semester_range);
+      setAttendanceRate(data.attendance_rate);
+      setTodayClasses(data.today_classes || []);
+      setUpcomingClasses(data.upcoming_classes || []);
+    } catch (error) {
+      console.error("Dashboard Fetch Error:", error?.response?.status, error?.config?.url);
+    } finally {
+      setLoading(false);
+    }
+
+    // B) Announcements (student version)
+    try {
+      setLoadingAnnouncements(true);
+
+      // ✅ student audience
+      const annRes = await api.get("/announcements/?audience=all,students&active=1");
+      const raw = Array.isArray(annRes.data) ? annRes.data : [];
+
+      let merged = uniqById(raw.map(normalizeAnnouncement));
+
+      // ✅ auto-expire
+      merged = merged.filter((a) => !isExpired(a.created_at));
+
+      // ✅ filter OUT lecturer-only terms (optional but recommended)
+      const STUDENT_EXCLUDE_KEYWORDS = ["invigilation", "marking window", "grading", "lecturer briefing"];
+      merged = merged.filter((a) => {
+        const text = `${a.title} ${a.desc}`.toLowerCase();
+        return !STUDENT_EXCLUDE_KEYWORDS.some((k) => text.includes(k));
+      });
+
+      if (!merged.length) merged = SAMPLE_STUDENT_ANNOUNCEMENTS.map(normalizeAnnouncement);
+
+      setAnnouncements(merged);
+    } catch (error) {
+      console.log("Announcements Fetch Error:", error?.response?.status, error?.config?.url);
+      setAnnouncements(SAMPLE_STUDENT_ANNOUNCEMENTS.map(normalizeAnnouncement));
+    } finally {
+      setLoadingAnnouncements(false);
+    }
   };
 
-  const formatDate = (dateString) => {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
-  };
-
-  // Current Date logic
-  const [currentDate, setCurrentDate] = useState({ dayName: '', dateString: '' });
+  // ---------------- current date UI ----------------
+  const [currentDate, setCurrentDate] = useState({ dayName: "", dateString: "" });
   useEffect(() => {
     const now = new Date();
-    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     setCurrentDate({
       dayName: days[now.getDay()],
       dateString: `${now.getDate()}-${months[now.getMonth()]}-${now.getFullYear()}`,
     });
   }, []);
 
-  // Filter Announcements
-  const unreadAnnouncements = announcements.filter(
-    (a) => !readAnnouncementIds.has(String(a.id))
+  // ---------------- announcements derived lists ----------------
+  const unreadAnnouncements = useMemo(
+    () => announcements.filter((a) => !readAnnouncementIds.has(String(a.id))),
+    [announcements, readAnnouncementIds]
   );
-  
-  // Decide what to show (Expand logic)
-  // If expanded, show ALL unread. If collapsed, show max 3 unread.
-  const visibleAnnouncements = isAnnounceExpanded
-    ? unreadAnnouncements
-    : unreadAnnouncements.slice(0, 3);
 
+  const listToShow = showAllAnnouncements ? announcements : unreadAnnouncements;
+  const visibleAnnouncements = isAnnounceExpanded ? listToShow : listToShow.slice(0, 3);
+  const hasAnyAnnouncements = listToShow.length > 0;
+
+  // ---------------- UI ----------------
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
@@ -160,9 +262,7 @@ const HomeScreen = ({ navigation }) => {
         <View style={styles.headerContainer}>
           <View>
             <Text style={styles.greetingLabel}>Hello,</Text>
-            <Text style={styles.greetingName}>
-              {user ? `${user.first_name}` : "Student"} 👋
-            </Text>
+            <Text style={styles.greetingName}>{user ? `${user.first_name}` : "Student"} 👋</Text>
 
             <View style={styles.chip}>
               <Text style={styles.chipText}>Dashboard overview</Text>
@@ -175,42 +275,52 @@ const HomeScreen = ({ navigation }) => {
           </View>
         </View>
 
-        {/* ATTENDANCE CARD */}
+        {/* ATTENDANCE */}
         {attendanceRate !== null && attendanceRate !== undefined && (
-          <TouchableOpacity
-            activeOpacity={0.9}
-            onPress={() => navigation.navigate('AttendanceHistory')}
-          >
+          <TouchableOpacity activeOpacity={0.9} onPress={() => navigation.navigate("AttendanceHistory")}>
             <View style={styles.attendanceCard}>
               <Text style={styles.attendanceLabel}>Attendance rate</Text>
               <Text style={styles.attendanceSubtitle}>{semesterRange}</Text>
 
               <View style={styles.attendanceCircle}>
-                <Text style={styles.attendancePercentage}>
-                  {loading ? "..." : `${attendanceRate.toFixed(0)}%`}
-                </Text>
+                <Text style={styles.attendancePercentage}>{loading ? "..." : `${attendanceRate.toFixed(0)}%`}</Text>
               </View>
             </View>
           </TouchableOpacity>
         )}
 
-        {/* ✅ ANNOUNCEMENTS SECTION */}
+        {/* ✅ ANNOUNCEMENTS (Lecturer-style) */}
         <View style={styles.sectionHeaderRow}>
           <Text style={styles.sectionHeaderText}>Announcements</Text>
         </View>
 
-        <View style={[styles.announcementCard]}>
-          {/* Header Row (Collapsible) */}
+        <View style={[styles.attendanceCard, { paddingVertical: 16, alignItems: "stretch" }]}>
           <TouchableOpacity
             activeOpacity={0.85}
             onPress={() => setIsAnnounceExpanded((v) => !v)}
             style={styles.announceHeaderRow}
           >
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flex: 1 }}>
               <Ionicons name="megaphone-outline" size={18} color={COLORS.primary} />
-              <Text style={{ fontSize: 16, fontWeight: "800", color: COLORS.textDark }}>
-                Unread ({unreadAnnouncements.length})
-              </Text>
+
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <Text style={{ fontSize: 16, fontWeight: "800", color: COLORS.textDark }}>
+                  {showAllAnnouncements ? `All (${announcements.length})` : `Unread (${unreadAnnouncements.length})`}
+                </Text>
+
+                {!showAllAnnouncements && unreadAnnouncements.length > 0 && <View style={styles.unreadDot} />}
+
+                {/* Toggle pill */}
+                <TouchableOpacity
+                  onPress={() => setShowAllAnnouncements((v) => !v)}
+                  activeOpacity={0.85}
+                  style={styles.filterPill}
+                >
+                  <Text style={styles.filterPillText}>
+                    {showAllAnnouncements ? "Showing: All" : "Showing: Unread"}
+                  </Text>
+                </TouchableOpacity>
+              </View>
             </View>
 
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
@@ -225,69 +335,105 @@ const HomeScreen = ({ navigation }) => {
             </View>
           </TouchableOpacity>
 
-          {/* Mark All Read Button */}
-          {!loading && unreadAnnouncements.length > 0 && (
+          {/* Mark all read (only in Unread mode) */}
+          {!loadingAnnouncements && !showAllAnnouncements && unreadAnnouncements.length > 0 && (
             <TouchableOpacity onPress={markAllRead} style={{ marginTop: 10, alignSelf: "flex-start" }}>
-              <Text style={{ color: COLORS.primary, fontWeight: "900", fontSize: 13 }}>
-                Mark all as read
-              </Text>
+              <Text style={{ color: COLORS.primary, fontWeight: "900", fontSize: 13 }}>Mark all as read</Text>
             </TouchableOpacity>
           )}
 
           <View style={{ height: 10 }} />
 
-          {/* List */}
-          {loading ? (
-            <ActivityIndicator color={COLORS.primary} />
-          ) : unreadAnnouncements.length === 0 ? (
+          {loadingAnnouncements ? (
+            <View style={{ paddingVertical: 12 }}>
+              <ActivityIndicator color={COLORS.primary} />
+            </View>
+          ) : !hasAnyAnnouncements ? (
             <View style={{ paddingVertical: 10 }}>
               <Text style={{ color: COLORS.textMuted, fontWeight: "700" }}>
-                You’re all caught up ✅
+                {showAllAnnouncements ? "No announcements yet." : "You’re all caught up ✅"}
               </Text>
             </View>
           ) : (
-            visibleAnnouncements.map((a, idx) => (
-              <View key={a.id}>
-                <TouchableOpacity
-                  style={{ paddingVertical: 12 }}
-                  onPress={async () => {
-                    await markAnnouncementRead(a.id);
-                    // Ensure you have this screen registered in App.js or remove navigation if just marking read
-                    navigation.navigate("StudentAnnouncementDetail", { announcement: a }); 
-                  }}
-                >
-                  <Text style={{ fontWeight: "900", color: COLORS.textDark, fontSize: 15 }} numberOfLines={1}>
-                    {a.title}
-                  </Text>
+            visibleAnnouncements.map((a, idx) => {
+              const isRead = readAnnouncementIds.has(String(a.id));
 
-                  <Text
-                    style={{ marginTop: 4, color: COLORS.textMuted, fontWeight: "500", lineHeight: 20, fontSize: 13 }}
-                    numberOfLines={2}
+              return (
+                <View key={a.id}>
+                  <TouchableOpacity
+                    style={{ paddingVertical: 12 }}
+                    onPress={async () => {
+                      if (!isRead) await markAnnouncementRead(a.id);
+                      navigation.navigate("StudentAnnouncementDetail", { announcement: a });
+                    }}
                   >
-                    {a.desc}
-                  </Text>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                      <Text
+                        style={{
+                          fontWeight: "900",
+                          color: COLORS.textDark,
+                          fontSize: 15,
+                          flex: 1,
+                          opacity: isRead ? 0.65 : 1,
+                        }}
+                        numberOfLines={1}
+                      >
+                        {a.title}
+                      </Text>
 
-                  <Text style={{ marginTop: 6, color: COLORS.textMuted, fontWeight: "800", fontSize: 11 }}>
-                    {a.date}
-                  </Text>
-                </TouchableOpacity>
+                      {!isRead && isCreatedToday(a.created_at) && (
+                        <View style={styles.newPill}>
+                          <Text style={styles.newPillText}>NEW</Text>
+                        </View>
+                      )}
 
-                {/* Divider */}
-                {idx !== visibleAnnouncements.length - 1 && (
-                  <View style={{ height: 1, backgroundColor: "#F3F4F6" }} />
-                )}
-              </View>
-            ))
+                      {showAllAnnouncements && isRead && (
+                        <View style={styles.readPill}>
+                          <Text style={styles.readPillText}>READ</Text>
+                        </View>
+                      )}
+                    </View>
+
+                    <Text
+                      style={{
+                        marginTop: 4,
+                        color: COLORS.textMuted,
+                        fontWeight: "700",
+                        lineHeight: 18,
+                        fontSize: 13,
+                        opacity: isRead ? 0.7 : 1,
+                      }}
+                      numberOfLines={2}
+                    >
+                      {a.desc}
+                    </Text>
+
+                    {!!a.date && (
+                      <Text style={{ marginTop: 6, color: COLORS.textMuted, fontWeight: "800", fontSize: 11 }}>
+                        {a.date}
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+
+                  {idx !== visibleAnnouncements.length - 1 && <View style={styles.divider} />}
+                </View>
+              );
+            })
           )}
 
-          {/* View More Button */}
-          {!loading && !isAnnounceExpanded && unreadAnnouncements.length > 3 && (
+          {!loadingAnnouncements && !isAnnounceExpanded && listToShow.length > 3 && (
             <TouchableOpacity
               onPress={() => setIsAnnounceExpanded(true)}
-              style={{ marginTop: 8, paddingVertical: 8, alignItems: "center", borderTopWidth: 1, borderTopColor: '#F3F4F6' }}
+              style={{
+                marginTop: 8,
+                paddingVertical: 8,
+                alignItems: "center",
+                borderTopWidth: 1,
+                borderTopColor: COLORS.border,
+              }}
             >
               <Text style={{ color: COLORS.primary, fontWeight: "900", fontSize: 13 }}>
-                View {unreadAnnouncements.length - 3} more
+                View {listToShow.length - 3} more
               </Text>
             </TouchableOpacity>
           )}
@@ -311,7 +457,7 @@ const HomeScreen = ({ navigation }) => {
             todayClasses.map((item) => (
               <View key={item.id} style={styles.todayCard}>
                 <View style={styles.todayCardInner}>
-                  <Text style={styles.cardTitle}>{item.module.code}</Text>
+                  <Text style={styles.cardTitle}>{item.module?.code || "Module"}</Text>
 
                   <View style={styles.row}>
                     <Ionicons name="time-outline" size={16} color="#1E1B4B" />
@@ -320,10 +466,10 @@ const HomeScreen = ({ navigation }) => {
 
                   <View style={styles.row}>
                     <Ionicons name="location-outline" size={16} color="#1E1B4B" />
-                    <Text style={styles.cardDetail}>{item.venue}</Text>
+                    <Text style={styles.cardDetail}>{item.venue || "TBA"}</Text>
                   </View>
 
-                  <Text style={styles.cardSubtitle}>{item.module.name}</Text>
+                  <Text style={styles.cardSubtitle}>{item.module?.name || "Class"}</Text>
                 </View>
               </View>
             ))
@@ -349,10 +495,8 @@ const HomeScreen = ({ navigation }) => {
                 style={styles.upcomingCard}
                 onPress={async () => {
                   const dateToJump = item.date;
-                  await AsyncStorage.setItem('jumpToDate', dateToJump);
-                  navigation.navigate('Timetable', {
-                    screen: 'TimeTableMain',
-                  });
+                  await AsyncStorage.setItem("jumpToDate", dateToJump);
+                  navigation.navigate("Timetable", { screen: "TimeTableMain" });
                 }}
               >
                 <View style={{ marginBottom: 8 }}>
@@ -367,11 +511,11 @@ const HomeScreen = ({ navigation }) => {
 
                 <View style={{ marginBottom: 12 }}>
                   <Text style={styles.upcomingLabel}>Venue</Text>
-                  <Text style={styles.upcomingValue}>{item.venue || 'TBA'}</Text>
+                  <Text style={styles.upcomingValue}>{item.venue || "TBA"}</Text>
                 </View>
 
                 <Text style={styles.upcomingModule}>
-                  {item.module.code} — {item.module.name}
+                  {item.module?.code || "MOD"} — {item.module?.name || "Class"}
                 </Text>
               </TouchableOpacity>
             ))
@@ -382,70 +526,43 @@ const HomeScreen = ({ navigation }) => {
       </ScrollView>
     </SafeAreaView>
   );
-};
+}
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
-  scrollContent: {
-    paddingBottom: 24,
-  },
-  paddingContainer: {
-    paddingHorizontal: 20,
-  },
+  safeArea: { flex: 1, backgroundColor: COLORS.background },
+  scrollContent: { paddingBottom: 24 },
+  paddingContainer: { paddingHorizontal: 20 },
 
   // HEADER
   headerContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     paddingHorizontal: 20,
     paddingTop: 20,
     paddingBottom: 10,
   },
-  greetingLabel: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: COLORS.textMuted,
-  },
+  greetingLabel: { fontSize: 14, fontWeight: "500", color: COLORS.textMuted },
   greetingName: {
     fontSize: 22,
-    fontWeight: '700',
+    fontWeight: "700",
     color: COLORS.textDark,
     marginTop: 2,
-    textTransform: 'capitalize',
+    textTransform: "capitalize",
   },
   chip: {
     marginTop: 8,
-    alignSelf: 'flex-start',
-    backgroundColor: '#E7F0FF',
+    alignSelf: "flex-start",
+    backgroundColor: "#E7F0FF",
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 999,
   },
-  chipText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: COLORS.primary,
-  },
-  dateContainer: {
-    alignItems: 'flex-end',
-    justifyContent: 'center',
-  },
-  dateDay: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.primary,
-  },
-  dateText: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: COLORS.textMuted,
-    marginTop: 2,
-  },
+  chipText: { fontSize: 11, fontWeight: "600", color: COLORS.primary },
+  dateContainer: { alignItems: "flex-end", justifyContent: "center" },
+  dateDay: { fontSize: 14, fontWeight: "600", color: COLORS.primary },
+  dateText: { fontSize: 13, fontWeight: "500", color: COLORS.textMuted, marginTop: 2 },
 
-  // ATTENDANCE CARD
+  // CARD BASE
   attendanceCard: {
     marginHorizontal: 20,
     marginTop: 12,
@@ -454,77 +571,39 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     paddingVertical: 26,
     paddingHorizontal: 20,
-    alignItems: 'center',
+    alignItems: "center",
     elevation: 3,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOpacity: 0.06,
     shadowOffset: { width: 0, height: 3 },
     shadowRadius: 6,
   },
-  attendanceLabel: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: COLORS.textDark,
-    marginBottom: 4,
-  },
-  attendanceSubtitle: {
-    fontSize: 14,
-    color: COLORS.textMuted,
-    marginBottom: 20,
-  },
+
+  // ATTENDANCE CARD
+  attendanceLabel: { fontSize: 16, fontWeight: "700", color: COLORS.textDark, marginBottom: 4 },
+  attendanceSubtitle: { fontSize: 14, color: COLORS.textMuted, marginBottom: 20 },
   attendanceCircle: {
     width: 95,
     height: 95,
     borderRadius: 48,
-    backgroundColor: '#E3EDFF',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "#E3EDFF",
+    alignItems: "center",
+    justifyContent: "center",
   },
-  attendancePercentage: {
-    fontSize: 30,
-    fontWeight: '800',
-    color: COLORS.primary,
-  },
+  attendancePercentage: { fontSize: 30, fontWeight: "800", color: COLORS.primary },
 
   // SECTION HEADER
-  sectionHeaderRow: {
-    paddingHorizontal: 20,
-    marginBottom: 8,
-  },
-  sectionHeaderText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: COLORS.textDark,
-  },
+  sectionHeaderRow: { paddingHorizontal: 20, marginBottom: 8 },
+  sectionHeaderText: { fontSize: 16, fontWeight: "700", color: COLORS.textDark },
 
-  // ✅ ANNOUNCEMENT STYLES
-  announcementCard: {
-    marginHorizontal: 20,
-    marginBottom: 22,
-    backgroundColor: COLORS.card,
-    borderRadius: 20,
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowOffset: { width: 0, height: 3 },
-    shadowRadius: 6,
-  },
-  announceHeaderRow: {
-    flexDirection: "row", 
-    justifyContent: "space-between", 
-    alignItems: "center" 
-  },
-
-  // TODAY CARDS
+  // TODAY
   todayCard: {
-    backgroundColor: '#8C99FF',
+    backgroundColor: "#8C99FF",
     borderRadius: 18,
     padding: 2,
     marginBottom: 14,
     elevation: 3,
-    shadowColor: '#8C99FF',
+    shadowColor: "#8C99FF",
     shadowOpacity: 0.12,
     shadowOffset: { width: 0, height: 3 },
     shadowRadius: 5,
@@ -532,90 +611,80 @@ const styles = StyleSheet.create({
   todayCardInner: {
     borderRadius: 16,
     padding: 14,
-    backgroundColor: 'rgba(255,255,255,0.95)',
+    backgroundColor: "rgba(255,255,255,0.95)",
   },
-  cardTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#1E1B4B',
-    marginBottom: 8,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-    gap: 6,
-  },
-  cardDetail: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1E1B4B',
-  },
-  cardSubtitle: {
-    marginTop: 10,
-    fontSize: 13,
-    fontWeight: '600',
-    color: COLORS.primary,
-  },
+  cardTitle: { fontSize: 16, fontWeight: "800", color: "#1E1B4B", marginBottom: 8 },
+  row: { flexDirection: "row", alignItems: "center", marginBottom: 4, gap: 6 },
+  cardDetail: { fontSize: 14, fontWeight: "600", color: "#1E1B4B" },
+  cardSubtitle: { marginTop: 10, fontSize: 13, fontWeight: "600", color: COLORS.primary },
 
   // UPCOMING
-  horizontalScrollContainer: {
-    paddingHorizontal: 20,
-    paddingTop: 6,
-  },
+  horizontalScrollContainer: { paddingHorizontal: 20, paddingTop: 6 },
   upcomingCard: {
-    backgroundColor: '#3A7AFE',
+    backgroundColor: "#3A7AFE",
     borderRadius: 18,
     padding: 14,
     width: 160,
     marginRight: 12,
-    shadowColor: '#3A7AFE',
+    shadowColor: "#3A7AFE",
     shadowOpacity: 0.15,
     shadowOffset: { width: 0, height: 4 },
     shadowRadius: 6,
   },
   upcomingLabel: {
     fontSize: 11,
-    color: 'rgba(255,255,255,0.75)',
-    fontWeight: '600',
+    color: "rgba(255,255,255,0.75)",
+    fontWeight: "600",
     marginBottom: 2,
   },
-  upcomingValue: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    marginBottom: 6,
-  },
-  upcomingModule: {
-    marginTop: 6,
-    fontSize: 14,
-    fontWeight: '800',
-    color: '#FFFFFF',
-  },
-  noUpcomingText: {
-    marginLeft: 20,
-    color: COLORS.textMuted,
-    fontSize: 13,
-  },
+  upcomingValue: { fontSize: 14, fontWeight: "700", color: "#FFFFFF", marginBottom: 6 },
+  upcomingModule: { marginTop: 6, fontSize: 14, fontWeight: "800", color: "#FFFFFF" },
+  noUpcomingText: { marginLeft: 20, color: COLORS.textMuted, fontSize: 13 },
 
-  // EMPTY STATE
+  // EMPTY
   emptyStateContainer: {
-    alignItems: 'center',
+    alignItems: "center",
     paddingVertical: 22,
-    backgroundColor: '#F0F4FF',
+    backgroundColor: "#F0F4FF",
     borderRadius: 18,
     gap: 8,
   },
-  emptyStateText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: COLORS.textDark,
-  },
-  emptyStateSubtext: {
-    fontSize: 13,
-    color: COLORS.textMuted,
-    marginTop: 2,
-  },
-});
+  emptyStateText: { fontSize: 15, fontWeight: "700", color: COLORS.textDark },
+  emptyStateSubtext: { fontSize: 13, color: COLORS.textMuted, marginTop: 2 },
 
-export default HomeScreen;
+  // ✅ announcements styling
+  announceHeaderRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  divider: { height: 1, backgroundColor: COLORS.border },
+  unreadDot: { width: 8, height: 8, borderRadius: 99, backgroundColor: COLORS.danger },
+
+  filterPill: {
+    marginLeft: 8,
+    backgroundColor: "#E7F0FF",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  filterPillText: { fontSize: 11, fontWeight: "900", color: COLORS.primary },
+
+  newPill: {
+    backgroundColor: "#FEE2E2",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "#FCA5A5",
+  },
+  newPillText: { fontSize: 10, fontWeight: "900", color: "#B91C1C", letterSpacing: 0.6 },
+
+  readPill: {
+    backgroundColor: "#E5E7EB",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "#D1D5DB",
+  },
+  readPillText: { fontSize: 10, fontWeight: "900", color: "#374151", letterSpacing: 0.6 },
+});

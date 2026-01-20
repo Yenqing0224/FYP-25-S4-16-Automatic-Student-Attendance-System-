@@ -1,5 +1,4 @@
-// src/screens/lecturer/classes/
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -8,12 +7,14 @@ import {
   StatusBar,
   ScrollView,
   Alert,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as Calendar from "expo-calendar";
 import * as Clipboard from "expo-clipboard";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import api from "../../../api/api_client";
 
 const COLORS = {
   primary: "#6D5EF5",
@@ -23,12 +24,15 @@ const COLORS = {
   textMuted: "#6B7280",
   border: "#E5E7EB",
   soft: "#ECE9FF",
+  danger: "#DC2626",
 };
 
 const REMINDER_KEY = "lecturerReminderIds_v1";
 
 const LecturerClassDetailScreen = ({ route, navigation }) => {
   const cls = route?.params?.cls;
+
+  const [cancelling, setCancelling] = useState(false);
 
   const titleText = cls?.title || "Class Details";
   const moduleText = cls?.module || "-";
@@ -37,29 +41,47 @@ const LecturerClassDetailScreen = ({ route, navigation }) => {
   const startISO = cls?.startISO || null;
   const endISO = cls?.endISO || null;
 
-  // ✅ Helper to fix the "-" date issue
+  const isCancelled = String(cls?.status || "").toLowerCase() === "cancelled";
+
   const getDisplayDate = () => {
-    // 1. If passed pre-formatted
     if (cls?.fullDate) return cls.fullDate;
-    
-    // 2. Fallback: Format raw date string
+
     if (cls?.date) {
-      const parts = cls.date.split('-'); // YYYY-MM-DD
-      const d = new Date(parts[0], parts[1]-1, parts[2]);
-      return d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+      const parts = cls.date.split("-");
+      const d = new Date(parts[0], parts[1] - 1, parts[2]);
+      return d.toLocaleDateString("en-GB", {
+        weekday: "short",
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      });
     }
     return "-";
   };
-  
+
   const dateText = getDisplayDate();
 
+  const isUpcomingAndNotEnded = useMemo(() => {
+    if (isCancelled) return false;
+
+    if (endISO) {
+      const end = new Date(endISO).getTime();
+      return !isNaN(end) && end > Date.now();
+    }
+    if (startISO) {
+      const start = new Date(startISO).getTime();
+      return !isNaN(start) && start > Date.now();
+    }
+    return false;
+  }, [startISO, endISO, isCancelled]);
+
   const isNextClass = useMemo(() => {
-    if (!startISO) return false;
+    if (!startISO || isCancelled) return false;
     const start = new Date(startISO).getTime();
     const now = Date.now();
     const diff = start - now;
     return diff > 0 && diff <= 24 * 60 * 60 * 1000;
-  }, [startISO]);
+  }, [startISO, isCancelled]);
 
   const formatCopyText = () =>
     `${moduleText} - ${titleText}\nDate: ${dateText}\nTime: ${timeText}\nVenue: ${venueText}`;
@@ -125,6 +147,42 @@ const LecturerClassDetailScreen = ({ route, navigation }) => {
     }
   };
 
+  const cancelSession = async () => {
+    if (!cls?.id) {
+      Alert.alert("Missing", "No session id found.");
+      return;
+    }
+
+    Alert.alert(
+      "Cancel this session?",
+      "This will mark the session as CANCELLED. It will remain in history.",
+      [
+        { text: "No", style: "cancel" },
+        {
+          text: "Yes, cancel",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              setCancelling(true);
+
+              await api.post("/reschedule-class/", { session_id: String(cls.id) });
+
+              Alert.alert("Done", "Session cancelled.");
+
+              // ✅ Force refresh Sessions screen
+              navigation.navigate("LSessions", { refreshKey: Date.now() });
+            } catch (e) {
+              console.log("cancel session error:", e?.response?.status, e?.response?.data);
+              Alert.alert("Error", "Could not cancel session.");
+            } finally {
+              setCancelling(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   if (!cls) {
     return (
       <SafeAreaView style={styles.container}>
@@ -143,7 +201,6 @@ const LecturerClassDetailScreen = ({ route, navigation }) => {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
 
-      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Ionicons name="chevron-back" size={26} color={COLORS.primary} />
@@ -160,14 +217,19 @@ const LecturerClassDetailScreen = ({ route, navigation }) => {
           </View>
         )}
 
-        {/* Main card */}
+        {isCancelled && (
+          <View style={styles.cancelPill}>
+            <Ionicons name="close-circle-outline" size={16} color={COLORS.danger} />
+            <Text style={styles.cancelPillText}>This session is CANCELLED</Text>
+          </View>
+        )}
+
         <View style={styles.card}>
           <Text style={styles.module}>{moduleText}</Text>
           <Text style={styles.title}>{titleText}</Text>
 
           <View style={styles.divider} />
 
-          {/* ✅ Date Row Added */}
           <View style={styles.infoRow}>
             <View style={styles.infoLeft}>
               <Ionicons name="calendar-outline" size={18} color={COLORS.textMuted} />
@@ -203,7 +265,6 @@ const LecturerClassDetailScreen = ({ route, navigation }) => {
           )}
         </View>
 
-        {/* Actions card */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Actions</Text>
 
@@ -220,6 +281,25 @@ const LecturerClassDetailScreen = ({ route, navigation }) => {
               <Text style={styles.secondaryBtnText}>Copy details</Text>
             </TouchableOpacity>
           </View>
+
+          {isUpcomingAndNotEnded && (
+            <View style={styles.actionsRow}>
+              <TouchableOpacity
+                style={[styles.dangerBtn, cancelling && { opacity: 0.7 }]}
+                onPress={cancelSession}
+                disabled={cancelling}
+              >
+                {cancelling ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <>
+                    <Ionicons name="close-circle-outline" size={16} color="#fff" />
+                    <Text style={styles.dangerBtnText}>Cancel class</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
 
         <View style={{ height: 24 }} />
@@ -260,6 +340,21 @@ const styles = StyleSheet.create({
     borderColor: COLORS.border,
   },
   nextPillText: { color: COLORS.primary, fontWeight: "900", fontSize: 12 },
+
+  cancelPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "#FEE2E2",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    alignSelf: "flex-start",
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: "#FCA5A5",
+  },
+  cancelPillText: { color: COLORS.danger, fontWeight: "900", fontSize: 12 },
 
   card: {
     backgroundColor: COLORS.card,
@@ -309,6 +404,18 @@ const styles = StyleSheet.create({
     borderColor: COLORS.border,
   },
   secondaryBtnText: { color: COLORS.primary, fontWeight: "900" },
+
+  dangerBtn: {
+    flex: 1,
+    backgroundColor: COLORS.danger,
+    paddingVertical: 12,
+    borderRadius: 14,
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 8,
+  },
+  dangerBtnText: { color: "#fff", fontWeight: "900" },
 
   emptyText: { color: COLORS.textMuted, fontWeight: "700", textAlign: "center", marginBottom: 12 },
 });

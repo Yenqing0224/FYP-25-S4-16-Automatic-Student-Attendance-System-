@@ -1,12 +1,12 @@
 import React, { useEffect, useMemo, useState, useCallback } from "react";
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
-  StatusBar, 
-  Alert, 
-  ActivityIndicator 
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  StatusBar,
+  Alert,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -17,7 +17,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import UpcomingTab from "./tabs/upcoming_tab";
 import PastTab from "./tabs/past_tab";
 import CalendarTab from "./tabs/calendar_tab";
-import api from "../../../api/api_client"; 
+import api from "../../../api/api_client";
 
 const COLORS = {
   primary: "#6D5EF5",
@@ -34,24 +34,23 @@ const REMINDER_KEY = "lecturerReminderIds_v1";
 const LecturerSessionsScreen = ({ navigation, route }) => {
   const [activeTab, setActiveTab] = useState("Upcoming");
   const [selectedDate, setSelectedDate] = useState(null);
-  
-  // Data State
+
   const [fullTimetable, setFullTimetable] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Calendar Logic State
   const [savedReminderIds, setSavedReminderIds] = useState(new Set());
   const [savingId, setSavingId] = useState(null);
 
-  // 1. Handle "Jump" from Home Screen
+  // Jump logic + refreshKey logic
   useFocusEffect(
     useCallback(() => {
-      // If Home passed a specific tab (e.g. "Upcoming")
+      // handle tab switch
       if (route.params?.tab) {
         setActiveTab(route.params.tab);
         navigation.setParams({ tab: null });
       }
-      // If Home passed a date (e.g. "2026-01-17")
+
+      // handle calendar jump
       if (route.params?.targetDate) {
         setActiveTab("Calendar");
         const iso = route.params.targetDate;
@@ -59,18 +58,25 @@ const LecturerSessionsScreen = ({ navigation, route }) => {
         setSelectedDate(datePart);
         navigation.setParams({ targetDate: null });
       }
-    }, [route.params?.tab, route.params?.targetDate])
+
+      // ✅ ALWAYS refetch on focus + when refreshKey changes
+      fetchTimetable();
+
+      // ✅ clear refreshKey after consuming
+      if (route.params?.refreshKey) {
+        navigation.setParams({ refreshKey: null });
+      }
+    }, [route.params?.tab, route.params?.targetDate, route.params?.refreshKey])
   );
 
-  // Set default selected date
   useEffect(() => {
     if (!selectedDate) {
       const sgTime = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Singapore" });
-      setSelectedDate(sgTime); 
+      setSelectedDate(sgTime);
     }
   }, [selectedDate]);
 
-  // Load Reminders
+  // Load reminder tracking
   useEffect(() => {
     (async () => {
       try {
@@ -85,14 +91,8 @@ const LecturerSessionsScreen = ({ navigation, route }) => {
     })();
   }, []);
 
-  // Fetch Timetable on Focus
-  useFocusEffect(
-    useCallback(() => {
-      fetchTimetable();
-    }, [])
-  );
-
   const fetchTimetable = async () => {
+    setLoading(true);
     try {
       const res = await api.get("/timetable/");
       const rawData = res.data;
@@ -102,15 +102,17 @@ const LecturerSessionsScreen = ({ navigation, route }) => {
         module: c.module?.code || "MOD",
         title: c.module?.name || "Class",
         venue: c.venue || "TBA",
-        time: `${c.start_time.slice(0,5)} – ${c.end_time.slice(0,5)}`,
-        startISO: `${c.date}T${c.start_time}`, 
+        time: `${String(c.start_time).slice(0, 5)} – ${String(c.end_time).slice(0, 5)}`,
+        startISO: `${c.date}T${c.start_time}`,
         endISO: `${c.date}T${c.end_time}`,
-        date: c.date, 
+        date: c.date,
+        status: c.status || "active",
       }));
 
       setFullTimetable(formatted);
     } catch (err) {
       console.error("Timetable Fetch Error:", err);
+      Alert.alert("Error", "Could not load timetable.");
     } finally {
       setLoading(false);
     }
@@ -120,6 +122,7 @@ const LecturerSessionsScreen = ({ navigation, route }) => {
   const upcoming = useMemo(() => {
     const now = new Date();
     return fullTimetable
+      .filter((c) => String(c.status).toLowerCase() !== "cancelled")
       .filter((c) => new Date(c.startISO) >= now)
       .sort((a, b) => new Date(a.startISO) - new Date(b.startISO));
   }, [fullTimetable]);
@@ -127,8 +130,8 @@ const LecturerSessionsScreen = ({ navigation, route }) => {
   const past = useMemo(() => {
     const now = new Date();
     return fullTimetable
-      .filter((c) => new Date(c.startISO) < now)
-      .sort((a, b) => new Date(b.startISO) - new Date(a.startISO)); 
+      .filter((c) => new Date(c.startISO) < now || String(c.status).toLowerCase() === "cancelled")
+      .sort((a, b) => new Date(b.startISO) - new Date(a.startISO));
   }, [fullTimetable]);
 
   // --- Reminder Logic ---
@@ -212,26 +215,31 @@ const LecturerSessionsScreen = ({ navigation, route }) => {
     const now = new Date();
     upcoming.forEach((cls) => {
       if (isAdded(cls)) {
-         const d = new Date(cls.startISO);
-         if(d.getDate() === now.getDate()) count++;
+        const d = new Date(cls.startISO);
+        if (
+          d.getDate() === now.getDate() &&
+          d.getMonth() === now.getMonth() &&
+          d.getFullYear() === now.getFullYear()
+        ) {
+          count++;
+        }
       }
     });
     return count;
   }, [upcoming, savedReminderIds]);
 
   if (loading) {
-     return (
-        <SafeAreaView style={[styles.container, {justifyContent: 'center', alignItems: 'center'}]}>
-             <ActivityIndicator size="large" color={COLORS.primary} />
-        </SafeAreaView>
-     )
+    return (
+      <SafeAreaView style={[styles.container, { justifyContent: "center", alignItems: "center" }]}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+      </SafeAreaView>
+    );
   }
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
 
-      {/* Header */}
       <View style={styles.headerRow}>
         <Text style={styles.headerTitle}>Sessions</Text>
         <View style={styles.badgePill}>
@@ -240,7 +248,6 @@ const LecturerSessionsScreen = ({ navigation, route }) => {
         </View>
       </View>
 
-      {/* Tabs */}
       <View style={styles.tabRow}>
         {["Upcoming", "Past", "Calendar"].map((t) => (
           <TouchableOpacity
@@ -253,7 +260,6 @@ const LecturerSessionsScreen = ({ navigation, route }) => {
         ))}
       </View>
 
-      {/* Content */}
       {activeTab === "Upcoming" && (
         <UpcomingTab
           COLORS={COLORS}
@@ -263,6 +269,7 @@ const LecturerSessionsScreen = ({ navigation, route }) => {
           isSavingThis={isSavingThis}
           addReminderToCalendar={addReminderToCalendar}
           removeReminderTracking={removeReminderTracking}
+          refreshTimetable={fetchTimetable}
         />
       )}
 
@@ -280,7 +287,7 @@ const LecturerSessionsScreen = ({ navigation, route }) => {
         <CalendarTab
           COLORS={COLORS}
           navigation={navigation}
-          upcoming={fullTimetable} 
+          upcoming={fullTimetable}
           selectedDate={selectedDate}
           setSelectedDate={setSelectedDate}
           isAdded={isAdded}
@@ -296,13 +303,22 @@ const LecturerSessionsScreen = ({ navigation, route }) => {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   headerRow: {
-    paddingHorizontal: 20, paddingTop: 14, paddingBottom: 10,
-    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
+    paddingHorizontal: 20,
+    paddingTop: 14,
+    paddingBottom: 10,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   headerTitle: { fontSize: 22, fontWeight: "900", color: COLORS.textDark },
   badgePill: {
-    flexDirection: "row", alignItems: "center", gap: 6,
-    paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, backgroundColor: COLORS.soft,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: COLORS.soft,
   },
   badgeText: { fontWeight: "900", color: COLORS.primary, fontSize: 12 },
   tabRow: { flexDirection: "row", paddingHorizontal: 20, gap: 10, marginBottom: 8 },

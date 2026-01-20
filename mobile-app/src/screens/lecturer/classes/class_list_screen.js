@@ -1,16 +1,16 @@
 import React, { useEffect, useState } from "react";
-import { 
-  View, 
-  Text, 
-  TouchableOpacity, 
-  StyleSheet, 
-  ScrollView, 
-  StatusBar, 
-  ActivityIndicator 
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  ScrollView,
+  StatusBar,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import api from "../../../api/api_client"; 
+import api from "../../../api/api_client";
 
 const COLORS = {
   primary: "#6D5EF5",
@@ -23,42 +23,48 @@ const COLORS = {
 };
 
 const LecturerClassListScreen = ({ route, navigation }) => {
-  const mode = route.params?.mode || "today"; 
-  const passedClasses = route.params?.classes; 
-  
+  const mode = route.params?.mode || "today";
+  const passedClasses = route.params?.classes;
+
   const [loading, setLoading] = useState(false);
   const [classes, setClasses] = useState([]);
 
   useEffect(() => {
+    // ✅ show passed data instantly (optional)
     if (passedClasses && Array.isArray(passedClasses)) {
-        processData(passedClasses);
-    } else {
-        setLoading(true);
-        fetchClasses();
+      processData(passedClasses);
     }
-  }, [passedClasses]);
+
+    // ✅ always fetch latest to avoid stale data
+    setLoading(true);
+    fetchClasses();
+  }, []);
 
   const processData = (rawData) => {
-      const formatted = rawData.map((c) => ({
-        id: c.id,
-        module: c.module?.code || "MOD",
-        title: c.module?.name || "Class",
-        venue: c.venue || "TBA",
-        date: c.date,
-        isToday: isDateToday(c.date),
-        fullDate: formatDate(c.date),
-        time: `${formatTime(c.start_time)} – ${formatTime(c.end_time)}`,
-        startISO: `${c.date}T${c.start_time}`,
-        endISO: `${c.date}T${c.end_time}`,
-      }));
+    const formatted = rawData.map((c) => ({
+      id: String(c.id),
+      module: c.module?.code || "MOD",
+      title: c.module?.name || "Class",
+      venue: c.venue || "TBA",
+      date: c.date,
+      status: c.status || "active", // ✅ include status
+      isToday: isDateToday(c.date),
+      fullDate: formatDate(c.date),
+      time: `${formatTime(c.start_time)} – ${formatTime(c.end_time)}`,
+      startISO: `${c.date}T${c.start_time}`,
+      endISO: `${c.date}T${c.end_time}`,
+    }));
 
-      formatted.sort((a, b) => new Date(a.startISO) - new Date(b.startISO));
-      setClasses(formatted);
+    // ✅ filter if mode is today/week if you want:
+    // (keep your current behavior; leaving it as-is)
+
+    formatted.sort((a, b) => new Date(a.startISO) - new Date(b.startISO));
+    setClasses(formatted);
   };
 
   const fetchClasses = async () => {
     try {
-      const res = await api.get("/timetable/"); 
+      const res = await api.get("/timetable/");
       processData(res.data);
     } catch (err) {
       console.error("List Fetch Error:", err);
@@ -67,21 +73,26 @@ const LecturerClassListScreen = ({ route, navigation }) => {
     }
   };
 
-  const formatTime = (t) => (t ? t.slice(0, 5) : "");
+  const formatTime = (t) => (t ? String(t).slice(0, 5) : "");
 
   const formatDate = (dateStr) => {
     if (!dateStr) return "";
-    const parts = dateStr.split('-');
-    const d = new Date(parts[0], parts[1]-1, parts[2]); 
-    return d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+    const [y, m, d] = dateStr.split("-");
+    const dt = new Date(Number(y), Number(m) - 1, Number(d));
+    return dt.toLocaleDateString("en-GB", {
+      weekday: "short",
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
   };
 
   const isDateToday = (dateStr) => {
     if (!dateStr) return false;
-    const parts = dateStr.split('-');
-    const d = new Date(parts[0], parts[1]-1, parts[2]);
+    const [y, m, d] = dateStr.split("-");
+    const dt = new Date(Number(y), Number(m) - 1, Number(d));
     const today = new Date();
-    return d.toDateString() === today.toDateString();
+    return dt.toDateString() === today.toDateString();
   };
 
   if (loading) {
@@ -121,15 +132,16 @@ const LecturerClassListScreen = ({ route, navigation }) => {
             >
               <View style={styles.topRow}>
                 <Text style={styles.module}>{c.module}</Text>
+
                 {c.isToday && (
-                    <View style={styles.pill}>
-                        <Text style={styles.pillText}>Today</Text>
-                    </View>
+                  <View style={styles.pill}>
+                    <Text style={styles.pillText}>Today</Text>
+                  </View>
                 )}
               </View>
 
               <Text style={styles.title}>{c.title}</Text>
-              
+
               <View style={styles.metaRow}>
                 <Ionicons name="calendar-outline" size={16} color={COLORS.textMuted} />
                 <Text style={styles.metaText}>{c.fullDate}</Text>
@@ -139,7 +151,7 @@ const LecturerClassListScreen = ({ route, navigation }) => {
                 <Ionicons name="time-outline" size={16} color={COLORS.textMuted} />
                 <Text style={styles.metaText}>{c.time}</Text>
               </View>
-              
+
               <View style={styles.metaRow}>
                 <Ionicons name="location-outline" size={16} color={COLORS.textMuted} />
                 <Text style={styles.metaText}>{c.venue}</Text>
@@ -155,11 +167,26 @@ const LecturerClassListScreen = ({ route, navigation }) => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
-  header: { paddingVertical: 16, paddingHorizontal: 20, flexDirection: "row", justifyContent: "space-between", alignItems: "center", borderBottomWidth: 1, borderBottomColor: COLORS.border },
+  header: {
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
   backBtn: { width: 30 },
   headerTitle: { fontSize: 18, fontWeight: "900", color: COLORS.textDark },
   content: { padding: 20 },
-  card: { backgroundColor: COLORS.card, borderWidth: 1, borderColor: COLORS.border, borderRadius: 16, padding: 16, marginBottom: 12 },
+  card: {
+    backgroundColor: COLORS.card,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+  },
   topRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   pill: { backgroundColor: COLORS.soft, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 },
   pillText: { color: COLORS.primary, fontWeight: "900", fontSize: 12 },
