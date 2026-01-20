@@ -59,6 +59,8 @@ class ClassSession(models.Model):
 
     # Relationships
     module = models.ForeignKey('Module', on_delete=models.CASCADE, related_name='sessions')
+    venue = models.ForeignKey('ClassRoom', on_delete=models.CASCADE, null=True, blank=True, related_name='sessions_venue')
+
 
     # Attributes
     type = models.CharField(max_length=20, choices=TYPE_CHOICES)
@@ -66,7 +68,6 @@ class ClassSession(models.Model):
     date = models.DateField() 
     start_time = models.TimeField()
     end_time = models.TimeField()
-    venue = models.CharField(max_length=50)
     status = models.CharField(max_length=20, choices=SESSION_STATUS, default='upcoming')
 
     # Stats
@@ -78,6 +79,14 @@ class ClassSession(models.Model):
     def __str__(self):
         formatted_date = self.date.strftime('%Y-%m-%d')
         return f"{self.module.code} - {self.name} ({formatted_date}) [{self.status}]"
+
+
+class ClassRoom(models.Model):
+    # Attributes
+    name = models.CharField(max_length=50) 
+
+    def __str__(self):
+        return self.name
     
 
 class AttendanceRecord(models.Model):
