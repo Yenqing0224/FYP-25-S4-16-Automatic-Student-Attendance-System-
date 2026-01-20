@@ -59,7 +59,7 @@ class ClassSession(models.Model):
 
     # Relationships
     module = models.ForeignKey('Module', on_delete=models.CASCADE, related_name='sessions')
-    # venue = models.ForeignKey('ClassRoom', on_delete=models.CASCADE, null=True, blank=True, related_name='sessions_venue')
+    venue = models.ForeignKey('ClassRoom', on_delete=models.CASCADE, null=True, blank=True, related_name='sessions_venue')
 
 
     # Attributes
@@ -69,7 +69,6 @@ class ClassSession(models.Model):
     start_time = models.TimeField()
     end_time = models.TimeField()
     status = models.CharField(max_length=20, choices=SESSION_STATUS, default='upcoming')
-    venue = models.CharField(max_length=100, null=True, blank=True)
     # Stats
     total_students = models.IntegerField(default=0)
     present_students = models.IntegerField(default=0)

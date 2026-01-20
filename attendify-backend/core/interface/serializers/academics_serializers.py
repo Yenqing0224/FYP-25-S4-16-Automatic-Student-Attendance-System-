@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from core.models import Semester, Module, ClassSession, AttendanceRecord, PartnerUni
+from core.models import Semester, Module, ClassSession, AttendanceRecord, PartnerUni, ClassRoom
 from .users_serializers import StudentSerializer
 
 
@@ -28,6 +28,12 @@ class ClassSessionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ClassSession
+        fields = '__all__'
+
+
+class ClassRoomSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ClassRoom
         fields = '__all__'
 
 
