@@ -33,6 +33,7 @@ const LecturerClassListScreen = ({ route, navigation }) => {
     // ✅ show passed data instantly (optional)
     if (passedClasses && Array.isArray(passedClasses)) {
       processData(passedClasses);
+      return;
     }
 
     // ✅ always fetch latest to avoid stale data
