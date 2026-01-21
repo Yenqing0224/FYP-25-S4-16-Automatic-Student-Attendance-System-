@@ -7,16 +7,14 @@ import {
   TouchableOpacity,
   StatusBar,
   ScrollView,
-  Alert,
   ActivityIndicator,
   RefreshControl,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import * as Calendar from "expo-calendar";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect } from "@react-navigation/native";
-
 import api from "../../../api/api_client";
 
 const COLORS = {
@@ -27,16 +25,14 @@ const COLORS = {
   textMuted: "#6B7280",
   border: "#E5E7EB",
   soft: "#ECE9FF",
-  danger: "#EF4444", // red dot
+  danger: "#EF4444",
 };
 
 const REMINDER_KEY = "lecturerReminderIds_v1";
 const READ_LECTURER_ANNOUNCEMENTS_KEY = "lecturerReadAnnouncements_v1";
 
-// ✅ auto-expire announcements after X days
 const ANNOUNCEMENT_EXPIRE_DAYS = 14;
 
-// ✅ sample fallback (lecturer-only)
 const SAMPLE_LECTURER_ANNOUNCEMENTS = [
   {
     id: "101",
@@ -68,32 +64,34 @@ const SAMPLE_LECTURER_ANNOUNCEMENTS = [
   },
 ];
 
-const LecturerHomeScreen = ({ navigation , route}) => {
+export default function LecturerHomeScreen({ navigation, route }) {
   const [user, setUser] = useState(null);
+
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   const [stats, setStats] = useState({ today: 0, week: 0 });
   const [nextClass, setNextClass] = useState(null);
 
-  // announcements (synced)
+  // sessions lists to pass to list screen
+  const [todayClasses, setTodayClasses] = useState([]);
+  const [weekClasses, setWeekClasses] = useState([]);
+
+  // announcements
   const [announcements, setAnnouncements] = useState([]);
   const [loadingAnnouncements, setLoadingAnnouncements] = useState(true);
   const [isAnnounceExpanded, setIsAnnounceExpanded] = useState(false);
   const [readAnnouncementIds, setReadAnnouncementIds] = useState(new Set());
-
-  // ✅ Option 1: toggle between UNREAD vs ALL
   const [showAllAnnouncements, setShowAllAnnouncements] = useState(false);
 
-  // lists to pass to ClassListScreen
-  const [todayClasses, setTodayClasses] = useState([]);
-  const [weekClasses, setWeekClasses] = useState([]);
+  // ---------- safe helpers ----------
+  const toText = (v, fallback = "-") => {
+    if (v == null) return fallback;
+    if (typeof v === "string" || typeof v === "number") return String(v);
+    if (typeof v === "object") return String(v.name ?? v.code ?? v.title ?? fallback); // ✅ handles {id,name}
+    return fallback;
+  };
 
-  // calendar reminders
-  const [savedReminderIds, setSavedReminderIds] = useState(new Set());
-  const [savingId, setSavingId] = useState(null);
-
-  // ---------------- helpers ----------------
   const formatTime = (t) => (t ? String(t).slice(0, 5) : "");
 
   const formatDateLabel = (dStr) => {
@@ -134,10 +132,10 @@ const LecturerHomeScreen = ({ navigation , route}) => {
     const createdAt = a.created_at || a.createdAt || a.created || null;
     return {
       id: String(a.id),
-      title: a.title || "Untitled",
-      desc: a.desc || a.body || a.description || a.message || "",
+      title: toText(a.title, "Untitled"),
+      desc: toText(a.desc || a.body || a.description || a.message, ""),
       created_at: createdAt,
-      date: a.dateLabel || a.date || (createdAt ? formatDateLabel(createdAt) : "Recent"),
+      date: toText(a.dateLabel || a.date, createdAt ? formatDateLabel(createdAt) : "Recent"),
     };
   };
 
@@ -147,18 +145,12 @@ const LecturerHomeScreen = ({ navigation , route}) => {
     return Array.from(map.values());
   };
 
-  // ---------------- init (load user + saved ids) ----------------
+  // ---------- init ----------
   useEffect(() => {
     const init = async () => {
       try {
         const storedUser = await AsyncStorage.getItem("userInfo");
         if (storedUser) setUser(JSON.parse(storedUser));
-
-        const raw = await AsyncStorage.getItem(REMINDER_KEY);
-        if (raw) {
-          const arr = JSON.parse(raw);
-          if (Array.isArray(arr)) setSavedReminderIds(new Set(arr));
-        }
 
         const rawRead = await AsyncStorage.getItem(READ_LECTURER_ANNOUNCEMENTS_KEY);
         if (rawRead) {
@@ -172,18 +164,18 @@ const LecturerHomeScreen = ({ navigation , route}) => {
     init();
   }, []);
 
+  // ✅ refetch when focused, and when refreshKey changes
   useFocusEffect(
-  useCallback(() => {
-    fetchDashboardData();
+    useCallback(() => {
+      fetchDashboardData();
 
-    // ✅ clear key after using
-    if (navigation?.getState && navigation?.setParams && route?.params?.refreshKey) {
-      navigation.setParams({ refreshKey: null });
-    }
-  }, [route?.params?.refreshKey])
-);
+      // clear refreshKey after consuming
+      if (navigation?.setParams && route?.params?.refreshKey) {
+        navigation.setParams({ refreshKey: null });
+      }
+    }, [route?.params?.refreshKey])
+  );
 
-  // ---------------- read/unread persistence ----------------
   const persistReadIds = async (nextSet) => {
     try {
       await AsyncStorage.setItem(
@@ -209,45 +201,48 @@ const LecturerHomeScreen = ({ navigation , route}) => {
     await persistReadIds(next);
   };
 
-  // ---------------- data fetching ----------------
   const fetchDashboardData = async () => {
     try {
       if (!refreshing) setLoading(true);
 
-      // A) dashboard fetch
       const res = await api.get("/dashboard/");
-      const data = res.data;
+      const data = res.data || {};
 
       setStats(data.stats || { today: 0, week: 0 });
-      setTodayClasses(data.today_sessions || []);
-      setWeekClasses(data.week_sessions || []);
+      setTodayClasses(Array.isArray(data.today_sessions) ? data.today_sessions : []);
+      setWeekClasses(Array.isArray(data.week_sessions) ? data.week_sessions : []);
 
+      // ✅ Next class (fixes object-as-text crash)
       if (data.next_class) {
         const nc = data.next_class;
+
+        const moduleCode = toText(nc.module?.code ?? nc.module, "Module");
+        const moduleName = toText(nc.module?.name ?? nc.title ?? nc.module, "Class");
+
         setNextClass({
-          id: nc.id,
-          module: nc.module?.code || "Module",
-          title: nc.module?.name || "Class",
-          date: nc.date,
+          id: String(nc.id),
+          module: moduleCode,
+          title: moduleName,
+          date: toText(nc.date, ""),
           dateLabel: formatDateLabel(nc.date),
           dateFull: formatDateFull(nc.date),
           startISO: `${nc.date}T${nc.start_time}`,
           endISO: `${nc.date}T${nc.end_time}`,
           time: `${formatTime(nc.start_time)} – ${formatTime(nc.end_time)}`,
-          venue: nc.venue || "TBA",
+          venue: toText(nc.venue, "TBA"),
         });
       } else {
         setNextClass(null);
       }
 
-      // announcements: dashboard + endpoint merge
+      // ✅ Announcements merge: dashboard + endpoint
       const dashAnnouncements = Array.isArray(data.announcements) ? data.announcements : [];
       const dashFormatted = dashAnnouncements.map(normalizeAnnouncement);
 
       setLoadingAnnouncements(true);
+
       let endpointFormatted = [];
       try {
-        // ✅ lecturer-only audience
         const annRes = await api.get("/announcements/?audience=lecturers,all&active=1");
         const raw = Array.isArray(annRes.data) ? annRes.data : [];
         endpointFormatted = raw.map(normalizeAnnouncement);
@@ -260,21 +255,24 @@ const LecturerHomeScreen = ({ navigation , route}) => {
       // auto-expire
       merged = merged.filter((a) => !isExpired(a.created_at));
 
-      // ✅ safety filter (in case backend sends student-only items)
-      const LECTURER_EXCLUDE_KEYWORDS = ["assignment", "deadline", "attendance below", "your attendance"];
+      // safety filter
+      const LECTURER_EXCLUDE_KEYWORDS = [
+        "assignment",
+        "deadline",
+        "attendance below",
+        "your attendance",
+      ];
       merged = merged.filter((a) => {
         const text = `${a.title} ${a.desc}`.toLowerCase();
         return !LECTURER_EXCLUDE_KEYWORDS.some((k) => text.includes(k));
       });
 
-      // fallback sample if empty
       if (!merged.length) merged = SAMPLE_LECTURER_ANNOUNCEMENTS.map(normalizeAnnouncement);
 
       setAnnouncements(merged);
     } catch (error) {
       console.error("Dashboard fetch error:", error);
-      const fallback = SAMPLE_LECTURER_ANNOUNCEMENTS.map(normalizeAnnouncement);
-      setAnnouncements(fallback);
+      setAnnouncements(SAMPLE_LECTURER_ANNOUNCEMENTS.map(normalizeAnnouncement));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -287,29 +285,26 @@ const LecturerHomeScreen = ({ navigation , route}) => {
     fetchDashboardData();
   };
 
-  // ---------------- navigation helpers ----------------
+  // ---------- navigation ----------
   const goToSessionsTab = () => {
-    const parent = navigation.getParent?.();
-    const params = { tab: "Upcoming" };
-    if (parent) parent.navigate("LSessions", params);
-    else navigation.navigate("LSessions", params);
+  // If you have a parent navigator (tabs), navigate via parent
+  const parent = navigation.getParent?.();
+
+  const params = {
+    screen: "LecturerSessionsMain", // ✅ your sessions stack screen name
+    params: { tab: "Upcoming" },
   };
+
+  if (parent) parent.navigate("LSessions", params);
+  else navigation.navigate("LecturerSessionsMain", { tab: "Upcoming" }); // ✅ fallback
+};
 
   const goToClassList = (mode) => {
     const classesToSend = mode === "today" ? todayClasses : weekClasses;
     navigation.navigate("LecturerClassList", { mode, classes: classesToSend });
   };
 
-  // ---------------- calendar helpers (placeholder) ----------------
-  const reminderIdFor = (cls) => `${cls.module}|${cls.startISO}|${cls.venue}`;
-  const isAdded = (cls) => savedReminderIds.has(reminderIdFor(cls));
-  const isSavingThis = (cls) => savingId === reminderIdFor(cls);
-
-  const addReminderToCalendar = async (cls) => {
-    Alert.alert("Feature", "Add to calendar logic goes here.");
-  };
-
-  // ✅ Announcement logic (Option 1: Unread/All)
+  // ---------- announcements derived ----------
   const unreadAnnouncements = useMemo(
     () => announcements.filter((a) => !readAnnouncementIds.has(String(a.id))),
     [announcements, readAnnouncementIds]
@@ -317,10 +312,9 @@ const LecturerHomeScreen = ({ navigation , route}) => {
 
   const listToShow = showAllAnnouncements ? announcements : unreadAnnouncements;
   const visibleAnnouncements = isAnnounceExpanded ? listToShow : listToShow.slice(0, 3);
-
   const hasAnyAnnouncements = listToShow.length > 0;
 
-  // ---------------- UI ----------------
+  // ---------- loading ----------
   if (loading && !refreshing) {
     return (
       <SafeAreaView style={[styles.container, styles.center]}>
@@ -343,7 +337,9 @@ const LecturerHomeScreen = ({ navigation , route}) => {
         <View style={styles.headerRow}>
           <View>
             <Text style={styles.hi}>Welcome back</Text>
-            <Text style={styles.name}>{user ? `${user.first_name}` : "Lecturer"} 👩‍🏫</Text>
+            <Text style={styles.name}>
+              {toText(user?.first_name, "Lecturer")} 👩‍🏫
+            </Text>
 
             <View style={styles.rolePill}>
               <Text style={styles.rolePillText}>Lecturer Mode</Text>
@@ -358,12 +354,12 @@ const LecturerHomeScreen = ({ navigation , route}) => {
         {/* SUMMARY */}
         <View style={styles.summaryRow}>
           <TouchableOpacity style={styles.summaryCard} onPress={() => goToClassList("today")}>
-            <Text style={styles.summaryValue}>{stats.today}</Text>
+            <Text style={styles.summaryValue}>{toText(stats?.today, "0")}</Text>
             <Text style={styles.summaryLabel}>Classes today</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.summaryCard} onPress={() => goToClassList("week")}>
-            <Text style={styles.summaryValue}>{stats.week}</Text>
+            <Text style={styles.summaryValue}>{toText(stats?.week, "0")}</Text>
             <Text style={styles.summaryLabel}>Classes this week</Text>
           </TouchableOpacity>
         </View>
@@ -374,29 +370,29 @@ const LecturerHomeScreen = ({ navigation , route}) => {
             <Text style={styles.cardTitle}>Next class</Text>
             {nextClass && (
               <View style={styles.pill}>
-                <Text style={styles.pillText}>{nextClass.dateLabel}</Text>
+                <Text style={styles.pillText}>{toText(nextClass.dateLabel, "")}</Text>
               </View>
             )}
           </View>
 
           {nextClass ? (
             <>
-              <Text style={styles.module}>{nextClass.module}</Text>
-              <Text style={styles.title}>{nextClass.title}</Text>
+              <Text style={styles.module}>{toText(nextClass.module, "Module")}</Text>
+              <Text style={styles.title}>{toText(nextClass.title, "Class")}</Text>
 
               <View style={styles.metaRow}>
                 <Ionicons name="calendar-outline" size={16} color={COLORS.textMuted} />
-                <Text style={styles.metaText}>{nextClass.dateFull}</Text>
+                <Text style={styles.metaText}>{toText(nextClass.dateFull, "")}</Text>
               </View>
 
               <View style={styles.metaRow}>
                 <Ionicons name="time-outline" size={16} color={COLORS.textMuted} />
-                <Text style={styles.metaText}>{nextClass.time}</Text>
+                <Text style={styles.metaText}>{toText(nextClass.time, "")}</Text>
               </View>
 
               <View style={styles.metaRow}>
                 <Ionicons name="location-outline" size={16} color={COLORS.textMuted} />
-                <Text style={styles.metaText}>{nextClass.venue}</Text>
+                <Text style={styles.metaText}>{toText(nextClass.venue, "TBA")}</Text>
               </View>
 
               <View style={styles.actionsRow}>
@@ -406,28 +402,15 @@ const LecturerHomeScreen = ({ navigation , route}) => {
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={[styles.secondaryBtn, isAdded(nextClass) && { opacity: 0.65 }]}
-                  disabled={isAdded(nextClass)}
-                  onPress={() => addReminderToCalendar(nextClass)}
+                  style={styles.secondaryBtn}
+                  onPress={() =>
+                    navigation.navigate("LecturerClassDetail", { cls: nextClass })
+                  }
                 >
-                  <Ionicons
-                    name={isAdded(nextClass) ? "checkmark-circle-outline" : "bookmark-outline"}
-                    size={16}
-                    color={COLORS.primary}
-                  />
-                  <Text style={styles.secondaryBtnText}>
-                    {isAdded(nextClass) ? "Added" : "Add reminder"}
-                  </Text>
+                  <Ionicons name="information-circle-outline" size={16} color={COLORS.primary} />
+                  <Text style={styles.secondaryBtnText}>Details</Text>
                 </TouchableOpacity>
               </View>
-
-              <TouchableOpacity
-                style={styles.detailLink}
-                onPress={() => navigation.navigate("LecturerClassDetail", { cls: nextClass })}
-              >
-                <Text style={styles.detailLinkText}>Open class details</Text>
-                <Ionicons name="chevron-forward" size={16} color={COLORS.primary} />
-              </TouchableOpacity>
             </>
           ) : (
             <Text style={{ marginTop: 10, color: COLORS.textMuted }}>No upcoming classes.</Text>
@@ -446,12 +429,15 @@ const LecturerHomeScreen = ({ navigation , route}) => {
 
               <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                 <Text style={{ fontSize: 16, fontWeight: "800", color: COLORS.textDark }}>
-                  {showAllAnnouncements ? `All (${announcements.length})` : `Unread (${unreadAnnouncements.length})`}
+                  {showAllAnnouncements
+                    ? `All (${announcements.length})`
+                    : `Unread (${unreadAnnouncements.length})`}
                 </Text>
 
-                {!showAllAnnouncements && unreadAnnouncements.length > 0 && <View style={styles.unreadDot} />}
+                {!showAllAnnouncements && unreadAnnouncements.length > 0 && (
+                  <View style={styles.unreadDot} />
+                )}
 
-                {/* ✅ Toggle pill */}
                 <TouchableOpacity
                   onPress={() => setShowAllAnnouncements((v) => !v)}
                   activeOpacity={0.85}
@@ -476,7 +462,6 @@ const LecturerHomeScreen = ({ navigation , route}) => {
             </View>
           </TouchableOpacity>
 
-          {/* Mark all read (only in Unread mode) */}
           {!loadingAnnouncements && !showAllAnnouncements && unreadAnnouncements.length > 0 && (
             <TouchableOpacity onPress={markAllRead} style={{ marginTop: 10, alignSelf: "flex-start" }}>
               <Text style={{ color: COLORS.primary, fontWeight: "900", fontSize: 13 }}>
@@ -519,7 +504,7 @@ const LecturerHomeScreen = ({ navigation , route}) => {
                         }}
                         numberOfLines={1}
                       >
-                        {a.title}
+                        {toText(a.title, "Untitled")}
                       </Text>
 
                       {!isRead && isCreatedToday(a.created_at) && (
@@ -546,12 +531,12 @@ const LecturerHomeScreen = ({ navigation , route}) => {
                       }}
                       numberOfLines={2}
                     >
-                      {a.desc}
+                      {toText(a.desc, "")}
                     </Text>
 
                     {!!a.date && (
                       <Text style={{ marginTop: 6, color: COLORS.textMuted, fontWeight: "800", fontSize: 11 }}>
-                        {a.date}
+                        {toText(a.date, "")}
                       </Text>
                     )}
                   </TouchableOpacity>
@@ -584,7 +569,7 @@ const LecturerHomeScreen = ({ navigation , route}) => {
       </ScrollView>
     </SafeAreaView>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
@@ -665,19 +650,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     gap: 8,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
-  secondaryBtnText: { color: COLORS.primary, fontWeight: "800" },
-
-  detailLink: {
-    marginTop: 12,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.border,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  detailLinkText: { color: COLORS.primary, fontWeight: "900" },
+  secondaryBtnText: { color: COLORS.primary, fontWeight: "900" },
 
   // announcements
   announceHeaderRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
@@ -685,7 +661,6 @@ const styles = StyleSheet.create({
 
   unreadDot: { width: 8, height: 8, borderRadius: 99, backgroundColor: COLORS.danger },
 
-  // ✅ Option 1 filter pill
   filterPill: {
     marginLeft: 8,
     backgroundColor: "#EEF2FF",
@@ -695,11 +670,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.border,
   },
-  filterPillText: {
-    fontSize: 11,
-    fontWeight: "900",
-    color: COLORS.primary,
-  },
+  filterPillText: { fontSize: 11, fontWeight: "900", color: COLORS.primary },
 
   newPill: {
     backgroundColor: "#FEE2E2",
@@ -711,7 +682,6 @@ const styles = StyleSheet.create({
   },
   newPillText: { fontSize: 10, fontWeight: "900", color: "#B91C1C", letterSpacing: 0.6 },
 
-  // ✅ READ badge (only when showAllAnnouncements)
   readPill: {
     backgroundColor: "#E5E7EB",
     paddingHorizontal: 8,
@@ -722,5 +692,3 @@ const styles = StyleSheet.create({
   },
   readPillText: { fontSize: 10, fontWeight: "900", color: "#374151", letterSpacing: 0.6 },
 });
-
-export default LecturerHomeScreen;

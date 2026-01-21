@@ -1,4 +1,3 @@
-// src/screens/lecturer/sessions/tabs/upcoming_tab.js
 import React from "react";
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from "react-native";
 import { Swipeable } from "react-native-gesture-handler";
@@ -7,26 +6,69 @@ import { Ionicons } from "@expo/vector-icons";
 const UpcomingTab = ({
   COLORS,
   navigation,
-  list,
+  list = [],
   isAdded,
   isSavingThis,
   addReminderToCalendar,
   removeReminderTracking,
 }) => {
+  // ✅ convert {id,name} / object -> safe string for <Text>
+  const toText = (v, fallback = "-") => {
+    if (v == null) return fallback;
+    if (typeof v === "string" || typeof v === "number") return String(v);
+    if (typeof v === "object") {
+      if (v.name != null) return String(v.name);
+      if (v.title != null) return String(v.title);
+      if (v.label != null) return String(v.label);
+      if (v.code != null) return String(v.code);
+      if (v.id != null) return String(v.id);
+      if (v._id != null) return String(v._id);
+      return fallback;
+    }
+    return fallback;
+  };
+
+  // ✅ safe key even if s.id is {id,name}
+  const safeKey = (s, idx) => {
+    const raw = s?.id ?? s?._id;
+    if (typeof raw === "string" || typeof raw === "number") return String(raw);
+    if (raw && typeof raw === "object") {
+      if (raw.id != null) return String(raw.id);
+      if (raw._id != null) return String(raw._id);
+      if (raw.name != null) return String(raw.name);
+    }
+    // fallback unique-ish key
+    return `up-${toText(s?.module, "m")}-${toText(s?.startISO, idx)}-${idx}`;
+  };
+
   const renderRightActions = (cls) => (
-    <TouchableOpacity style={styles.swipeDelete} onPress={() => removeReminderTracking(cls)}>
+    <TouchableOpacity style={styles.swipeDelete} onPress={() => removeReminderTracking?.(cls)}>
       <Ionicons name="trash-outline" size={18} color="#fff" />
       <Text style={styles.swipeDeleteText}>Remove</Text>
     </TouchableOpacity>
   );
 
   // ✅ safer date formatting (handles "YYYY-MM-DD" properly)
-  const formatDate = (dateStr) => {
-    if (!dateStr) return "";
+  const formatDate = (dateVal) => {
+    const dateStr = toText(dateVal, "");
+    if (!dateStr) return "-";
+
     // if backend sends YYYY-MM-DD
     if (dateStr.includes("-") && dateStr.length >= 10) {
       const [y, m, d] = dateStr.slice(0, 10).split("-");
       const dt = new Date(Number(y), Number(m) - 1, Number(d));
+      if (!isNaN(dt.getTime())) {
+        return dt.toLocaleDateString("en-GB", {
+          weekday: "short",
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+        });
+      }
+    }
+
+    const dt = new Date(dateStr);
+    if (!isNaN(dt.getTime())) {
       return dt.toLocaleDateString("en-GB", {
         weekday: "short",
         day: "numeric",
@@ -34,19 +76,15 @@ const UpcomingTab = ({
         year: "numeric",
       });
     }
-    const dt = new Date(dateStr);
-    return dt.toLocaleDateString("en-GB", {
-      weekday: "short",
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-    });
+
+    return "-";
   };
 
   const goReschedule = (cls) => {
     // extra safety: only allow if upcoming
-    if (cls?.startISO) {
-      const startMs = new Date(cls.startISO).getTime();
+    const startISO = toText(cls?.startISO, "");
+    if (startISO) {
+      const startMs = new Date(startISO).getTime();
       if (!isNaN(startMs) && startMs <= Date.now()) {
         Alert.alert("Not allowed", "You can only reschedule upcoming classes.");
         return;
@@ -62,7 +100,13 @@ const UpcomingTab = ({
           <Text style={styles.emptyTitle}>No upcoming sessions</Text>
         </View>
       ) : (
-        list.map((s) => {
+        list.map((s, idx) => {
+          const moduleText = toText(s?.module, "-");
+          const titleText = toText(s?.title, "Session");
+          const timeText = toText(s?.time, "-");
+          const venueText = toText(s?.venue, "-");
+          const dateText = formatDate(s?.date);
+
           const card = (
             <TouchableOpacity
               activeOpacity={0.9}
@@ -71,34 +115,30 @@ const UpcomingTab = ({
             >
               <View style={styles.sessionTop}>
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.module, { color: COLORS.primary }]}>{s.module}</Text>
-                  <Text style={styles.sessionTitle}>{s.title}</Text>
+                  <Text style={[styles.module, { color: COLORS.primary }]}>{moduleText}</Text>
+                  <Text style={styles.sessionTitle}>{titleText}</Text>
                 </View>
                 <View style={styles.statusPill}>
                   <Text style={[styles.statusText, { color: COLORS.primary }]}>Upcoming</Text>
                 </View>
               </View>
 
-              {/* Date Row */}
               <View style={styles.metaRow}>
                 <Ionicons name="calendar-outline" size={16} color={COLORS.textMuted} />
-                <Text style={styles.metaText}>{formatDate(s.date)}</Text>
+                <Text style={styles.metaText}>{dateText}</Text>
               </View>
 
               <View style={styles.metaRow}>
                 <Ionicons name="time-outline" size={16} color={COLORS.textMuted} />
-                <Text style={styles.metaText}>{s.time}</Text>
+                <Text style={styles.metaText}>{timeText}</Text>
               </View>
 
               <View style={styles.metaRow}>
                 <Ionicons name="location-outline" size={16} color={COLORS.textMuted} />
-                <Text style={styles.metaText}>{s.venue}</Text>
+                <Text style={styles.metaText}>{venueText}</Text>
               </View>
 
-              {/* ✅ Actions */}
-              {/* ✅ Actions (same row) */}
               <View style={styles.actionsRow}>
-                {/* Details */}
                 <TouchableOpacity
                   style={[styles.primaryBtnCompact, { backgroundColor: COLORS.primary }]}
                   onPress={() => navigation.navigate("LecturerClassDetail", { cls: s })}
@@ -107,41 +147,34 @@ const UpcomingTab = ({
                   <Text style={styles.primaryBtnText}>Details</Text>
                 </TouchableOpacity>
 
-                {/* Add reminder */}
                 <TouchableOpacity
-                  style={[styles.secondaryBtnSmall, isAdded(s) && styles.secondaryBtnDisabled]}
-                  disabled={isAdded(s) || isSavingThis(s)}
-                  onPress={() => addReminderToCalendar(s)}
+                  style={[styles.secondaryBtnSmall, isAdded?.(s) && styles.secondaryBtnDisabled]}
+                  disabled={!!isAdded?.(s) || !!isSavingThis?.(s)}
+                  onPress={() => addReminderToCalendar?.(s)}
                 >
                   <Ionicons
-                    name={isAdded(s) ? "checkmark-circle-outline" : "bookmark-outline"}
+                    name={isAdded?.(s) ? "checkmark-circle-outline" : "bookmark-outline"}
                     size={16}
                     color={COLORS.primary}
                   />
                   <Text style={[styles.secondaryBtnTextSmall, { color: COLORS.primary }]}>
-                    {isSavingThis(s) ? "..." : isAdded(s) ? "Added" : "Reminder"}
+                    {isSavingThis?.(s) ? "..." : isAdded?.(s) ? "Added" : "Reminder"}
                   </Text>
                 </TouchableOpacity>
 
-                {/* Reschedule */}
-                <TouchableOpacity
-                  style={styles.secondaryBtnSmall}
-                  onPress={() => navigation.navigate("LecturerReschedule", { cls: s })}
-                >
+                <TouchableOpacity style={styles.secondaryBtnSmall} onPress={() => goReschedule(s)}>
                   <Ionicons name="calendar-outline" size={16} color={COLORS.primary} />
                   <Text style={[styles.secondaryBtnTextSmall, { color: COLORS.primary }]}>Move</Text>
                 </TouchableOpacity>
               </View>
 
-
-              {isAdded(s) && (
+              {isAdded?.(s) && (
                 <View style={styles.swipeHintRow}>
                   <Ionicons name="arrow-back-outline" size={14} color={COLORS.textMuted} />
                   <Text style={styles.swipeHintText}>Swipe left to remove</Text>
                 </View>
               )}
 
-              {/* Tap Hint */}
               <View style={styles.tapHintRow}>
                 <Ionicons name="hand-left-outline" size={14} color={COLORS.textMuted} />
                 <Text style={styles.tapHintText}>Tap card for details</Text>
@@ -152,8 +185,8 @@ const UpcomingTab = ({
 
           return (
             <Swipeable
-              key={s.id}
-              enabled={isAdded(s)}
+              key={safeKey(s, idx)}
+              enabled={!!isAdded?.(s)}
               renderRightActions={() => renderRightActions(s)}
               overshootRight={false}
             >
@@ -162,6 +195,7 @@ const UpcomingTab = ({
           );
         })
       )}
+
       <View style={{ height: 24 }} />
     </ScrollView>
   );
@@ -199,18 +233,7 @@ const styles = StyleSheet.create({
   },
   primaryBtnText: { color: "#fff", fontWeight: "900" },
 
-  secondaryBtn: {
-    flex: 1,
-    backgroundColor: "#ECE9FF",
-    paddingVertical: 12,
-    borderRadius: 14,
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    gap: 8,
-  },
   secondaryBtnDisabled: { opacity: 0.65 },
-  secondaryBtnText: { fontWeight: "900" },
 
   swipeHintRow: { marginTop: 10, flexDirection: "row", alignItems: "center", gap: 6 },
   swipeHintText: { color: "#6B7280", fontWeight: "700", fontSize: 12 },
@@ -225,6 +248,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 6,
   },
+  swipeDeleteText: { color: "#fff", fontWeight: "900" },
+
   secondaryBtnSmall: {
     flex: 1,
     backgroundColor: "#ECE9FF",
@@ -235,13 +260,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 6,
   },
-
-  secondaryBtnTextSmall: {
-    fontWeight: "900",
-    fontSize: 12,
-  },
-
-  swipeDeleteText: { color: "#fff", fontWeight: "900" },
+  secondaryBtnTextSmall: { fontWeight: "900", fontSize: 12 },
 
   emptyBox: { marginTop: 30, alignItems: "center" },
   emptyTitle: { color: "#6B7280", fontWeight: "700" },

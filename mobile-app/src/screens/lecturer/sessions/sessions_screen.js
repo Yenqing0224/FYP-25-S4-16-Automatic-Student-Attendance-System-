@@ -1,13 +1,5 @@
-import React, { useEffect, useMemo, useState, useCallback } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  StatusBar,
-  Alert,
-  ActivityIndicator,
-} from "react-native";
+import React, { useMemo, useState, useCallback, useEffect } from "react";
+import { View, Text, StyleSheet, TouchableOpacity, StatusBar, Alert, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as Calendar from "expo-calendar";
@@ -16,6 +8,7 @@ import { useFocusEffect } from "@react-navigation/native";
 
 import UpcomingTab from "./tabs/upcoming_tab";
 import PastTab from "./tabs/past_tab";
+import CancelledTab from "./tabs/cancelled_tab";
 import CalendarTab from "./tabs/calendar_tab";
 import api from "../../../api/api_client";
 
@@ -41,34 +34,6 @@ const LecturerSessionsScreen = ({ navigation, route }) => {
   const [savedReminderIds, setSavedReminderIds] = useState(new Set());
   const [savingId, setSavingId] = useState(null);
 
-  // Jump logic + refreshKey logic
-  useFocusEffect(
-    useCallback(() => {
-      // handle tab switch
-      if (route.params?.tab) {
-        setActiveTab(route.params.tab);
-        navigation.setParams({ tab: null });
-      }
-
-      // handle calendar jump
-      if (route.params?.targetDate) {
-        setActiveTab("Calendar");
-        const iso = route.params.targetDate;
-        const datePart = iso.includes("T") ? iso.split("T")[0] : iso;
-        setSelectedDate(datePart);
-        navigation.setParams({ targetDate: null });
-      }
-
-      // ✅ ALWAYS refetch on focus + when refreshKey changes
-      fetchTimetable();
-
-      // ✅ clear refreshKey after consuming
-      if (route.params?.refreshKey) {
-        navigation.setParams({ refreshKey: null });
-      }
-    }, [route.params?.tab, route.params?.targetDate, route.params?.refreshKey])
-  );
-
   useEffect(() => {
     if (!selectedDate) {
       const sgTime = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Singapore" });
@@ -76,7 +41,6 @@ const LecturerSessionsScreen = ({ navigation, route }) => {
     }
   }, [selectedDate]);
 
-  // Load reminder tracking
   useEffect(() => {
     (async () => {
       try {
@@ -85,9 +49,7 @@ const LecturerSessionsScreen = ({ navigation, route }) => {
           const arr = JSON.parse(raw);
           if (Array.isArray(arr)) setSavedReminderIds(new Set(arr));
         }
-      } catch (e) {
-        console.error("Failed to load reminder ids", e);
-      }
+      } catch {}
     })();
   }, []);
 
@@ -95,18 +57,18 @@ const LecturerSessionsScreen = ({ navigation, route }) => {
     setLoading(true);
     try {
       const res = await api.get("/timetable/");
-      const rawData = res.data;
+      const rawData = Array.isArray(res.data) ? res.data : [];
 
       const formatted = rawData.map((c) => ({
         id: String(c.id),
-        module: c.module?.code || "MOD",
-        title: c.module?.name || "Class",
-        venue: c.venue || "TBA",
-        time: `${String(c.start_time).slice(0, 5)} – ${String(c.end_time).slice(0, 5)}`,
+        module: c.module?.code ?? c.module?.name ?? c.module ?? "MOD",
+        title: c.module?.name ?? c.title ?? "Class",
+        venue: c.venue ?? "TBA",
+        time: `${String(c.start_time ?? "").slice(0, 5)} – ${String(c.end_time ?? "").slice(0, 5)}`,
         startISO: `${c.date}T${c.start_time}`,
         endISO: `${c.date}T${c.end_time}`,
         date: c.date,
-        status: c.status || "active",
+        status: (c.status ?? "active").toLowerCase(), // active/cancelled/...
       }));
 
       setFullTimetable(formatted);
@@ -118,23 +80,50 @@ const LecturerSessionsScreen = ({ navigation, route }) => {
     }
   };
 
-  // --- Derived Lists ---
+  useFocusEffect(
+    useCallback(() => {
+      if (route.params?.tab) {
+        setActiveTab(route.params.tab);
+        navigation.setParams({ tab: null });
+      }
+
+      if (route.params?.targetDate) {
+        setActiveTab("Calendar");
+        const iso = route.params.targetDate;
+        const datePart = iso.includes("T") ? iso.split("T")[0] : iso;
+        setSelectedDate(datePart);
+        navigation.setParams({ targetDate: null });
+      }
+
+      fetchTimetable();
+
+      if (route.params?.refreshKey) navigation.setParams({ refreshKey: null });
+    }, [route.params?.tab, route.params?.targetDate, route.params?.refreshKey])
+  );
+
   const upcoming = useMemo(() => {
-    const now = new Date();
+    const now = Date.now();
     return fullTimetable
-      .filter((c) => String(c.status).toLowerCase() !== "cancelled")
-      .filter((c) => new Date(c.startISO) >= now)
+      .filter((c) => c.status !== "cancelled")
+      .filter((c) => new Date(c.startISO).getTime() >= now)
       .sort((a, b) => new Date(a.startISO) - new Date(b.startISO));
   }, [fullTimetable]);
 
   const past = useMemo(() => {
-    const now = new Date();
+    const now = Date.now();
     return fullTimetable
-      .filter((c) => new Date(c.startISO) < now || String(c.status).toLowerCase() === "cancelled")
+      .filter((c) => c.status !== "cancelled") // ✅ exclude cancelled
+      .filter((c) => new Date(c.endISO).getTime() < now)
       .sort((a, b) => new Date(b.startISO) - new Date(a.startISO));
   }, [fullTimetable]);
 
-  // --- Reminder Logic ---
+  const cancelled = useMemo(() => {
+    return fullTimetable
+      .filter((c) => c.status === "cancelled")
+      .sort((a, b) => new Date(b.startISO) - new Date(a.startISO));
+  }, [fullTimetable]);
+
+  // Reminder tracking
   const reminderIdFor = (cls) => `${cls.module}|${cls.startISO}|${cls.venue}`;
   const isAdded = (cls) => savedReminderIds.has(reminderIdFor(cls));
   const isSavingThis = (cls) => savingId === reminderIdFor(cls);
@@ -145,26 +134,16 @@ const LecturerSessionsScreen = ({ navigation, route }) => {
 
   const addReminderToCalendar = async (cls) => {
     const rid = reminderIdFor(cls);
-    if (savedReminderIds.has(rid)) {
-      Alert.alert("Already added", "This reminder is already tracked.");
-      return;
-    }
+    if (savedReminderIds.has(rid)) return;
 
     setSavingId(rid);
     try {
       const { status } = await Calendar.requestCalendarPermissionsAsync();
-      if (status !== "granted") {
-        Alert.alert("Permission needed", "Please allow Calendar access to add reminders.");
-        return;
-      }
+      if (status !== "granted") return;
 
       const calendars = await Calendar.getCalendarsAsync(Calendar.EntityTypes.EVENT);
       const defaultCal = calendars.find((c) => c.allowsModifications) || calendars[0];
-
-      if (!defaultCal) {
-        Alert.alert("No calendar found", "Please enable a calendar on your device.");
-        return;
-      }
+      if (!defaultCal) return;
 
       await Calendar.createEventAsync(defaultCal.id, {
         title: `${cls.module} - ${cls.title}`,
@@ -179,8 +158,6 @@ const LecturerSessionsScreen = ({ navigation, route }) => {
       next.add(rid);
       setSavedReminderIds(next);
       await persistReminderIds(next);
-
-      Alert.alert("Done", "Reminder added to your calendar.");
     } catch (e) {
       console.error(e);
       Alert.alert("Error", "Could not add reminder.");
@@ -188,45 +165,6 @@ const LecturerSessionsScreen = ({ navigation, route }) => {
       setSavingId(null);
     }
   };
-
-  const removeReminderTracking = async (cls) => {
-    const rid = reminderIdFor(cls);
-    Alert.alert(
-      "Remove reminder?",
-      "This removes it from Attendify tracking. You can delete the calendar event in your Calendar app.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Remove",
-          style: "destructive",
-          onPress: async () => {
-            const next = new Set(savedReminderIds);
-            next.delete(rid);
-            setSavedReminderIds(next);
-            await persistReminderIds(next);
-          },
-        },
-      ]
-    );
-  };
-
-  const remindersAddedTodayCount = useMemo(() => {
-    let count = 0;
-    const now = new Date();
-    upcoming.forEach((cls) => {
-      if (isAdded(cls)) {
-        const d = new Date(cls.startISO);
-        if (
-          d.getDate() === now.getDate() &&
-          d.getMonth() === now.getMonth() &&
-          d.getFullYear() === now.getFullYear()
-        ) {
-          count++;
-        }
-      }
-    });
-    return count;
-  }, [upcoming, savedReminderIds]);
 
   if (loading) {
     return (
@@ -236,6 +174,8 @@ const LecturerSessionsScreen = ({ navigation, route }) => {
     );
   }
 
+  const tabs = ["Upcoming", "Past", "Cancelled", "Calendar"];
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
@@ -243,13 +183,13 @@ const LecturerSessionsScreen = ({ navigation, route }) => {
       <View style={styles.headerRow}>
         <Text style={styles.headerTitle}>Sessions</Text>
         <View style={styles.badgePill}>
-          <Ionicons name="bookmark" size={14} color={COLORS.primary} />
-          <Text style={styles.badgeText}>{remindersAddedTodayCount} added today</Text>
+          <Ionicons name="calendar-outline" size={14} color={COLORS.primary} />
+          <Text style={styles.badgeText}>{upcoming.length} upcoming</Text>
         </View>
       </View>
 
       <View style={styles.tabRow}>
-        {["Upcoming", "Past", "Calendar"].map((t) => (
+        {tabs.map((t) => (
           <TouchableOpacity
             key={t}
             style={[styles.tab, activeTab === t && styles.tabActive]}
@@ -268,8 +208,6 @@ const LecturerSessionsScreen = ({ navigation, route }) => {
           isAdded={isAdded}
           isSavingThis={isSavingThis}
           addReminderToCalendar={addReminderToCalendar}
-          removeReminderTracking={removeReminderTracking}
-          refreshTimetable={fetchTimetable}
         />
       )}
 
@@ -279,7 +217,14 @@ const LecturerSessionsScreen = ({ navigation, route }) => {
           navigation={navigation}
           list={past}
           isAdded={isAdded}
-          removeReminderTracking={removeReminderTracking}
+        />
+      )}
+
+      {activeTab === "Cancelled" && (
+        <CancelledTab
+          COLORS={COLORS}
+          navigation={navigation}
+          list={cancelled}
         />
       )}
 
@@ -287,13 +232,12 @@ const LecturerSessionsScreen = ({ navigation, route }) => {
         <CalendarTab
           COLORS={COLORS}
           navigation={navigation}
-          upcoming={fullTimetable}
+          sessions={fullTimetable}      // ✅ all sessions
           selectedDate={selectedDate}
           setSelectedDate={setSelectedDate}
           isAdded={isAdded}
           isSavingThis={isSavingThis}
           addReminderToCalendar={addReminderToCalendar}
-          removeReminderTracking={removeReminderTracking}
         />
       )}
     </SafeAreaView>
@@ -302,27 +246,12 @@ const LecturerSessionsScreen = ({ navigation, route }) => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
-  headerRow: {
-    paddingHorizontal: 20,
-    paddingTop: 14,
-    paddingBottom: 10,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
+  headerRow: { paddingHorizontal: 20, paddingTop: 14, paddingBottom: 10, flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   headerTitle: { fontSize: 22, fontWeight: "900", color: COLORS.textDark },
-  badgePill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
-    backgroundColor: COLORS.soft,
-  },
+  badgePill: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, backgroundColor: COLORS.soft },
   badgeText: { fontWeight: "900", color: COLORS.primary, fontSize: 12 },
-  tabRow: { flexDirection: "row", paddingHorizontal: 20, gap: 10, marginBottom: 8 },
-  tab: { flex: 1, paddingVertical: 10, borderRadius: 14, backgroundColor: COLORS.soft, alignItems: "center" },
+  tabRow: { flexDirection: "row", paddingHorizontal: 20, gap: 10, marginBottom: 8, flexWrap: "wrap" },
+  tab: { paddingVertical: 10, paddingHorizontal: 14, borderRadius: 14, backgroundColor: COLORS.soft, alignItems: "center" },
   tabActive: { backgroundColor: COLORS.primary },
   tabText: { fontWeight: "800", color: COLORS.primary },
   tabTextActive: { color: "#fff" },
