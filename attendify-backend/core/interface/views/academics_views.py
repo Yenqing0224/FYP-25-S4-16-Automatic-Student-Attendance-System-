@@ -119,6 +119,21 @@ def get_attendance_history(request):
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
+def get_reschedule_options(request):
+    service = AcademicService()
+
+    try:
+        result = service.get_reschedule_options(request.user, request.data)
+
+        return Response(result, status=200)
+
+    except Exception as e:
+        return Response(
+            {"status": "error", "message": str(e)}, status=400)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def reschedule_class(request):
     service = AcademicService()
 
@@ -151,83 +166,3 @@ def mark_attendance(request):
 
     except Exception as e:
         return Response({"error": str(e)}, status=400)
-
-
-# @api_view(['POST'])
-# @permission_classes([AllowAny])
-# def recognize_face(request):
-#     try:
-#         serializer = MultiFaceEmbeddingSerializer(data=request.data)
-#         if not serializer.is_valid():
-#             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-#         received_embeddings = serializer.validated_data['embeddings']
-#         results = []
-        
-#         THRESHOLD = 0.4 
-
-#         for index, vector in enumerate(received_embeddings):
-            
-#             closest_user = User.objects.filter(role_type='student').annotate(
-#                 distance=CosineDistance('face_embedding_512', vector)
-#             ).order_by('distance').first()
-
-#             if closest_user:
-#                 print(f"Face {index} closest match: {closest_user.username} (Dist: {closest_user.distance:.4f})")
-
-#             if closest_user and closest_user.distance < THRESHOLD:
-#                 try:
-#                     student_profile = closest_user.student_profile
-#                     results.append({
-#                         "index": index,
-#                         "status": "success",
-#                         "student_name": closest_user.username,
-#                         "student_id": student_profile.student_id,
-#                         "distance": closest_user.distance
-#                     })
-#                 except Student.DoesNotExist:
-#                      results.append({
-#                         "index": index,
-#                         "status": "error",
-#                         "message": "User has no student profile"
-#                     })
-#             else:
-#                 results.append({
-#                     "index": index,
-#                     "status": "unknown",
-#                     "message": "Face not recognized"
-#                 })
-
-#         return Response({"results": results}, status=status.HTTP_200_OK)
-
-#     except Exception as e:
-#         print(f"Recognition Error: {e}")
-#         return Response({"error": str(e)}, status=500)
-    
-
-# @api_view(['POST'])
-# @permission_classes([AllowAny])
-# def register_face(request):
-#     try:
-#         target_id = request.data.get('student_id')
-#         embedding = request.data.get('embedding')
-
-#         if not target_id or not embedding:
-#             return Response({"error": "Missing student_id or embedding"}, status=400)
-
-#         student = Student.objects.get(student_id=target_id)
-        
-#         user = student.user 
-        
-#         user.face_embedding_512 = embedding
-#         user.save()
-
-#         return Response({
-#             "status": "success", 
-#             "message": f"Face vector updated for User: {user.username} (Student: {student.student_id})"
-#         }, status=200)
-
-#     except Student.DoesNotExist:
-#         return Response({"error": f"Student ID {target_id} not found"}, status=404)
-#     except Exception as e:
-#         return Response({"error": str(e)}, status=500)

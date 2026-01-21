@@ -197,6 +197,95 @@ class AcademicService:
         return f"Updated status for {updated_count} sessions."
     
 
+    def get_reschedule_options(self, user, data):
+        session_id = data.get('session_id')
+
+        try:
+            session = ClassSession.objects.get(id=session_id)
+        except ClassSession.DoesNotExist:
+            raise ValidationError("Class session not found.")
+        
+        if session.status != 'upcoming':
+            raise ValidationError(f"Only 'Upcoming' classes can be rescheduled.")
+
+        try:
+            lecturer = Lecturer.objects.get(user=user)
+            if session.module.lecturer != lecturer:
+                raise PermissionDenied("You are not the lecturer for this module.")
+        except Lecturer.DoesNotExist:
+             raise PermissionDenied("User is not a lecturer.")
+
+        session_start_dt = timezone.make_aware(datetime.combine(session.date, session.start_time))
+        if timezone.now() > (session_start_dt - timedelta(hours=1)):
+             raise ValidationError("Too late! You can only reschedule up to 1 hour before the class starts.")
+
+        duration = datetime.combine(session.date, session.end_time) - datetime.combine(session.date, session.start_time)
+        start_date = timezone.now().date() + timedelta(days=1)
+        days_to_check = 14 
+        possible_slots = []
+
+        students = session.module.students.all()
+        total_student_count = students.count()
+        if total_student_count == 0:
+            total_student_count = 1 
+
+        for i in range(days_to_check):
+            current_date = start_date + timedelta(days=i)
+            
+            if current_date.weekday() > 4: 
+                continue
+            
+            current_slot_datetime = datetime.combine(current_date, time(8, 30))
+            latest_start_limit = datetime.combine(current_date, time(19, 0))
+
+            while current_slot_datetime <= latest_start_limit:
+                
+                slot_start = current_slot_datetime.time()
+                slot_end_dt = current_slot_datetime + duration
+                slot_end = slot_end_dt.time()
+                
+                if slot_end_dt.date() != current_date:
+                    current_slot_datetime += timedelta(minutes=30)
+                    continue
+
+                lecturer_busy = ClassSession.objects.filter(
+                    module__lecturer=lecturer, 
+                    date=current_date,
+                    status='upcoming',
+                    start_time__lt=slot_end, 
+                    end_time__gt=slot_start
+                ).exists()
+
+                if not lecturer_busy:
+                    conflict_count = ClassSession.objects.filter(
+                        module__students__in=students, 
+                        date=current_date,
+                        status='upcoming',
+                        start_time__lt=slot_end,
+                        end_time__gt=slot_start
+                    ).values('module__students').distinct().count()
+
+                    attendance_rate = (total_student_count - conflict_count) / total_student_count
+
+                    if attendance_rate >= 0.9:
+                        possible_slots.append({
+                            'date': current_date,
+                            'start_time': slot_start,
+                            'end_time': slot_end,
+                            'conflicts': conflict_count,
+                            'attendance_percentage': round(attendance_rate * 100, 1)
+                        })
+
+                current_slot_datetime += timedelta(minutes=30)
+
+        sorted_slots = sorted(possible_slots, key=lambda x: (-x['attendance_percentage'], x['date']))
+
+        return {
+            "status": "success",
+            "options": sorted_slots
+        }
+    
+
     def reschedule_class(self, lecturer, data):
         session_id = data.get('session_id')
 
