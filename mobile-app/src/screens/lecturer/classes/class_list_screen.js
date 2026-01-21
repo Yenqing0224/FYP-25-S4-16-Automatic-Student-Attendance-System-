@@ -45,7 +45,7 @@ const LecturerClassListScreen = ({ route, navigation }) => {
       id: String(c.id),
       module: c.module?.code || "MOD",
       title: c.module?.name || "Class",
-      venue: c.venue || "TBA",
+      venue: c.venue?.name || "TBA",
       date: c.date,
       status: c.status || "active", // ✅ include status
       isToday: isDateToday(c.date),
