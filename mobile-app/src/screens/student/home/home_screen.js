@@ -29,7 +29,7 @@ const COLORS = {
 const READ_ANNOUNCEMENTS_KEY = "studentReadAnnouncements_v1";
 const ANNOUNCEMENT_EXPIRE_DAYS = 14;
 
-// ✅ render-safe helper (prevents {id,name} crash)
+// ✅ Render-safe helper
 const toText = (v, fallback = "") => {
   if (v == null) return fallback;
   if (typeof v === "string" || typeof v === "number" || typeof v === "boolean") return String(v);
@@ -38,57 +38,27 @@ const toText = (v, fallback = "") => {
   return fallback;
 };
 
-// ✅ student fallback announcements
-const SAMPLE_STUDENT_ANNOUNCEMENTS = [
-  {
-    id: "s-new-1",
-    title: "📢 New Make-up Class Announced",
-    desc: "A make-up class has been scheduled for CSIT321 on Thursday, 2:00–4:00 PM at LT19.",
-    date: "Today",
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: "s-new-2",
-    title: "📝 Assignment 2 Released",
-    desc: "Assignment 2 is now available on the LMS. Submission deadline is next Sunday.",
-    date: "Today",
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: "s-old-1",
-    title: "Attendify System Maintenance",
-    desc: "Attendify may be unavailable on Friday from 8:00–10:00 PM.",
-    date: "Fri",
-    created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-  },
-  {
-    id: "s-old-2",
-    title: "Attendance Reminder",
-    desc: "Attendance below 75% may affect course eligibility. Please monitor your attendance.",
-    date: "Ongoing",
-    created_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-  },
-];
-
 export default function HomeScreen({ navigation }) {
   const [user, setUser] = useState(null);
 
+  // Dashboard Data
   const [semesterRange, setSemesterRange] = useState("Loading...");
   const [attendanceRate, setAttendanceRate] = useState(0);
-
   const [todayClasses, setTodayClasses] = useState([]);
   const [upcomingClasses, setUpcomingClasses] = useState([]);
-
-  const [loading, setLoading] = useState(true);
-
-  // ✅ announcements
+  
+  // Announcements Data
   const [announcements, setAnnouncements] = useState([]);
-  const [loadingAnnouncements, setLoadingAnnouncements] = useState(true);
+  
+  // Loading States
+  const [loading, setLoading] = useState(true); // General dashboard loading
+
+  // UI States
   const [isAnnounceExpanded, setIsAnnounceExpanded] = useState(false);
   const [readAnnouncementIds, setReadAnnouncementIds] = useState(new Set());
   const [showAllAnnouncements, setShowAllAnnouncements] = useState(false);
 
-  // ---------------- helpers ----------------
+  // ---------------- Helpers ----------------
   const formatTime = (timeString) => (timeString ? String(timeString).slice(0, 5) : "");
 
   const formatDate = (dateString) => {
@@ -120,24 +90,21 @@ export default function HomeScreen({ navigation }) {
     return d.getTime() < cutoff;
   };
 
+  // ✅ Updated to map API keys correctly
   const normalizeAnnouncement = (a) => {
-    const createdAt = a.created_at || a.createdAt || a.created || null;
+    const createdAt = a.created_at || a.createdAt || null;
     return {
       id: String(a.id),
       title: toText(a.title, "Untitled"),
-      desc: toText(a.desc ?? a.body ?? a.description ?? a.message, ""),
+      // API returns 'description', UI uses 'desc'
+      desc: toText(a.description ?? a.message ?? a.desc, ""),
       created_at: createdAt,
-      date: toText(a.dateLabel ?? a.date, createdAt ? formatDateLabel(createdAt) : "Recent"),
+      // Generate "Today", "21 Jan" from created_at
+      date: createdAt ? formatDateLabel(createdAt) : "Recent", 
     };
   };
 
-  const uniqById = (arr) => {
-    const map = new Map();
-    arr.forEach((x) => map.set(String(x.id), x));
-    return Array.from(map.values());
-  };
-
-  // ---------------- read/unread persistence ----------------
+  // ---------------- Persistence ----------------
   useEffect(() => {
     (async () => {
       try {
@@ -173,7 +140,7 @@ export default function HomeScreen({ navigation }) {
     await persistReadIds(next);
   };
 
-  // ---------------- init (load user + dashboard) ----------------
+  // ---------------- Data Fetching ----------------
   useEffect(() => {
     const initDashboard = async () => {
       try {
@@ -190,49 +157,47 @@ export default function HomeScreen({ navigation }) {
   }, []);
 
   const fetchDashboardData = async () => {
-    // A) Dashboard
     try {
+      setLoading(true);
+      
+      // ✅ Fetch everything from one endpoint now
       const dashRes = await api.get("/dashboard/");
       const data = dashRes.data || {};
 
+      // 1. Basic Info
       setSemesterRange(data.semester_range ?? "—");
       setAttendanceRate(Number(data.attendance_rate ?? 0));
       setTodayClasses(Array.isArray(data.today_classes) ? data.today_classes : []);
       setUpcomingClasses(Array.isArray(data.upcoming_classes) ? data.upcoming_classes : []);
-    } catch (error) {
-      console.error("Dashboard Fetch Error:", error?.response?.status, error?.config?.url);
-    } finally {
-      setLoading(false);
-    }
 
-    // B) Announcements
-    try {
-      setLoadingAnnouncements(true);
+      // 2. Announcements (Extracted from Dashboard response)
+      const rawAnnouncements = Array.isArray(data.announcements) ? data.announcements : [];
 
-      const annRes = await api.get("/announcements/?audience=all,students&active=1");
-      const raw = Array.isArray(annRes.data) ? annRes.data : [];
+      let merged = rawAnnouncements.map(normalizeAnnouncement);
 
-      let merged = uniqById(raw.map(normalizeAnnouncement));
+      // Filter out old stuff
       merged = merged.filter((a) => !isExpired(a.created_at));
 
+      // Optional: Filter out unrelated keywords if needed (Kept from your original code)
       const STUDENT_EXCLUDE_KEYWORDS = ["invigilation", "marking window", "grading", "lecturer briefing"];
       merged = merged.filter((a) => {
         const text = `${toText(a.title, "")} ${toText(a.desc, "")}`.toLowerCase();
         return !STUDENT_EXCLUDE_KEYWORDS.some((k) => text.includes(k));
       });
 
-      if (!merged.length) merged = SAMPLE_STUDENT_ANNOUNCEMENTS.map(normalizeAnnouncement);
+      // Sort by newest first
+      merged.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
       setAnnouncements(merged);
+
     } catch (error) {
-      console.log("Announcements Fetch Error:", error?.response?.status, error?.config?.url);
-      setAnnouncements(SAMPLE_STUDENT_ANNOUNCEMENTS.map(normalizeAnnouncement));
+      console.error("Dashboard Fetch Error:", error?.response?.status, error?.config?.url);
     } finally {
-      setLoadingAnnouncements(false);
+      setLoading(false);
     }
   };
 
-  // ---------------- current date UI ----------------
+  // ---------------- Current Date UI ----------------
   const [currentDate, setCurrentDate] = useState({ dayName: "", dateString: "" });
   useEffect(() => {
     const now = new Date();
@@ -244,7 +209,7 @@ export default function HomeScreen({ navigation }) {
     });
   }, []);
 
-  // ---------------- announcements derived lists ----------------
+  // ---------------- Derived Lists ----------------
   const unreadAnnouncements = useMemo(
     () => announcements.filter((a) => !readAnnouncementIds.has(String(a.id))),
     [announcements, readAnnouncementIds]
@@ -254,7 +219,7 @@ export default function HomeScreen({ navigation }) {
   const visibleAnnouncements = isAnnounceExpanded ? listToShow : listToShow.slice(0, 3);
   const hasAnyAnnouncements = listToShow.length > 0;
 
-  // ---------------- UI ----------------
+  // ---------------- Render ----------------
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
@@ -284,7 +249,6 @@ export default function HomeScreen({ navigation }) {
           <TouchableOpacity activeOpacity={0.9} onPress={() => navigation.navigate("AttendanceHistory")}>
             <View style={styles.attendanceCard}>
               <Text style={styles.attendanceLabel}>Attendance rate</Text>
-              {/* ✅ semesterRange might be {id,name} */}
               <Text style={styles.attendanceSubtitle}>{toText(semesterRange, "—")}</Text>
 
               <View style={styles.attendanceCircle}>
@@ -341,7 +305,7 @@ export default function HomeScreen({ navigation }) {
             </View>
           </TouchableOpacity>
 
-          {!loadingAnnouncements && !showAllAnnouncements && unreadAnnouncements.length > 0 && (
+          {!loading && !showAllAnnouncements && unreadAnnouncements.length > 0 && (
             <TouchableOpacity onPress={markAllRead} style={{ marginTop: 10, alignSelf: "flex-start" }}>
               <Text style={{ color: COLORS.primary, fontWeight: "900", fontSize: 13 }}>Mark all as read</Text>
             </TouchableOpacity>
@@ -349,7 +313,7 @@ export default function HomeScreen({ navigation }) {
 
           <View style={{ height: 10 }} />
 
-          {loadingAnnouncements ? (
+          {loading ? (
             <View style={{ paddingVertical: 12 }}>
               <ActivityIndicator color={COLORS.primary} />
             </View>
@@ -426,7 +390,7 @@ export default function HomeScreen({ navigation }) {
             })
           )}
 
-          {!loadingAnnouncements && !isAnnounceExpanded && listToShow.length > 3 && (
+          {!loading && !isAnnounceExpanded && listToShow.length > 3 && (
             <TouchableOpacity
               onPress={() => setIsAnnounceExpanded(true)}
               style={{
