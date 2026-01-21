@@ -139,7 +139,7 @@ const LecturerProfileScreen = ({ navigation }) => {
           <View style={styles.infoRow}>
             <Text style={styles.label}>Partner Uni</Text>
             {/* ✅ FIX: partner_uni might be {id, name} */}
-            <Text style={styles.value}>{toText(lecturer?.partner_uni)}</Text>
+            <Text style={styles.value}>{toText(lecturer?.partner_uni?.name)}</Text>
           </View>
         </View>
 
