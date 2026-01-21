@@ -1,5 +1,5 @@
 // src/screens/lecturer/profile/profile_screen.js
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -9,13 +9,13 @@ import {
   ScrollView,
   Pressable,
   ActivityIndicator,
-  Alert, // ✅ Added Alert
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect } from "@react-navigation/native";
-import api from "../../../api/api_client"; 
+import api from "../../../api/api_client";
 
 const COLORS = {
   primary: "#6D5EF5",
@@ -27,20 +27,29 @@ const COLORS = {
   chipBg: "#ECE9FF",
 };
 
+// ✅ safe renderer for API values (string/number/object/array)
+const toText = (v, fallback = "N/A") => {
+  if (v == null) return fallback;
+  if (typeof v === "string" || typeof v === "number" || typeof v === "boolean") return String(v);
+  if (Array.isArray(v)) return v.map((x) => toText(x, "")).filter(Boolean).join(", ") || fallback;
+  if (typeof v === "object") return String(v.name ?? v.title ?? v.code ?? v.id ?? fallback);
+  return fallback;
+};
+
 const LecturerProfileScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
   const [lecturer, setLecturer] = useState(null);
 
   // Mock stats
-  const [teaching, setTeaching] = useState({
+  const [teaching] = useState({
     modules: ["CSIT321 – Software Design", "CSIT314 – Agile Methods"],
     activeClasses: 3,
     totalStudents: 128,
   });
 
-  // Fetch Profile from API
   const fetchProfile = async () => {
     try {
+      setLoading(true);
       const res = await api.get("/profile/");
       setLecturer(res.data);
     } catch (err) {
@@ -56,49 +65,30 @@ const LecturerProfileScreen = ({ navigation }) => {
     }, [])
   );
 
-  // ✅ Updated Logout Logic
   const handleLogout = async () => {
-    Alert.alert(
-      "Log Out",
-      "Are you sure you want to log out?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Log Out",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              // 1. Call Logout API
-              await api.post('/logout/');
-
-              // 2. Clear Storage
-              await AsyncStorage.multiRemove(["userToken", "userInfo"]);
-              
-              // 3. Reset Navigation
-              navigation.reset({
-                index: 0,
-                routes: [{ name: 'Login' }],
-              });
-            } catch (e) {
-              console.error("Logout failed:", e);
-              // Fallback: Force local logout on error or show alert
-              Alert.alert("Error", "Failed to communicate with server. Logging out locally.");
-              await AsyncStorage.multiRemove(["userToken", "userInfo"]);
-              navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
-            }
+    Alert.alert("Log Out", "Are you sure you want to log out?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Log Out",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await api.post("/logout/");
+            await AsyncStorage.multiRemove(["userToken", "userInfo"]);
+            navigation.reset({ index: 0, routes: [{ name: "Login" }] });
+          } catch (e) {
+            console.error("Logout failed:", e);
+            Alert.alert("Error", "Failed to communicate with server. Logging out locally.");
+            await AsyncStorage.multiRemove(["userToken", "userInfo"]);
+            navigation.reset({ index: 0, routes: [{ name: "Login" }] });
           }
-        }
-      ]
-    );
+        },
+      },
+    ]);
   };
 
-  const goChangePassword = () => {
-    navigation.navigate("LecturerChangePassword");
-  };
-
-  const goActiveClasses = () => {
-    navigation.navigate("LecturerActiveClasses");
-  };
+  const goChangePassword = () => navigation.navigate("LecturerChangePassword");
+  const goActiveClasses = () => navigation.navigate("LecturerActiveClasses");
 
   if (loading) {
     return (
@@ -107,6 +97,10 @@ const LecturerProfileScreen = ({ navigation }) => {
       </View>
     );
   }
+
+  const fullName = lecturer?.user
+    ? `${toText(lecturer.user.first_name, "")} ${toText(lecturer.user.last_name, "")}`.trim() || "Lecturer"
+    : "Lecturer";
 
   return (
     <SafeAreaView style={styles.container}>
@@ -124,14 +118,12 @@ const LecturerProfileScreen = ({ navigation }) => {
             <View style={styles.avatar}>
               <Ionicons name="person" size={24} color={COLORS.primary} />
             </View>
+
             <View style={{ flex: 1 }}>
-              <Text style={styles.name}>
-                {lecturer?.user 
-                  ? `${lecturer.user.first_name} ${lecturer.user.last_name}` 
-                  : "Lecturer"}
-              </Text>
-              <Text style={styles.sub}>{lecturer?.user?.email || "No Email"}</Text>
+              <Text style={styles.name}>{fullName}</Text>
+              <Text style={styles.sub}>{toText(lecturer?.user?.email, "No Email")}</Text>
             </View>
+
             <View style={styles.roleChip}>
               <Text style={styles.roleChipText}>Lecturer</Text>
             </View>
@@ -141,12 +133,13 @@ const LecturerProfileScreen = ({ navigation }) => {
 
           <View style={styles.infoRow}>
             <Text style={styles.label}>Staff ID</Text>
-            <Text style={styles.value}>{lecturer?.staff_id || "N/A"}</Text>
+            <Text style={styles.value}>{toText(lecturer?.staff_id)}</Text>
           </View>
 
           <View style={styles.infoRow}>
             <Text style={styles.label}>Partner Uni</Text>
-            <Text style={styles.value}>{lecturer?.partner_uni || "N/A"}</Text>
+            {/* ✅ FIX: partner_uni might be {id, name} */}
+            <Text style={styles.value}>{toText(lecturer?.partner_uni)}</Text>
           </View>
         </View>
 
@@ -158,7 +151,7 @@ const LecturerProfileScreen = ({ navigation }) => {
             {/* Clickable KPI */}
             <Pressable style={styles.kpiBox} onPress={goActiveClasses}>
               <View style={styles.kpiTopRow}>
-                <Text style={styles.kpiNumber}>{teaching.activeClasses}</Text>
+                <Text style={styles.kpiNumber}>{toText(teaching.activeClasses, "0")}</Text>
                 <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
               </View>
               <Text style={styles.kpiLabel}>Active Classes</Text>
@@ -168,7 +161,7 @@ const LecturerProfileScreen = ({ navigation }) => {
             {/* Static KPI */}
             <View style={styles.kpiBox}>
               <View style={styles.kpiTopRow}>
-                <Text style={styles.kpiNumber}>{teaching.totalStudents}</Text>
+                <Text style={styles.kpiNumber}>{toText(teaching.totalStudents, "0")}</Text>
               </View>
               <Text style={styles.kpiLabel}>Students</Text>
             </View>
@@ -176,12 +169,13 @@ const LecturerProfileScreen = ({ navigation }) => {
 
           <View style={styles.divider} />
 
-          {teaching.modules.map((m, i) => (
-            <View key={i} style={styles.moduleRow}>
-              <Ionicons name="book-outline" size={16} color={COLORS.primary} />
-              <Text style={styles.moduleText}>{m}</Text>
-            </View>
-          ))}
+          {Array.isArray(teaching.modules) &&
+            teaching.modules.map((m, i) => (
+              <View key={String(i)} style={styles.moduleRow}>
+                <Ionicons name="book-outline" size={16} color={COLORS.primary} />
+                <Text style={styles.moduleText}>{toText(m, "-")}</Text>
+              </View>
+            ))}
         </View>
 
         {/* Security */}
