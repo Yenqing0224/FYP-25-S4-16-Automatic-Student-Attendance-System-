@@ -29,38 +29,46 @@ const COLORS = {
 const READ_ANNOUNCEMENTS_KEY = "studentReadAnnouncements_v1";
 const ANNOUNCEMENT_EXPIRE_DAYS = 14;
 
-// ✅ student fallback (keep student-relevant stuff like assignment/reschedule)
+// ✅ render-safe helper (prevents {id,name} crash)
+const toText = (v, fallback = "") => {
+  if (v == null) return fallback;
+  if (typeof v === "string" || typeof v === "number" || typeof v === "boolean") return String(v);
+  if (Array.isArray(v)) return v.map((x) => toText(x, "")).filter(Boolean).join(", ") || fallback;
+  if (typeof v === "object") return String(v.name ?? v.title ?? v.code ?? v.id ?? fallback);
+  return fallback;
+};
+
+// ✅ student fallback announcements
 const SAMPLE_STUDENT_ANNOUNCEMENTS = [
   {
     id: "s-new-1",
     title: "📢 New Make-up Class Announced",
     desc: "A make-up class has been scheduled for CSIT321 on Thursday, 2:00–4:00 PM at LT19.",
     date: "Today",
-    created_at: new Date().toISOString(), // ✅ NEW
+    created_at: new Date().toISOString(),
   },
   {
     id: "s-new-2",
     title: "📝 Assignment 2 Released",
     desc: "Assignment 2 is now available on the LMS. Submission deadline is next Sunday.",
     date: "Today",
-    created_at: new Date().toISOString(), // ✅ NEW
+    created_at: new Date().toISOString(),
   },
   {
     id: "s-old-1",
     title: "Attendify System Maintenance",
     desc: "Attendify may be unavailable on Friday from 8:00–10:00 PM.",
     date: "Fri",
-    created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), // old
+    created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
   },
   {
     id: "s-old-2",
     title: "Attendance Reminder",
     desc: "Attendance below 75% may affect course eligibility. Please monitor your attendance.",
     date: "Ongoing",
-    created_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(), // old
+    created_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
   },
 ];
-
 
 export default function HomeScreen({ navigation }) {
   const [user, setUser] = useState(null);
@@ -78,8 +86,6 @@ export default function HomeScreen({ navigation }) {
   const [loadingAnnouncements, setLoadingAnnouncements] = useState(true);
   const [isAnnounceExpanded, setIsAnnounceExpanded] = useState(false);
   const [readAnnouncementIds, setReadAnnouncementIds] = useState(new Set());
-
-  // ✅ Option 1: toggle UNREAD vs ALL (same as lecturer)
   const [showAllAnnouncements, setShowAllAnnouncements] = useState(false);
 
   // ---------------- helpers ----------------
@@ -118,10 +124,10 @@ export default function HomeScreen({ navigation }) {
     const createdAt = a.created_at || a.createdAt || a.created || null;
     return {
       id: String(a.id),
-      title: a.title || "Untitled",
-      desc: a.desc || a.body || a.description || a.message || "",
+      title: toText(a.title, "Untitled"),
+      desc: toText(a.desc ?? a.body ?? a.description ?? a.message, ""),
       created_at: createdAt,
-      date: a.dateLabel || a.date || (createdAt ? formatDateLabel(createdAt) : "Recent"),
+      date: toText(a.dateLabel ?? a.date, createdAt ? formatDateLabel(createdAt) : "Recent"),
     };
   };
 
@@ -187,35 +193,31 @@ export default function HomeScreen({ navigation }) {
     // A) Dashboard
     try {
       const dashRes = await api.get("/dashboard/");
-      const data = dashRes.data;
+      const data = dashRes.data || {};
 
-      setSemesterRange(data.semester_range);
-      setAttendanceRate(data.attendance_rate);
-      setTodayClasses(data.today_classes || []);
-      setUpcomingClasses(data.upcoming_classes || []);
+      setSemesterRange(data.semester_range ?? "—");
+      setAttendanceRate(Number(data.attendance_rate ?? 0));
+      setTodayClasses(Array.isArray(data.today_classes) ? data.today_classes : []);
+      setUpcomingClasses(Array.isArray(data.upcoming_classes) ? data.upcoming_classes : []);
     } catch (error) {
       console.error("Dashboard Fetch Error:", error?.response?.status, error?.config?.url);
     } finally {
       setLoading(false);
     }
 
-    // B) Announcements (student version)
+    // B) Announcements
     try {
       setLoadingAnnouncements(true);
 
-      // ✅ student audience
       const annRes = await api.get("/announcements/?audience=all,students&active=1");
       const raw = Array.isArray(annRes.data) ? annRes.data : [];
 
       let merged = uniqById(raw.map(normalizeAnnouncement));
-
-      // ✅ auto-expire
       merged = merged.filter((a) => !isExpired(a.created_at));
 
-      // ✅ filter OUT lecturer-only terms (optional but recommended)
       const STUDENT_EXCLUDE_KEYWORDS = ["invigilation", "marking window", "grading", "lecturer briefing"];
       merged = merged.filter((a) => {
-        const text = `${a.title} ${a.desc}`.toLowerCase();
+        const text = `${toText(a.title, "")} ${toText(a.desc, "")}`.toLowerCase();
         return !STUDENT_EXCLUDE_KEYWORDS.some((k) => text.includes(k));
       });
 
@@ -262,7 +264,9 @@ export default function HomeScreen({ navigation }) {
         <View style={styles.headerContainer}>
           <View>
             <Text style={styles.greetingLabel}>Hello,</Text>
-            <Text style={styles.greetingName}>{user ? `${user.first_name}` : "Student"} 👋</Text>
+            <Text style={styles.greetingName}>
+              {user ? `${toText(user.first_name, "Student")}` : "Student"} 👋
+            </Text>
 
             <View style={styles.chip}>
               <Text style={styles.chipText}>Dashboard overview</Text>
@@ -270,8 +274,8 @@ export default function HomeScreen({ navigation }) {
           </View>
 
           <View style={styles.dateContainer}>
-            <Text style={styles.dateDay}>{currentDate.dayName}</Text>
-            <Text style={styles.dateText}>{currentDate.dateString}</Text>
+            <Text style={styles.dateDay}>{toText(currentDate.dayName, "")}</Text>
+            <Text style={styles.dateText}>{toText(currentDate.dateString, "")}</Text>
           </View>
         </View>
 
@@ -280,16 +284,19 @@ export default function HomeScreen({ navigation }) {
           <TouchableOpacity activeOpacity={0.9} onPress={() => navigation.navigate("AttendanceHistory")}>
             <View style={styles.attendanceCard}>
               <Text style={styles.attendanceLabel}>Attendance rate</Text>
-              <Text style={styles.attendanceSubtitle}>{semesterRange}</Text>
+              {/* ✅ semesterRange might be {id,name} */}
+              <Text style={styles.attendanceSubtitle}>{toText(semesterRange, "—")}</Text>
 
               <View style={styles.attendanceCircle}>
-                <Text style={styles.attendancePercentage}>{loading ? "..." : `${attendanceRate.toFixed(0)}%`}</Text>
+                <Text style={styles.attendancePercentage}>
+                  {loading ? "..." : `${Number(attendanceRate || 0).toFixed(0)}%`}
+                </Text>
               </View>
             </View>
           </TouchableOpacity>
         )}
 
-        {/* ✅ ANNOUNCEMENTS (Lecturer-style) */}
+        {/* ANNOUNCEMENTS */}
         <View style={styles.sectionHeaderRow}>
           <Text style={styles.sectionHeaderText}>Announcements</Text>
         </View>
@@ -310,7 +317,6 @@ export default function HomeScreen({ navigation }) {
 
                 {!showAllAnnouncements && unreadAnnouncements.length > 0 && <View style={styles.unreadDot} />}
 
-                {/* Toggle pill */}
                 <TouchableOpacity
                   onPress={() => setShowAllAnnouncements((v) => !v)}
                   activeOpacity={0.85}
@@ -335,7 +341,6 @@ export default function HomeScreen({ navigation }) {
             </View>
           </TouchableOpacity>
 
-          {/* Mark all read (only in Unread mode) */}
           {!loadingAnnouncements && !showAllAnnouncements && unreadAnnouncements.length > 0 && (
             <TouchableOpacity onPress={markAllRead} style={{ marginTop: 10, alignSelf: "flex-start" }}>
               <Text style={{ color: COLORS.primary, fontWeight: "900", fontSize: 13 }}>Mark all as read</Text>
@@ -359,7 +364,7 @@ export default function HomeScreen({ navigation }) {
               const isRead = readAnnouncementIds.has(String(a.id));
 
               return (
-                <View key={a.id}>
+                <View key={String(a.id)}>
                   <TouchableOpacity
                     style={{ paddingVertical: 12 }}
                     onPress={async () => {
@@ -378,7 +383,7 @@ export default function HomeScreen({ navigation }) {
                         }}
                         numberOfLines={1}
                       >
-                        {a.title}
+                        {toText(a.title, "Untitled")}
                       </Text>
 
                       {!isRead && isCreatedToday(a.created_at) && (
@@ -405,12 +410,12 @@ export default function HomeScreen({ navigation }) {
                       }}
                       numberOfLines={2}
                     >
-                      {a.desc}
+                      {toText(a.desc, "")}
                     </Text>
 
                     {!!a.date && (
                       <Text style={{ marginTop: 6, color: COLORS.textMuted, fontWeight: "800", fontSize: 11 }}>
-                        {a.date}
+                        {toText(a.date, "")}
                       </Text>
                     )}
                   </TouchableOpacity>
@@ -455,21 +460,21 @@ export default function HomeScreen({ navigation }) {
             </View>
           ) : (
             todayClasses.map((item) => (
-              <View key={item.id} style={styles.todayCard}>
+              <View key={String(item.id)} style={styles.todayCard}>
                 <View style={styles.todayCardInner}>
-                  <Text style={styles.cardTitle}>{item.module?.code || "Module"}</Text>
+                  <Text style={styles.cardTitle}>{toText(item.module?.code, "Module")}</Text>
 
                   <View style={styles.row}>
                     <Ionicons name="time-outline" size={16} color="#1E1B4B" />
-                    <Text style={styles.cardDetail}>{formatTime(item.start_time)}</Text>
+                    <Text style={styles.cardDetail}>{toText(formatTime(item.start_time), "-")}</Text>
                   </View>
 
                   <View style={styles.row}>
                     <Ionicons name="location-outline" size={16} color="#1E1B4B" />
-                    <Text style={styles.cardDetail}>{item.venue || "TBA"}</Text>
+                    <Text style={styles.cardDetail}>{toText(item.venue, "TBA")}</Text>
                   </View>
 
-                  <Text style={styles.cardSubtitle}>{item.module?.name || "Class"}</Text>
+                  <Text style={styles.cardSubtitle}>{toText(item.module?.name, "Class")}</Text>
                 </View>
               </View>
             ))
@@ -481,41 +486,37 @@ export default function HomeScreen({ navigation }) {
           <Text style={styles.sectionHeaderText}>Upcoming Classes</Text>
         </View>
 
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.horizontalScrollContainer}
-        >
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalScrollContainer}>
           {upcomingClasses.length === 0 && !loading ? (
             <Text style={styles.noUpcomingText}>No upcoming classes found.</Text>
           ) : (
             upcomingClasses.map((item) => (
               <TouchableOpacity
-                key={item.id}
+                key={String(item.id)}
                 style={styles.upcomingCard}
                 onPress={async () => {
                   const dateToJump = item.date;
-                  await AsyncStorage.setItem("jumpToDate", dateToJump);
+                  await AsyncStorage.setItem("jumpToDate", String(dateToJump || ""));
                   navigation.navigate("Timetable", { screen: "TimeTableMain" });
                 }}
               >
                 <View style={{ marginBottom: 8 }}>
                   <Text style={styles.upcomingLabel}>Date</Text>
-                  <Text style={styles.upcomingValue}>{formatDate(item.date)}</Text>
+                  <Text style={styles.upcomingValue}>{toText(formatDate(item.date), "-")}</Text>
                 </View>
 
                 <View style={{ marginBottom: 8 }}>
                   <Text style={styles.upcomingLabel}>Time</Text>
-                  <Text style={styles.upcomingValue}>{formatTime(item.start_time)}</Text>
+                  <Text style={styles.upcomingValue}>{toText(formatTime(item.start_time), "-")}</Text>
                 </View>
 
                 <View style={{ marginBottom: 12 }}>
                   <Text style={styles.upcomingLabel}>Venue</Text>
-                  <Text style={styles.upcomingValue}>{item.venue || "TBA"}</Text>
+                  <Text style={styles.upcomingValue}>{toText(item.venue, "TBA")}</Text>
                 </View>
 
                 <Text style={styles.upcomingModule}>
-                  {item.module?.code || "MOD"} — {item.module?.name || "Class"}
+                  {toText(item.module?.code, "MOD")} — {toText(item.module?.name, "Class")}
                 </Text>
               </TouchableOpacity>
             ))
@@ -533,7 +534,6 @@ const styles = StyleSheet.create({
   scrollContent: { paddingBottom: 24 },
   paddingContainer: { paddingHorizontal: 20 },
 
-  // HEADER
   headerContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -562,7 +562,6 @@ const styles = StyleSheet.create({
   dateDay: { fontSize: 14, fontWeight: "600", color: COLORS.primary },
   dateText: { fontSize: 13, fontWeight: "500", color: COLORS.textMuted, marginTop: 2 },
 
-  // CARD BASE
   attendanceCard: {
     marginHorizontal: 20,
     marginTop: 12,
@@ -579,7 +578,6 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
   },
 
-  // ATTENDANCE CARD
   attendanceLabel: { fontSize: 16, fontWeight: "700", color: COLORS.textDark, marginBottom: 4 },
   attendanceSubtitle: { fontSize: 14, color: COLORS.textMuted, marginBottom: 20 },
   attendanceCircle: {
@@ -592,11 +590,9 @@ const styles = StyleSheet.create({
   },
   attendancePercentage: { fontSize: 30, fontWeight: "800", color: COLORS.primary },
 
-  // SECTION HEADER
   sectionHeaderRow: { paddingHorizontal: 20, marginBottom: 8 },
   sectionHeaderText: { fontSize: 16, fontWeight: "700", color: COLORS.textDark },
 
-  // TODAY
   todayCard: {
     backgroundColor: "#8C99FF",
     borderRadius: 18,
@@ -618,7 +614,6 @@ const styles = StyleSheet.create({
   cardDetail: { fontSize: 14, fontWeight: "600", color: "#1E1B4B" },
   cardSubtitle: { marginTop: 10, fontSize: 13, fontWeight: "600", color: COLORS.primary },
 
-  // UPCOMING
   horizontalScrollContainer: { paddingHorizontal: 20, paddingTop: 6 },
   upcomingCard: {
     backgroundColor: "#3A7AFE",
@@ -641,7 +636,6 @@ const styles = StyleSheet.create({
   upcomingModule: { marginTop: 6, fontSize: 14, fontWeight: "800", color: "#FFFFFF" },
   noUpcomingText: { marginLeft: 20, color: COLORS.textMuted, fontSize: 13 },
 
-  // EMPTY
   emptyStateContainer: {
     alignItems: "center",
     paddingVertical: 22,
@@ -652,7 +646,6 @@ const styles = StyleSheet.create({
   emptyStateText: { fontSize: 15, fontWeight: "700", color: COLORS.textDark },
   emptyStateSubtext: { fontSize: 13, color: COLORS.textMuted, marginTop: 2 },
 
-  // ✅ announcements styling
   announceHeaderRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   divider: { height: 1, backgroundColor: COLORS.border },
   unreadDot: { width: 8, height: 8, borderRadius: 99, backgroundColor: COLORS.danger },
