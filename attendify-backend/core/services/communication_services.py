@@ -1,15 +1,28 @@
 from core.models import Notification, News, Event, ClassSession, AttendanceRecord
 from django.utils import timezone
-from datetime import datetime
+from datetime import datetime, timedelta
 # Import Logic
 from core.logic.communication_logics import CommunicationLogic
 
 class CommunicationService:
 
     def get_newsevent(self):
-        news_object = News.objects.all()
-        events_object = Event.objects.filter(status__in=['upcoming', 'in_progress'])
+        today = timezone.localtime(timezone.now()).date()
+        start_date = today - timedelta(days=90)
+        end_date = today + timedelta(days=90)
+        
+        news_object = News.objects.filter(
+            created_at__date__gte=start_date,
+            created_at__date__lte=today
+        ).order_by('-created_at')
 
+        events_object = Event.objects.filter(
+            date__gte=start_date,
+            date__lte=end_date
+        ).exclude(
+            status='cancelled'
+        ).order_by('date')
+        
         return news_object, events_object
     
 
