@@ -1,3 +1,4 @@
+// src/screens/lecturer/classes/class_list_screen.js
 import React, { useEffect, useState } from "react";
 import {
   View,
@@ -10,6 +11,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import api from "../../../api/api_client";
 
 const COLORS = {
@@ -22,33 +24,47 @@ const COLORS = {
   soft: "#ECE9FF",
 };
 
+const RESCHEDULE_OVERRIDES_KEY = "lecturerRescheduleOverrides_v1";
+
 const LecturerClassListScreen = ({ route, navigation }) => {
   const mode = route.params?.mode || "today";
   const passedClasses = route.params?.classes;
 
   const [loading, setLoading] = useState(false);
   const [classes, setClasses] = useState([]);
+  const [overrides, setOverrides] = useState({});
 
   useEffect(() => {
-    // ✅ show passed data instantly (optional)
+    (async () => {
+      try {
+        const raw = await AsyncStorage.getItem(RESCHEDULE_OVERRIDES_KEY);
+        const obj = raw ? JSON.parse(raw) : {};
+        setOverrides(obj && typeof obj === "object" ? obj : {});
+      } catch {
+        setOverrides({});
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
     if (passedClasses && Array.isArray(passedClasses)) {
       processData(passedClasses);
       return;
     }
 
-    // ✅ always fetch latest to avoid stale data
     setLoading(true);
     fetchClasses();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [overrides]); // ✅ re-process after overrides loaded
 
   const processData = (rawData) => {
     const formatted = rawData.map((c) => ({
       id: String(c.id),
-      module: c.module?.code || "MOD",
-      title: c.module?.name || "Class",
-      venue: c.venue?.name || "TBA",
+      module: c.module?.code || c.module?.name || c.module || "MOD",
+      title: c.module?.name || c.title || "Class",
+      venue: c.venue?.name || c.venue || "TBA",
       date: c.date,
-      status: c.status || "active", // ✅ include status
+      status: (c.status || "active").toLowerCase(),
       isToday: isDateToday(c.date),
       fullDate: formatDate(c.date),
       time: `${formatTime(c.start_time)} – ${formatTime(c.end_time)}`,
@@ -56,11 +72,15 @@ const LecturerClassListScreen = ({ route, navigation }) => {
       endISO: `${c.date}T${c.end_time}`,
     }));
 
-    // ✅ filter if mode is today/week if you want:
-    // (keep your current behavior; leaving it as-is)
+    // ✅ apply override (afterSnapshot)
+    const merged = formatted.map((x) => {
+      const o = overrides?.[String(x.id)];
+      if (!o) return x;
+      return { ...x, ...o, id: String(x.id), status: "rescheduled" };
+    });
 
-    formatted.sort((a, b) => new Date(a.startISO) - new Date(b.startISO));
-    setClasses(formatted);
+    merged.sort((a, b) => new Date(a.startISO) - new Date(b.startISO));
+    setClasses(merged);
   };
 
   const fetchClasses = async () => {
@@ -125,40 +145,51 @@ const LecturerClassListScreen = ({ route, navigation }) => {
             <Text style={styles.empty}>No classes found.</Text>
           </View>
         ) : (
-          classes.map((c) => (
-            <TouchableOpacity
-              key={c.id}
-              style={styles.card}
-              onPress={() => navigation.navigate("LecturerClassDetail", { cls: c })}
-            >
-              <View style={styles.topRow}>
-                <Text style={styles.module}>{c.module}</Text>
+          classes.map((c) => {
+            const status = String(c.status ?? "active").toLowerCase();
+            return (
+              <TouchableOpacity
+                key={c.id}
+                style={styles.card}
+                onPress={() => navigation.navigate("LecturerClassDetail", { cls: c })}
+              >
+                <View style={styles.topRow}>
+                  <Text style={styles.module}>{c.module}</Text>
 
-                {c.isToday && (
-                  <View style={styles.pill}>
-                    <Text style={styles.pillText}>Today</Text>
+                  <View style={{ flexDirection: "row", gap: 8 }}>
+                    {c.isToday && (
+                      <View style={styles.pill}>
+                        <Text style={styles.pillText}>Today</Text>
+                      </View>
+                    )}
+
+                    {status === "rescheduled" && (
+                      <View style={styles.pill}>
+                        <Text style={styles.pillText}>Rescheduled</Text>
+                      </View>
+                    )}
                   </View>
-                )}
-              </View>
+                </View>
 
-              <Text style={styles.title}>{c.title}</Text>
+                <Text style={styles.title}>{c.title}</Text>
 
-              <View style={styles.metaRow}>
-                <Ionicons name="calendar-outline" size={16} color={COLORS.textMuted} />
-                <Text style={styles.metaText}>{c.fullDate}</Text>
-              </View>
+                <View style={styles.metaRow}>
+                  <Ionicons name="calendar-outline" size={16} color={COLORS.textMuted} />
+                  <Text style={styles.metaText}>{c.fullDate}</Text>
+                </View>
 
-              <View style={styles.metaRow}>
-                <Ionicons name="time-outline" size={16} color={COLORS.textMuted} />
-                <Text style={styles.metaText}>{c.time}</Text>
-              </View>
+                <View style={styles.metaRow}>
+                  <Ionicons name="time-outline" size={16} color={COLORS.textMuted} />
+                  <Text style={styles.metaText}>{c.time}</Text>
+                </View>
 
-              <View style={styles.metaRow}>
-                <Ionicons name="location-outline" size={16} color={COLORS.textMuted} />
-                <Text style={styles.metaText}>{c.venue}</Text>
-              </View>
-            </TouchableOpacity>
-          ))
+                <View style={styles.metaRow}>
+                  <Ionicons name="location-outline" size={16} color={COLORS.textMuted} />
+                  <Text style={styles.metaText}>{c.venue}</Text>
+                </View>
+              </TouchableOpacity>
+            );
+          })
         )}
         <View style={{ height: 24 }} />
       </ScrollView>

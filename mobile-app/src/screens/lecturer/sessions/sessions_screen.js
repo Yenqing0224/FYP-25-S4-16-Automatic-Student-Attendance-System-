@@ -1,3 +1,4 @@
+// src/screens/lecturer/sessions/sessions_screen.js
 import React, { useMemo, useState, useCallback, useEffect } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, StatusBar, Alert, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -8,7 +9,7 @@ import { useFocusEffect } from "@react-navigation/native";
 
 import UpcomingTab from "./tabs/upcoming_tab";
 import PastTab from "./tabs/past_tab";
-import CancelledTab from "./tabs/cancelled_tab";
+import RescheduledTab from "./tabs/rescheduled_tab";
 import CalendarTab from "./tabs/calendar_tab";
 import api from "../../../api/api_client";
 
@@ -23,6 +24,8 @@ const COLORS = {
 };
 
 const REMINDER_KEY = "lecturerReminderIds_v1";
+const RESCHEDULE_HISTORY_KEY = "lecturerRescheduleHistory_v1";
+const RESCHEDULE_OVERRIDES_KEY = "lecturerRescheduleOverrides_v1";
 
 const LecturerSessionsScreen = ({ navigation, route }) => {
   const [activeTab, setActiveTab] = useState("Upcoming");
@@ -33,6 +36,9 @@ const LecturerSessionsScreen = ({ navigation, route }) => {
 
   const [savedReminderIds, setSavedReminderIds] = useState(new Set());
   const [savingId, setSavingId] = useState(null);
+
+  const [rescheduleHistory, setRescheduleHistory] = useState([]);
+  const [overrides, setOverrides] = useState({}); // ✅ NEW
 
   useEffect(() => {
     if (!selectedDate) {
@@ -68,7 +74,7 @@ const LecturerSessionsScreen = ({ navigation, route }) => {
         startISO: `${c.date}T${c.start_time}`,
         endISO: `${c.date}T${c.end_time}`,
         date: c.date,
-        status: (c.status ?? "active").toLowerCase(), // active/cancelled/...
+        status: (c.status ?? "active").toLowerCase(),
       }));
 
       setFullTimetable(formatted);
@@ -77,6 +83,26 @@ const LecturerSessionsScreen = ({ navigation, route }) => {
       Alert.alert("Error", "Could not load timetable.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadHistory = async () => {
+    try {
+      const raw = await AsyncStorage.getItem(RESCHEDULE_HISTORY_KEY);
+      const arr = raw ? JSON.parse(raw) : [];
+      setRescheduleHistory(Array.isArray(arr) ? arr : []);
+    } catch {
+      setRescheduleHistory([]);
+    }
+  };
+
+  const loadOverrides = async () => {
+    try {
+      const raw = await AsyncStorage.getItem(RESCHEDULE_OVERRIDES_KEY);
+      const obj = raw ? JSON.parse(raw) : {};
+      setOverrides(obj && typeof obj === "object" ? obj : {});
+    } catch {
+      setOverrides({});
     }
   };
 
@@ -96,32 +122,42 @@ const LecturerSessionsScreen = ({ navigation, route }) => {
       }
 
       fetchTimetable();
+      loadHistory();
+      loadOverrides();
 
       if (route.params?.refreshKey) navigation.setParams({ refreshKey: null });
     }, [route.params?.tab, route.params?.targetDate, route.params?.refreshKey])
   );
 
+  // ✅ APPLY OVERRIDES EVERYWHERE
+  const mergedTimetable = useMemo(() => {
+    return (fullTimetable || []).map((c) => {
+      const o = overrides?.[String(c.id)];
+      if (!o) return c;
+      return {
+        ...c,
+        ...o,
+        id: String(c.id),
+        status: "rescheduled",
+      };
+    });
+  }, [fullTimetable, overrides]);
+
   const upcoming = useMemo(() => {
     const now = Date.now();
-    return fullTimetable
+    return mergedTimetable
       .filter((c) => c.status !== "cancelled")
       .filter((c) => new Date(c.startISO).getTime() >= now)
       .sort((a, b) => new Date(a.startISO) - new Date(b.startISO));
-  }, [fullTimetable]);
+  }, [mergedTimetable]);
 
   const past = useMemo(() => {
     const now = Date.now();
-    return fullTimetable
-      .filter((c) => c.status !== "cancelled") // ✅ exclude cancelled
+    return mergedTimetable
+      .filter((c) => c.status !== "cancelled")
       .filter((c) => new Date(c.endISO).getTime() < now)
       .sort((a, b) => new Date(b.startISO) - new Date(a.startISO));
-  }, [fullTimetable]);
-
-  const cancelled = useMemo(() => {
-    return fullTimetable
-      .filter((c) => c.status === "cancelled")
-      .sort((a, b) => new Date(b.startISO) - new Date(a.startISO));
-  }, [fullTimetable]);
+  }, [mergedTimetable]);
 
   // Reminder tracking
   const reminderIdFor = (cls) => `${cls.module}|${cls.startISO}|${cls.venue}`;
@@ -166,6 +202,23 @@ const LecturerSessionsScreen = ({ navigation, route }) => {
     }
   };
 
+  const removeReminderTracking = async (cls) => {
+    const rid = reminderIdFor(cls);
+    Alert.alert("Remove reminder?", "This removes it from Attendify tracking.", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Remove",
+        style: "destructive",
+        onPress: async () => {
+          const next = new Set(savedReminderIds);
+          next.delete(rid);
+          setSavedReminderIds(next);
+          await persistReminderIds(next);
+        },
+      },
+    ]);
+  };
+
   if (loading) {
     return (
       <SafeAreaView style={[styles.container, { justifyContent: "center", alignItems: "center" }]}>
@@ -174,7 +227,7 @@ const LecturerSessionsScreen = ({ navigation, route }) => {
     );
   }
 
-  const tabs = ["Upcoming", "Past", "Cancelled", "Calendar"];
+  const tabs = ["Upcoming", "Past", "Rescheduled", "Calendar"];
 
   return (
     <SafeAreaView style={styles.container}>
@@ -208,6 +261,7 @@ const LecturerSessionsScreen = ({ navigation, route }) => {
           isAdded={isAdded}
           isSavingThis={isSavingThis}
           addReminderToCalendar={addReminderToCalendar}
+          removeReminderTracking={removeReminderTracking}
         />
       )}
 
@@ -217,14 +271,15 @@ const LecturerSessionsScreen = ({ navigation, route }) => {
           navigation={navigation}
           list={past}
           isAdded={isAdded}
+          removeReminderTracking={removeReminderTracking}
         />
       )}
 
-      {activeTab === "Cancelled" && (
-        <CancelledTab
+      {activeTab === "Rescheduled" && (
+        <RescheduledTab
           COLORS={COLORS}
           navigation={navigation}
-          list={cancelled}
+          list={rescheduleHistory}
         />
       )}
 
@@ -232,7 +287,7 @@ const LecturerSessionsScreen = ({ navigation, route }) => {
         <CalendarTab
           COLORS={COLORS}
           navigation={navigation}
-          sessions={fullTimetable}      // ✅ all sessions
+          sessions={mergedTimetable} // ✅ IMPORTANT
           selectedDate={selectedDate}
           setSelectedDate={setSelectedDate}
           isAdded={isAdded}

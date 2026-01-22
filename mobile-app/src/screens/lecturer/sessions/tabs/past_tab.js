@@ -1,3 +1,7 @@
+
+//  src/screens/lecturer/sessions/tabs/past_tab.js
+
+
 import React from "react";
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from "react-native";
 import { Swipeable } from "react-native-gesture-handler";

@@ -1,6 +1,5 @@
 // src/screens/student/timetable/timetable_screen.js
-// ✅ Fixes "Objects are not valid as a React child (found: object with keys {id, name})"
-// by safely rendering any API fields that might be objects (e.g., module.code / module.name / venue / session_type).
+
 
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
