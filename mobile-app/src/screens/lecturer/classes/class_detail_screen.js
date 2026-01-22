@@ -15,6 +15,27 @@ const COLORS = {
   danger: "#DC2626",
 };
 
+/* ✅ NEW: module color palette + mapper */
+const MODULE_COLORS = [
+  "#6D5EF5",
+  "#10B981",
+  "#F59E0B",
+  "#EF4444",
+  "#3B82F6",
+  "#EC4899",
+  "#14B8A6",
+  "#8B5CF6",
+];
+
+const getModuleColor = (moduleName = "") => {
+  const str = String(moduleName || "");
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return MODULE_COLORS[Math.abs(hash) % MODULE_COLORS.length];
+};
+
 const toText = (v, fallback = "-") => {
   if (v == null) return fallback;
   if (typeof v === "string" || typeof v === "number" || typeof v === "boolean") return String(v);
@@ -33,6 +54,8 @@ export default function LecturerClassDetailScreen({ route, navigation }) {
   const venueText = toText(cls?.venue, "TBA");
   const timeText = toText(cls?.time, "-");
   const dateText = toText(cls?.date, "-");
+
+  const moduleColor = getModuleColor(moduleText);
 
   const status = String(toText(cls?.status, "active")).toLowerCase();
   const isCancelled = status === "cancelled";
@@ -61,11 +84,16 @@ export default function LecturerClassDetailScreen({ route, navigation }) {
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
-        {/* ✅ RESCHEDULED PILL (must be inside return UI) */}
+        {/* ✅ RESCHEDULED / CANCELLED pill */}
         {isRescheduled && !isCancelled && (
-          <View style={[styles.cancelPill, { backgroundColor: COLORS.soft, borderColor: COLORS.border }]}>
-            <Ionicons name="swap-horizontal-outline" size={16} color={COLORS.primary} />
-            <Text style={[styles.cancelPillText, { color: COLORS.primary }]}>RESCHEDULED</Text>
+          <View
+            style={[
+              styles.statusPill,
+              { backgroundColor: moduleColor + "22", borderColor: moduleColor + "55" },
+            ]}
+          >
+            <Ionicons name="swap-horizontal-outline" size={16} color={moduleColor} />
+            <Text style={[styles.statusPillText, { color: moduleColor }]}>RESCHEDULED</Text>
           </View>
         )}
 
@@ -76,23 +104,28 @@ export default function LecturerClassDetailScreen({ route, navigation }) {
           </View>
         )}
 
-        <View style={styles.card}>
-          <Text style={styles.module}>{moduleText}</Text>
-          <Text style={styles.title}>{titleText}</Text>
+        <View style={[styles.card, { borderColor: moduleColor + "55" }]}>
+          <View style={{ flexDirection: "row" }}>
+            <View style={[styles.moduleBar, { backgroundColor: moduleColor }]} />
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.module, { color: moduleColor }]}>{moduleText}</Text>
+              <Text style={styles.title}>{titleText}</Text>
 
-          <View style={styles.divider} />
+              <View style={styles.divider} />
 
-          <View style={styles.infoRow}>
-            <Text style={styles.label}>Date</Text>
-            <Text style={styles.value}>{dateText}</Text>
-          </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.label}>Time</Text>
-            <Text style={styles.value}>{timeText}</Text>
-          </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.label}>Venue</Text>
-            <Text style={styles.value}>{venueText}</Text>
+              <View style={styles.infoRow}>
+                <Text style={styles.label}>Date</Text>
+                <Text style={styles.value}>{dateText}</Text>
+              </View>
+              <View style={styles.infoRow}>
+                <Text style={styles.label}>Time</Text>
+                <Text style={styles.value}>{timeText}</Text>
+              </View>
+              <View style={styles.infoRow}>
+                <Text style={styles.label}>Venue</Text>
+                <Text style={styles.value}>{venueText}</Text>
+              </View>
+            </View>
           </View>
         </View>
 
@@ -101,7 +134,7 @@ export default function LecturerClassDetailScreen({ route, navigation }) {
             <Text style={styles.cardTitle}>Actions</Text>
 
             <View style={styles.actionsRow}>
-              <TouchableOpacity style={styles.primaryBtn} onPress={goReschedule} disabled={busy}>
+              <TouchableOpacity style={[styles.primaryBtn, { backgroundColor: moduleColor }]} onPress={goReschedule} disabled={busy}>
                 <Ionicons name="calendar-outline" size={16} color="#fff" />
                 <Text style={styles.primaryBtnText}>Reschedule</Text>
               </TouchableOpacity>
@@ -128,6 +161,19 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 20, fontWeight: "900", color: COLORS.textDark },
   content: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 24 },
 
+  statusPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    alignSelf: "flex-start",
+    marginBottom: 12,
+    borderWidth: 1,
+  },
+  statusPillText: { fontWeight: "900", fontSize: 12 },
+
   cancelPill: {
     flexDirection: "row",
     alignItems: "center",
@@ -143,8 +189,18 @@ const styles = StyleSheet.create({
   },
   cancelPillText: { color: COLORS.danger, fontWeight: "900", fontSize: 12 },
 
-  card: { backgroundColor: COLORS.card, borderRadius: 18, padding: 16, borderWidth: 1, borderColor: COLORS.border, marginBottom: 12 },
-  module: { fontWeight: "900", color: COLORS.primary },
+  card: {
+    backgroundColor: COLORS.card,
+    borderRadius: 18,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    marginBottom: 12,
+  },
+
+  moduleBar: { width: 6, borderRadius: 6, marginRight: 12 },
+
+  module: { fontWeight: "900" },
   title: { marginTop: 4, fontSize: 18, fontWeight: "900", color: COLORS.textDark },
   divider: { height: 1, backgroundColor: COLORS.border, marginVertical: 14 },
   infoRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 10 },
@@ -154,6 +210,14 @@ const styles = StyleSheet.create({
   cardTitle: { fontSize: 16, fontWeight: "900", color: COLORS.textDark },
   actionsRow: { flexDirection: "row", gap: 10, marginTop: 12 },
 
-  primaryBtn: { flex: 1, backgroundColor: COLORS.primary, paddingVertical: 12, borderRadius: 14, flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 8 },
+  primaryBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 14,
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 8,
+  },
   primaryBtnText: { color: "#fff", fontWeight: "900" },
 });

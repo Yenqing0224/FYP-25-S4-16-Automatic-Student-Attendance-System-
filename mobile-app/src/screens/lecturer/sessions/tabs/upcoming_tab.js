@@ -4,6 +4,27 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from "rea
 import { Swipeable } from "react-native-gesture-handler";
 import { Ionicons } from "@expo/vector-icons";
 
+/* ✅ NEW: module color palette + mapper */
+const MODULE_COLORS = [
+  "#6D5EF5",
+  "#10B981",
+  "#F59E0B",
+  "#EF4444",
+  "#3B82F6",
+  "#EC4899",
+  "#14B8A6",
+  "#8B5CF6",
+];
+
+const getModuleColor = (moduleName = "") => {
+  const str = String(moduleName || "");
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return MODULE_COLORS[Math.abs(hash) % MODULE_COLORS.length];
+};
+
 const UpcomingTab = ({
   COLORS,
   navigation,
@@ -20,7 +41,7 @@ const UpcomingTab = ({
       if (v.name != null) return String(v.name);
       if (v.title != null) return String(v.title);
       if (v.label != null) return String(v.label);
-      if (v.code !=null) return String(v.code);
+      if (v.code != null) return String(v.code);
       if (v.id != null) return String(v.id);
       if (v._id != null) return String(v._id);
       return fallback;
@@ -53,22 +74,12 @@ const UpcomingTab = ({
       const [y, m, d] = dateStr.slice(0, 10).split("-");
       const dt = new Date(Number(y), Number(m) - 1, Number(d));
       if (!isNaN(dt.getTime())) {
-        return dt.toLocaleDateString("en-GB", {
-          weekday: "short",
-          day: "numeric",
-          month: "short",
-          year: "numeric",
-        });
+        return dt.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
       }
     }
     const dt = new Date(dateStr);
     if (!isNaN(dt.getTime())) {
-      return dt.toLocaleDateString("en-GB", {
-        weekday: "short",
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-      });
+      return dt.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
     }
     return "-";
   };
@@ -102,79 +113,83 @@ const UpcomingTab = ({
           const status = String(toText(s?.status, "active")).toLowerCase();
           const statusLabel = status === "rescheduled" ? "Rescheduled" : "Upcoming";
 
+          const moduleColor = getModuleColor(moduleText);
+
           const card = (
             <TouchableOpacity
               activeOpacity={0.9}
               onPress={() => navigation.navigate("LecturerClassDetail", { cls: s })}
-              style={styles.sessionCard}
+              style={[styles.sessionCard, { borderColor: moduleColor + "55" , backgroundColor: moduleColor + "10"}]}
             >
-              <View style={styles.sessionTop}>
+              <View style={{ flexDirection: "row" }}>
+                <View style={[styles.moduleBar, { backgroundColor: moduleColor }]} />
+
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.module, { color: COLORS.primary }]}>{moduleText}</Text>
-                  <Text style={styles.sessionTitle}>{titleText}</Text>
+                  <View style={styles.sessionTop}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.module, { color: moduleColor }]}>{moduleText}</Text>
+                      <Text style={styles.sessionTitle}>{titleText}</Text>
+                    </View>
+
+                    <View style={[styles.statusPill, { backgroundColor: moduleColor + "22" }]}>
+                      <Text style={[styles.statusText, { color: moduleColor }]}>{statusLabel}</Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.metaRow}>
+                    <Ionicons name="calendar-outline" size={16} color={COLORS.textMuted} />
+                    <Text style={styles.metaText}>{dateText}</Text>
+                  </View>
+
+                  <View style={styles.metaRow}>
+                    <Ionicons name="time-outline" size={16} color={COLORS.textMuted} />
+                    <Text style={styles.metaText}>{timeText}</Text>
+                  </View>
+
+                  <View style={styles.metaRow}>
+                    <Ionicons name="location-outline" size={16} color={COLORS.textMuted} />
+                    <Text style={styles.metaText}>{venueText}</Text>
+                  </View>
+
+                  <View style={styles.actionsRow}>
+                    <TouchableOpacity
+                      style={[styles.primaryBtnCompact, { backgroundColor: COLORS.primary }]}
+                      onPress={() => navigation.navigate("LecturerClassDetail", { cls: s })}
+                    >
+                      <Ionicons name="information-circle-outline" size={16} color="#fff" />
+                      <Text style={styles.primaryBtnText}>Details</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={[styles.secondaryBtnSmall, isAdded?.(s) && styles.secondaryBtnDisabled, { backgroundColor: moduleColor + "22" }]}
+                      disabled={!!isAdded?.(s) || !!isSavingThis?.(s)}
+                      onPress={() => addReminderToCalendar?.(s)}
+                    >
+                      <Ionicons name={isAdded?.(s) ? "checkmark-circle-outline" : "bookmark-outline"} size={16} color={moduleColor} />
+                      <Text style={[styles.secondaryBtnTextSmall, { color: moduleColor }]}>
+                        {isSavingThis?.(s) ? "..." : isAdded?.(s) ? "Added" : "Reminder"}
+                      </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity style={[styles.secondaryBtnSmall, { backgroundColor: moduleColor + "22" }]} onPress={() => goReschedule(s)}>
+                      <Ionicons name="calendar-outline" size={16} color={moduleColor} />
+                      <Text style={[styles.secondaryBtnTextSmall, { color: moduleColor }]}>Move</Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  {isAdded?.(s) && (
+                    <View style={styles.swipeHintRow}>
+                      <Ionicons name="arrow-back-outline" size={14} color={COLORS.textMuted} />
+                      <Text style={styles.swipeHintText}>Swipe left to remove</Text>
+                    </View>
+                  )}
+
+                  <View style={styles.tapHintRow}>
+                    <Ionicons name="hand-left-outline" size={14} color={COLORS.textMuted} />
+                    <Text style={styles.tapHintText}>Tap card for details</Text>
+                    <Ionicons name="chevron-forward" size={16} color={moduleColor} />
+                  </View>
                 </View>
-
-                <View style={styles.statusPill}>
-                  <Text style={[styles.statusText, { color: COLORS.primary }]}>{statusLabel}</Text>
-                </View>
-              </View>
-
-              <View style={styles.metaRow}>
-                <Ionicons name="calendar-outline" size={16} color={COLORS.textMuted} />
-                <Text style={styles.metaText}>{dateText}</Text>
-              </View>
-
-              <View style={styles.metaRow}>
-                <Ionicons name="time-outline" size={16} color={COLORS.textMuted} />
-                <Text style={styles.metaText}>{timeText}</Text>
-              </View>
-
-              <View style={styles.metaRow}>
-                <Ionicons name="location-outline" size={16} color={COLORS.textMuted} />
-                <Text style={styles.metaText}>{venueText}</Text>
-              </View>
-
-              <View style={styles.actionsRow}>
-                <TouchableOpacity
-                  style={[styles.primaryBtnCompact, { backgroundColor: COLORS.primary }]}
-                  onPress={() => navigation.navigate("LecturerClassDetail", { cls: s })}
-                >
-                  <Ionicons name="information-circle-outline" size={16} color="#fff" />
-                  <Text style={styles.primaryBtnText}>Details</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.secondaryBtnSmall, isAdded?.(s) && styles.secondaryBtnDisabled]}
-                  disabled={!!isAdded?.(s) || !!isSavingThis?.(s)}
-                  onPress={() => addReminderToCalendar?.(s)}
-                >
-                  <Ionicons
-                    name={isAdded?.(s) ? "checkmark-circle-outline" : "bookmark-outline"}
-                    size={16}
-                    color={COLORS.primary}
-                  />
-                  <Text style={[styles.secondaryBtnTextSmall, { color: COLORS.primary }]}>
-                    {isSavingThis?.(s) ? "..." : isAdded?.(s) ? "Added" : "Reminder"}
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity style={styles.secondaryBtnSmall} onPress={() => goReschedule(s)}>
-                  <Ionicons name="calendar-outline" size={16} color={COLORS.primary} />
-                  <Text style={[styles.secondaryBtnTextSmall, { color: COLORS.primary }]}>Move</Text>
-                </TouchableOpacity>
-              </View>
-
-              {isAdded?.(s) && (
-                <View style={styles.swipeHintRow}>
-                  <Ionicons name="arrow-back-outline" size={14} color={COLORS.textMuted} />
-                  <Text style={styles.swipeHintText}>Swipe left to remove</Text>
-                </View>
-              )}
-
-              <View style={styles.tapHintRow}>
-                <Ionicons name="hand-left-outline" size={14} color={COLORS.textMuted} />
-                <Text style={styles.tapHintText}>Tap card for details</Text>
-                <Ionicons name="chevron-forward" size={16} color={COLORS.primary} />
               </View>
             </TouchableOpacity>
           );
@@ -205,12 +220,14 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     marginBottom: 12,
     backgroundColor: "#fff",
-    borderColor: "#E5E7EB",
   },
+  moduleBar: { width: 6, borderRadius: 6, marginRight: 12 },
+
   sessionTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   module: { fontWeight: "900" },
   sessionTitle: { marginTop: 2, fontSize: 16, fontWeight: "900", color: "#111827" },
-  statusPill: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, backgroundColor: "#ECE9FF" },
+
+  statusPill: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, borderWidth: 1, borderColor: "#E5E7EB" },
   statusText: { fontWeight: "900", fontSize: 12 },
 
   metaRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 8 },
@@ -248,7 +265,6 @@ const styles = StyleSheet.create({
 
   secondaryBtnSmall: {
     flex: 1,
-    backgroundColor: "#ECE9FF",
     paddingVertical: 12,
     borderRadius: 14,
     flexDirection: "row",
