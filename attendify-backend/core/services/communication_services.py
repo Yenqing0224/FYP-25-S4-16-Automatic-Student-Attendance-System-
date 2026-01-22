@@ -17,8 +17,8 @@ class CommunicationService:
         ).order_by('-created_at')
 
         events_object = Event.objects.filter(
-            event__date__gte=start_date,
-            event__date__lte=end_date
+            event_date__gte=start_date,
+            event_date__lte=end_date
         ).exclude(
             status='cancelled'
         ).order_by('date')
