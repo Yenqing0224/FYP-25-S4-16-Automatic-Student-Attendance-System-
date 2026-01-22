@@ -316,7 +316,7 @@ class AcademicService:
         
         available_venue = ClassRoom.objects.exclude(
             sessions_venue__date=new_date,
-            sessions_venue__status='upcoming',
+            sessions_venue__status=['upcoming', 'in_progress', 'completed'],
             sessions_venue__start_time__lt=new_end,
             sessions_venue__end_time__gt=new_start
         ).first()
