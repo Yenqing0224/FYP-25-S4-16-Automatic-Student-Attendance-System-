@@ -25,6 +25,7 @@ class News(models.Model):
     description = models.TextField(help_text="Full content of the news")
     news_date = models.DateTimeField(default=timezone.now) 
     image_url = models.CharField(max_length=500, blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         verbose_name_plural = "News" # Fixes Django showing "Newss"
@@ -51,6 +52,7 @@ class Event(models.Model):
     venue = models.CharField(max_length=100)
     image_url = models.CharField(max_length=500, blank=True, null=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='upcoming')
+    created_at = models.DateTimeField(auto_now_add=True)
 
     # Stats
     total_student = models.IntegerField(default=0)
