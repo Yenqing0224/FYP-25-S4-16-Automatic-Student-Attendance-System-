@@ -1,8 +1,8 @@
+// screens/lecturer/classes/class_detail_screen.js
 import React, { useMemo, useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, StatusBar, ScrollView, Alert, ActivityIndicator } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, StatusBar, ScrollView, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import api from "../../../api/api_client";
 
 const COLORS = {
   primary: "#6D5EF5",
@@ -36,57 +36,12 @@ export default function LecturerClassDetailScreen({ route, navigation }) {
 
   const status = String(toText(cls?.status, "active")).toLowerCase();
   const isCancelled = status === "cancelled";
+  const isRescheduled = status === "rescheduled";
 
   const isUpcoming = useMemo(() => {
     const t = new Date(toText(cls?.startISO, "")).getTime();
     return !isNaN(t) && t > Date.now();
   }, [cls?.startISO]);
-
-  const goToCancelledTab = () => {
-    const parent = navigation.getParent?.();
-
-    if (parent) {
-      parent.navigate("LSessions", {
-        screen: "LecturerSessionsMain",
-        params: { tab: "Cancelled", refreshKey: Date.now() },
-      });
-    } else {
-      navigation.navigate("LecturerSessionsMain", {
-        tab: "Cancelled",
-        refreshKey: Date.now(),
-      });
-    }
-  };
-
-
-  const cancelSession = () => {
-    if (!cls?.id) return Alert.alert("Missing", "No session id found.");
-
-    Alert.alert("Cancel this session?", "This will move it into Cancelled tab.", [
-      { text: "No", style: "cancel" },
-      {
-        text: "Yes, cancel",
-        style: "destructive",
-        onPress: async () => {
-          setBusy(true);
-          try {
-            // ✅ If your backend uses a dedicated endpoint, change this:
-            // await api.post("/cancel-class/", { session_id: cls.id });
-            await api.post("/reschedule-class/", { session_id: String(cls.id), action: "cancel" });
-
-            // ✅ leave detail page immediately
-            goToCancelledTab();
-
-          } catch (e) {
-            console.log("cancel error:", e?.response?.status, e?.response?.data);
-            Alert.alert("Error", "Could not cancel session.");
-          } finally {
-            setBusy(false);
-          }
-        },
-      },
-    ]);
-  };
 
   const goReschedule = () => {
     if (!cls?.id) return Alert.alert("Missing", "No session id found.");
@@ -106,6 +61,14 @@ export default function LecturerClassDetailScreen({ route, navigation }) {
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
+        {/* ✅ RESCHEDULED PILL (must be inside return UI) */}
+        {isRescheduled && !isCancelled && (
+          <View style={[styles.cancelPill, { backgroundColor: COLORS.soft, borderColor: COLORS.border }]}>
+            <Ionicons name="swap-horizontal-outline" size={16} color={COLORS.primary} />
+            <Text style={[styles.cancelPillText, { color: COLORS.primary }]}>RESCHEDULED</Text>
+          </View>
+        )}
+
         {isCancelled && (
           <View style={styles.cancelPill}>
             <Ionicons name="close-circle-outline" size={16} color={COLORS.danger} />
@@ -119,9 +82,18 @@ export default function LecturerClassDetailScreen({ route, navigation }) {
 
           <View style={styles.divider} />
 
-          <View style={styles.infoRow}><Text style={styles.label}>Date</Text><Text style={styles.value}>{dateText}</Text></View>
-          <View style={styles.infoRow}><Text style={styles.label}>Time</Text><Text style={styles.value}>{timeText}</Text></View>
-          <View style={styles.infoRow}><Text style={styles.label}>Venue</Text><Text style={styles.value}>{venueText}</Text></View>
+          <View style={styles.infoRow}>
+            <Text style={styles.label}>Date</Text>
+            <Text style={styles.value}>{dateText}</Text>
+          </View>
+          <View style={styles.infoRow}>
+            <Text style={styles.label}>Time</Text>
+            <Text style={styles.value}>{timeText}</Text>
+          </View>
+          <View style={styles.infoRow}>
+            <Text style={styles.label}>Venue</Text>
+            <Text style={styles.value}>{venueText}</Text>
+          </View>
         </View>
 
         {isUpcoming && !isCancelled && (
@@ -133,11 +105,6 @@ export default function LecturerClassDetailScreen({ route, navigation }) {
                 <Ionicons name="calendar-outline" size={16} color="#fff" />
                 <Text style={styles.primaryBtnText}>Reschedule</Text>
               </TouchableOpacity>
-
-              <TouchableOpacity style={styles.dangerBtn} onPress={cancelSession} disabled={busy}>
-                {busy ? <ActivityIndicator color="#fff" /> : <Ionicons name="close-circle-outline" size={16} color="#fff" />}
-                <Text style={styles.dangerBtnText}>Cancel</Text>
-              </TouchableOpacity>
             </View>
           </View>
         )}
@@ -148,12 +115,32 @@ export default function LecturerClassDetailScreen({ route, navigation }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
-  header: { paddingVertical: 14, paddingHorizontal: 20, flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderBottomWidth: 1, borderBottomColor: COLORS.border },
+  header: {
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
   backBtn: { width: 30 },
   headerTitle: { fontSize: 20, fontWeight: "900", color: COLORS.textDark },
   content: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 24 },
 
-  cancelPill: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "#FEE2E2", paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, alignSelf: "flex-start", marginBottom: 12, borderWidth: 1, borderColor: "#FCA5A5" },
+  cancelPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "#FEE2E2",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    alignSelf: "flex-start",
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: "#FCA5A5",
+  },
   cancelPillText: { color: COLORS.danger, fontWeight: "900", fontSize: 12 },
 
   card: { backgroundColor: COLORS.card, borderRadius: 18, padding: 16, borderWidth: 1, borderColor: COLORS.border, marginBottom: 12 },
@@ -169,7 +156,4 @@ const styles = StyleSheet.create({
 
   primaryBtn: { flex: 1, backgroundColor: COLORS.primary, paddingVertical: 12, borderRadius: 14, flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 8 },
   primaryBtnText: { color: "#fff", fontWeight: "900" },
-
-  dangerBtn: { flex: 1, backgroundColor: COLORS.danger, paddingVertical: 12, borderRadius: 14, flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 8 },
-  dangerBtnText: { color: "#fff", fontWeight: "900" },
 });

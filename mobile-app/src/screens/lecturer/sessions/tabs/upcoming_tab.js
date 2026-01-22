@@ -1,3 +1,4 @@
+// src/screens/lecturer/sessions/tabs/upcoming_tab.js
 import React from "react";
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from "react-native";
 import { Swipeable } from "react-native-gesture-handler";
@@ -12,7 +13,6 @@ const UpcomingTab = ({
   addReminderToCalendar,
   removeReminderTracking,
 }) => {
-  // ✅ convert {id,name} / object -> safe string for <Text>
   const toText = (v, fallback = "-") => {
     if (v == null) return fallback;
     if (typeof v === "string" || typeof v === "number") return String(v);
@@ -20,7 +20,7 @@ const UpcomingTab = ({
       if (v.name != null) return String(v.name);
       if (v.title != null) return String(v.title);
       if (v.label != null) return String(v.label);
-      if (v.code != null) return String(v.code);
+      if (v.code !=null) return String(v.code);
       if (v.id != null) return String(v.id);
       if (v._id != null) return String(v._id);
       return fallback;
@@ -28,7 +28,6 @@ const UpcomingTab = ({
     return fallback;
   };
 
-  // ✅ safe key even if s.id is {id,name}
   const safeKey = (s, idx) => {
     const raw = s?.id ?? s?._id;
     if (typeof raw === "string" || typeof raw === "number") return String(raw);
@@ -37,7 +36,6 @@ const UpcomingTab = ({
       if (raw._id != null) return String(raw._id);
       if (raw.name != null) return String(raw.name);
     }
-    // fallback unique-ish key
     return `up-${toText(s?.module, "m")}-${toText(s?.startISO, idx)}-${idx}`;
   };
 
@@ -48,12 +46,9 @@ const UpcomingTab = ({
     </TouchableOpacity>
   );
 
-  // ✅ safer date formatting (handles "YYYY-MM-DD" properly)
   const formatDate = (dateVal) => {
     const dateStr = toText(dateVal, "");
     if (!dateStr) return "-";
-
-    // if backend sends YYYY-MM-DD
     if (dateStr.includes("-") && dateStr.length >= 10) {
       const [y, m, d] = dateStr.slice(0, 10).split("-");
       const dt = new Date(Number(y), Number(m) - 1, Number(d));
@@ -66,7 +61,6 @@ const UpcomingTab = ({
         });
       }
     }
-
     const dt = new Date(dateStr);
     if (!isNaN(dt.getTime())) {
       return dt.toLocaleDateString("en-GB", {
@@ -76,12 +70,10 @@ const UpcomingTab = ({
         year: "numeric",
       });
     }
-
     return "-";
   };
 
   const goReschedule = (cls) => {
-    // extra safety: only allow if upcoming
     const startISO = toText(cls?.startISO, "");
     if (startISO) {
       const startMs = new Date(startISO).getTime();
@@ -107,6 +99,9 @@ const UpcomingTab = ({
           const venueText = toText(s?.venue, "-");
           const dateText = formatDate(s?.date);
 
+          const status = String(toText(s?.status, "active")).toLowerCase();
+          const statusLabel = status === "rescheduled" ? "Rescheduled" : "Upcoming";
+
           const card = (
             <TouchableOpacity
               activeOpacity={0.9}
@@ -118,8 +113,9 @@ const UpcomingTab = ({
                   <Text style={[styles.module, { color: COLORS.primary }]}>{moduleText}</Text>
                   <Text style={styles.sessionTitle}>{titleText}</Text>
                 </View>
+
                 <View style={styles.statusPill}>
-                  <Text style={[styles.statusText, { color: COLORS.primary }]}>Upcoming</Text>
+                  <Text style={[styles.statusText, { color: COLORS.primary }]}>{statusLabel}</Text>
                 </View>
               </View>
 
