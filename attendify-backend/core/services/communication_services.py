@@ -21,7 +21,7 @@ class CommunicationService:
             event_date__lte=end_date
         ).exclude(
             status='cancelled'
-        ).order_by('date')
+        ).order_by('event_date')
 
         return news_object, events_object
     
