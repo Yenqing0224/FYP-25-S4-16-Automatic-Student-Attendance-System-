@@ -297,6 +297,9 @@ class AcademicService:
         except ClassSession.DoesNotExist:
             raise ValidationError("Class session not found.")
 
+        if session.status != 'upcoming':
+            raise ValidationError(f"Only 'Upcoming' classes can be rescheduled.")
+        
         try:
             lecturer = Lecturer.objects.get(user=lecturer)
             if session.module.lecturer != lecturer:
@@ -317,7 +320,7 @@ class AcademicService:
             sessions_venue__start_time__lt=new_end,
             sessions_venue__end_time__gt=new_start
         ).first()
-        
+
         if not available_venue:
             raise ValidationError("No classrooms are available at this selected time. Please choose a different slot.")
 
