@@ -17,12 +17,12 @@ class CommunicationService:
         ).order_by('-created_at')
 
         events_object = Event.objects.filter(
-            date__gte=start_date,
-            date__lte=end_date
+            event__date__gte=start_date,
+            event__date__lte=end_date
         ).exclude(
             status='cancelled'
         ).order_by('date')
-        
+
         return news_object, events_object
     
 
