@@ -36,9 +36,12 @@ class Module(models.Model):
     credit = models.IntegerField()
     
     # Stats
-    student_enrolled = models.IntegerField(default=0)
     average_attendance = models.FloatField(default=0.0)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active')
+
+    @property
+    def student_enrolled(self):
+        return self.students.count()
 
     def __str__(self):
         return f"{self.code} - {self.name}"
