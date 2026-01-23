@@ -72,11 +72,6 @@ class ClassSession(models.Model):
     start_time = models.TimeField()
     end_time = models.TimeField()
     status = models.CharField(max_length=20, choices=SESSION_STATUS, default='upcoming')
-    # Stats
-    total_students = models.IntegerField(default=0)
-    present_students = models.IntegerField(default=0)
-    absent_students = models.IntegerField(default=0)
-    attendance_rate = models.FloatField(default=0.0)
 
     @property
     def total_students(self):
