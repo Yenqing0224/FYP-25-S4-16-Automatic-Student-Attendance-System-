@@ -28,7 +28,11 @@ class ClassRoomSerializer(serializers.ModelSerializer):
 class ClassSessionSerializer(serializers.ModelSerializer):
     module = ModuleSerializer(read_only=True)
     venue = ClassRoomSerializer(read_only=True)
-
+    total_students = serializers.IntegerField(read_only=True)
+    present_students = serializers.IntegerField(read_only=True)
+    absent_students = serializers.IntegerField(read_only=True)
+    attendance_rate = serializers.FloatField(read_only=True)
+    
     class Meta:
         model = ClassSession
         fields = '__all__'

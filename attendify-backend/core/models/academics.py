@@ -27,7 +27,7 @@ class Module(models.Model):
 
     # Relationships
     semester = models.ForeignKey('Semester', on_delete=models.CASCADE, related_name='modules')
-    lecturer = models.ForeignKey('core.Lecturer', on_delete=models.SET_NULL, null=True, blank=True, related_name='modules_taught')
+    lecturer = models.ForeignKey('core.Lecturer', on_delete=    models.SET_NULL, null=True, blank=True, related_name='modules_taught')
     students = models.ManyToManyField('core.Student', blank=True, related_name='modules_enrolled')
 
     # Attributes
@@ -77,6 +77,26 @@ class ClassSession(models.Model):
     present_students = models.IntegerField(default=0)
     absent_students = models.IntegerField(default=0)
     attendance_rate = models.FloatField(default=0.0)
+
+    @property
+    def total_students(self):
+        return self.module.student_enrolled
+
+    @property
+    def present_students(self):
+        return self.attendance_records.filter(status='present').count()
+    
+    @property
+    def absent_students(self):
+        return self.attendance_records.filter(status='absent').count()
+    
+    @property
+    def attendance_rate(self):
+        total = self.total_students
+        if total == 0:
+            return 0.0
+        rate = (self.present_students / total) * 100
+        return round(rate, 2)
 
     def __str__(self):
         formatted_date = self.date.strftime('%Y-%m-%d')
