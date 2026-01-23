@@ -136,4 +136,4 @@ class AttendanceRecord(models.Model):
         unique_together = ('session', 'student')
 
     def __str__(self):
-        return f"{self.student.user.username} {self.session.name}: {self.status}"
+        return f"{self.student.user.username} {self.session.name} ({self.session.date}): {self.status}"
