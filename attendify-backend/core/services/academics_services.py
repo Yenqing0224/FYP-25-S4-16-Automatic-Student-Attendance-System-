@@ -26,8 +26,9 @@ class AcademicService:
             semester_range = f"{s_start} - {s_end}"
 
         todays_announcements = Announcement.objects.filter(
-            created_at__date=today_date
-        )
+            created_at__date__gte = today_date -timedelta(days=7),
+            created_at__date__lte = today_date
+        ).order_by('-created_at')
 
         todays_sessions = ClassSession.objects.filter(
             module__students=student,
@@ -75,8 +76,9 @@ class AcademicService:
         ).order_by('date', 'start_time').first()
 
         todays_announcements = Announcement.objects.filter(
-            created_at__date=today_date
-        )
+            created_at__date__gte = today_date -timedelta(days=7),
+            created_at__date__lte = today_date
+        ).order_by('-created_at')
 
         return {
             "stats": {
