@@ -94,11 +94,19 @@ class ClassSession(models.Model):
         return self.attendance_records.filter(status='absent').count()
     
     @property
+    def on_leave_students(self):
+        return self.attendance_records.filter(status='on_leave').count()
+    
+    @property
     def attendance_rate(self):
         total = self.total_students
-        if total == 0:
+        on_leave = self.on_leave_students
+        effective_total = total - on_leave
+        
+        if effective_total <= 0:
             return 0.0
-        rate = (self.present_students / total) * 100
+            
+        rate = (self.present_students / effective_total) * 100
         return round(rate, 2)
 
     def __str__(self):

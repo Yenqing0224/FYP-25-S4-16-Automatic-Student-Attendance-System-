@@ -75,6 +75,7 @@ class AdminClassSessionSerializer(serializers.ModelSerializer):
     total_students = serializers.IntegerField(read_only=True)
     present_students = serializers.IntegerField(read_only=True)
     absent_students = serializers.IntegerField(read_only=True)
+    on_leave_students = serializers.IntegerField(read_only=True)
     attendance_rate = serializers.FloatField(read_only=True)
 
     class Meta:
