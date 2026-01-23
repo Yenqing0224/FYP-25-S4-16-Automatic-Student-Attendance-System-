@@ -12,6 +12,7 @@ class SemesterSerializer(serializers.ModelSerializer):
 class ModuleSerializer(serializers.ModelSerializer):
     semester = SemesterSerializer(read_only=True)
     student_enrolled = serializers.IntegerField(read_only=True)
+    average_attendance = serializers.FloatField(read_only=True)
     
     class Meta:
         model = Module

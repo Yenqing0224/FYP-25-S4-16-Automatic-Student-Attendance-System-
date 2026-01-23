@@ -34,11 +34,19 @@ class Module(models.Model):
     code = models.CharField(max_length=20, unique=True) 
     name = models.CharField(max_length=100)             
     credit = models.IntegerField()
-    
-    # Stats
-    average_attendance = models.FloatField(default=0.0)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active')
 
+    @property
+    def average_attendance(self):
+        completed_sessions = self.sessions.filter(status='completed')
+        count = completed_sessions.count()
+        
+        if count == 0:
+            return 0.0
+            
+        total_rate = sum(session.attendance_rate for session in completed_sessions)
+        return round(total_rate / count, 2)
+    
     @property
     def student_enrolled(self):
         return self.students.count()
