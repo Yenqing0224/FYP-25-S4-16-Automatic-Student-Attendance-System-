@@ -84,14 +84,16 @@ class Student(models.Model):
     def attendance_rate(self):
         records = self.attendance_records.filter(session__status='completed')
         
-        total = records.count()
+        total_present = records.filter(status='present').count()
+        total_on_leave = records.filter(status='on_leave').count()
+        total_sessions = records.count()
         
-        if total == 0:
-            return 100.0
-
-        present_count = records.filter(status='present').count()
+        effective_total = total_sessions - total_on_leave
         
-        return round((present_count / total) * 100, 1)
+        if effective_total <= 0:
+            return 100.0 
+            
+        return round((total_present / effective_total) * 100, 1)
 
     def __str__(self):
         return f"{self.user.username} ({self.student_id})"
