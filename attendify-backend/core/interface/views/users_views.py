@@ -6,6 +6,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from core.services.users_services import UserService
 # Import Serializers
 from core.interface.serializers.users_serializers import StudentSerializer, LecturerSerializer
+from core.interface.serializers.academics_serializers import ModuleSerializer
 
 
 @api_view(['GET'])
@@ -19,14 +20,18 @@ def get_profile(request):
         serializer = None
         
         if request.user.role_type == 'student':
-            serializer = StudentSerializer(user_profile)  
+            serializer = StudentSerializer(user_profile) 
+            return Response(serializer.data, status=200) 
         elif request.user.role_type == 'lecturer':
             serializer = LecturerSerializer(user_profile)
+            
+            response = dict(serializer.data)
 
-        if serializer:
-            return Response(serializer.data, status=200)
-        else:
-            return Response({"error": "Unknown role type"}, status=400)
+            response['active_modules'] = ModuleSerializer(getattr(user_profile, 'active_modules', []), many=True).data
+            response['active_modules_count'] = getattr(user_profile, 'active_modules_count', 0)
+            response['total_students'] = getattr(user_profile, 'total_students', 0)
+            
+            return Response(response, status=200)
 
     except ObjectDoesNotExist:
         return Response({"error": "Profile details not found in database"}, status=404)
