@@ -1,13 +1,34 @@
-// src/screens/lecturer/sessions/tabs/calendar_tabs.js
+// src/screens/lecturer/sessions/tabs/calendar_tab.js
 import React, { useMemo, useRef } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { CalendarList } from "react-native-calendars";
 
+/* ✅ NEW: module color palette + mapper */
+const MODULE_COLORS = [
+  "#6D5EF5",
+  "#10B981",
+  "#F59E0B",
+  "#EF4444",
+  "#3B82F6",
+  "#EC4899",
+  "#14B8A6",
+  "#8B5CF6",
+];
+
+const getModuleColor = (moduleName = "") => {
+  const str = String(moduleName || "");
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return MODULE_COLORS[Math.abs(hash) % MODULE_COLORS.length];
+};
+
 const CalendarTab = ({
   COLORS,
   navigation,
-  sessions = [],       // ✅ rename from upcoming; pass all sessions here
+  sessions = [],
   selectedDate,
   setSelectedDate,
   isAdded,
@@ -27,7 +48,11 @@ const CalendarTab = ({
       if (v.label != null) return String(v.label);
       if (v.id != null) return String(v.id);
       if (v._id != null) return String(v._id);
-      try { return JSON.stringify(v); } catch { return fallback; }
+      try {
+        return JSON.stringify(v);
+      } catch {
+        return fallback;
+      }
     }
     return fallback;
   };
@@ -115,10 +140,7 @@ const CalendarTab = ({
 
       <View style={styles.content}>
         <View style={styles.detailsHeader}>
-          <SafeText
-            style={styles.detailsTitle}
-            value={selectedDateText ? `Classes on ${selectedDateText}` : "Pick a date"}
-          />
+          <SafeText style={styles.detailsTitle} value={selectedDateText ? `Classes on ${selectedDateText}` : "Pick a date"} />
         </View>
 
         {selectedDateText && daySessions.length === 0 && (
@@ -136,57 +158,82 @@ const CalendarTab = ({
           const venueText = toText(s?.venue, "-");
           const dateText = formatDate(s?.date);
 
+          const moduleColor = getModuleColor(moduleText);
+          const status = String(toText(s?.status, "active")).toLowerCase();
+          const isRescheduled = status === "rescheduled";
+
+
           return (
             <TouchableOpacity
               key={safeKey(s, idx)}
               activeOpacity={0.9}
-              style={[styles.sessionCard, { borderColor: COLORS.border }]}
+              style={[styles.sessionCard, { borderColor: moduleColor + "55", backgroundColor: moduleColor + "10" }]}
               onPress={() => navigation.navigate("LecturerClassDetail", { cls: s })}
             >
-              <SafeText style={[styles.module, { color: COLORS.primary }]} value={moduleText} />
-              <SafeText style={styles.sessionTitle} value={titleText} numberOfLines={1} />
+              <View style={{ flexDirection: "row" }}>
+                <View style={[styles.moduleBar, { backgroundColor: moduleColor }]} />
 
-              <View style={styles.metaRow}>
-                <Ionicons name="calendar-outline" size={16} color={COLORS.textMuted} />
-                <SafeText style={styles.metaText} value={dateText} />
-              </View>
+                <View style={{ flex: 1 }}>
+                  <SafeText style={[styles.module, { color: moduleColor }]} value={moduleText} />
 
-              <View style={styles.metaRow}>
-                <Ionicons name="time-outline" size={16} color={COLORS.textMuted} />
-                <SafeText style={styles.metaText} value={timeText} />
-              </View>
+                  <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+                    <View style={{ flex: 1 }}>
+                      <SafeText style={styles.sessionTitle} value={titleText} numberOfLines={1} />
+                    </View>
 
-              <View style={styles.metaRow}>
-                <Ionicons name="location-outline" size={16} color={COLORS.textMuted} />
-                <SafeText style={styles.metaText} value={venueText} />
-              </View>
+                    {isRescheduled && (
+                      <View style={[styles.statusPill, { backgroundColor: moduleColor + "22", borderColor: moduleColor + "55" }]}>
+                        <Ionicons name="swap-horizontal-outline" size={14} color={moduleColor} />
+                        <Text style={[styles.statusText, { color: moduleColor }]}>Rescheduled</Text>
+                      </View>
+                    )}
+                  </View>
 
-              <View style={styles.actionsRow}>
-                <View style={[styles.primaryBtn, { backgroundColor: COLORS.primary }]}>
-                  <Ionicons name="information-circle-outline" size={16} color="#fff" />
-                  <Text style={styles.primaryBtnText}>Details</Text>
+
+                  <View style={styles.metaRow}>
+                    <Ionicons name="calendar-outline" size={16} color={COLORS.textMuted} />
+                    <SafeText style={styles.metaText} value={dateText} />
+                  </View>
+
+                  <View style={styles.metaRow}>
+                    <Ionicons name="time-outline" size={16} color={COLORS.textMuted} />
+                    <SafeText style={styles.metaText} value={timeText} />
+                  </View>
+
+                  <View style={styles.metaRow}>
+                    <Ionicons name="location-outline" size={16} color={COLORS.textMuted} />
+                    <SafeText style={styles.metaText} value={venueText} />
+                  </View>
+
+                  <View style={styles.actionsRow}>
+                    <View style={[styles.primaryBtn, { backgroundColor:  COLORS.primary}]}>
+                      <Ionicons name="information-circle-outline" size={16} color="#fff" />
+                      <Text style={styles.primaryBtnText}>Details</Text>
+                    </View>
+
+                    <TouchableOpacity
+                      style={[styles.secondaryBtn, isAdded?.(s) && styles.secondaryBtnDisabled, { backgroundColor: COLORS.soft }]}
+
+                      disabled={!!isAdded?.(s) || !!isSavingThis?.(s)}
+                      onPress={() => addReminderToCalendar?.(s)}
+                    >
+                      <Ionicons
+                        name={isAdded?.(s) ? "checkmark-circle-outline" : "bookmark-outline"}
+                        size={16}
+                        color={COLORS.primary}
+                      />
+                      <Text style={[styles.secondaryBtnText, { color: COLORS.primary }]}>
+                        {isSavingThis?.(s) ? "Adding..." : isAdded?.(s) ? "Added" : "Add reminder"}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  <View style={styles.tapHintRow}>
+                    <Ionicons name="hand-left-outline" size={14} color={COLORS.textMuted} />
+                    <Text style={styles.tapHintText}>Tap card for details</Text>
+                    <Ionicons name="chevron-forward" size={16} color={moduleColor} />
+                  </View>
                 </View>
-
-                <TouchableOpacity
-                  style={[styles.secondaryBtn, isAdded?.(s) && styles.secondaryBtnDisabled]}
-                  disabled={!!isAdded?.(s) || !!isSavingThis?.(s)}
-                  onPress={() => addReminderToCalendar?.(s)}
-                >
-                  <Ionicons
-                    name={isAdded?.(s) ? "checkmark-circle-outline" : "bookmark-outline"}
-                    size={16}
-                    color={COLORS.primary}
-                  />
-                  <Text style={[styles.secondaryBtnText, { color: COLORS.primary }]}>
-                    {isSavingThis?.(s) ? "Adding..." : isAdded?.(s) ? "Added" : "Add reminder"}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-
-              <View style={styles.tapHintRow}>
-                <Ionicons name="hand-left-outline" size={14} color={COLORS.textMuted} />
-                <Text style={styles.tapHintText}>Tap card for details</Text>
-                <Ionicons name="chevron-forward" size={16} color={COLORS.primary} />
               </View>
             </TouchableOpacity>
           );
@@ -202,6 +249,8 @@ const styles = StyleSheet.create({
   detailsTitle: { fontSize: 16, fontWeight: "900", color: "#111827" },
 
   sessionCard: { backgroundColor: "#fff", borderRadius: 18, padding: 16, borderWidth: 1, marginTop: 12 },
+  moduleBar: { width: 6, borderRadius: 6, marginRight: 12 },
+
   module: { fontWeight: "900" },
   sessionTitle: { marginTop: 2, fontSize: 16, fontWeight: "900", color: "#111827" },
 
@@ -212,7 +261,7 @@ const styles = StyleSheet.create({
   primaryBtn: { flex: 1, paddingVertical: 12, borderRadius: 14, flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 8 },
   primaryBtnText: { color: "#fff", fontWeight: "900" },
 
-  secondaryBtn: { flex: 1, backgroundColor: "#ECE9FF", paddingVertical: 12, borderRadius: 14, flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 8 },
+  secondaryBtn: { flex: 1, paddingVertical: 12, borderRadius: 14, flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 8 },
   secondaryBtnDisabled: { opacity: 0.65 },
   secondaryBtnText: { fontWeight: "900" },
 
@@ -222,6 +271,20 @@ const styles = StyleSheet.create({
 
   tapHintRow: { marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: "#E5E7EB", flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   tapHintText: { flex: 1, marginLeft: 8, color: "#6B7280", fontWeight: "700" },
+  statusPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  statusText: {
+    fontWeight: "900",
+    fontSize: 12,
+  },
+
 });
 
 export default CalendarTab;
