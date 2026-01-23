@@ -2,7 +2,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from core.logic.users_logics import UserLogic
 from core.models import Student, Lecturer, Module
 from django.utils import timezone
-from django.db.models import Sum
+from django.db.models import Sum, Count
 
 
 class UserService:
@@ -18,10 +18,10 @@ class UserService:
                 status='active',
                 semester__start_date__lte=today,
                 semester__end_date__gte=today
-            )
+            ).annotate(student_enrolled_count=Count('students'))
 
             total_students = active_modules.aggregate(
-                total=Sum('student_enrolled')
+                total=Sum('students')
             )['total'] or 0
 
             lecturer.active_modules = active_modules

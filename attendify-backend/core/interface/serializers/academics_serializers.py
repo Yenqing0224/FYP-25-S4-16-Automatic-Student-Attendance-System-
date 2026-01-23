@@ -11,6 +11,7 @@ class SemesterSerializer(serializers.ModelSerializer):
 
 class ModuleSerializer(serializers.ModelSerializer):
     semester = SemesterSerializer(read_only=True)
+    student_enrolled = serializers.IntegerField(source='student_enrolled_count', read_only=True)
     
     class Meta:
         model = Module

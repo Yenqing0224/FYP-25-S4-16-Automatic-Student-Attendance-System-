@@ -40,12 +40,8 @@ const LecturerProfileScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
   const [lecturer, setLecturer] = useState(null);
 
-  // Mock stats
-  const [teaching] = useState({
-    modules: ["CSIT321 – Software Design", "CSIT314 – Agile Methods"],
-    activeClasses: 3,
-    totalStudents: 128,
-  });
+  // ❌ REMOVED: Mock 'teaching' state.
+  // We now use data directly from 'lecturer' state.
 
   const fetchProfile = async () => {
     try {
@@ -90,6 +86,15 @@ const LecturerProfileScreen = ({ navigation }) => {
   const goChangePassword = () => navigation.navigate("LecturerChangePassword");
   const goActiveClasses = () => navigation.navigate("LecturerActiveClasses");
 
+  // ✅ New Handler: Show details on tap
+  const handleModuleTap = (module) => {
+    Alert.alert(
+      `${module.code} - ${module.name}`,
+      `Students: ${module.student_enrolled || 0}\nStatus: ${module.status?.toUpperCase()}`,
+      [{ text: "OK" }]
+    );
+  };
+
   if (loading) {
     return (
       <View style={[styles.container, { justifyContent: "center", alignItems: "center" }]}>
@@ -101,6 +106,11 @@ const LecturerProfileScreen = ({ navigation }) => {
   const fullName = lecturer?.user
     ? `${toText(lecturer.user.first_name, "")} ${toText(lecturer.user.last_name, "")}`.trim() || "Lecturer"
     : "Lecturer";
+
+  // ✅ Extract API Data (Safe Fallbacks)
+  const activeModulesCount = lecturer?.active_modules_count ?? 0;
+  const totalStudentsCount = lecturer?.total_students ?? 0;
+  const activeModulesList = lecturer?.active_modules ?? [];
 
   return (
     <SafeAreaView style={styles.container}>
@@ -138,7 +148,6 @@ const LecturerProfileScreen = ({ navigation }) => {
 
           <View style={styles.infoRow}>
             <Text style={styles.label}>Partner Uni</Text>
-            {/* ✅ FIX: partner_uni might be {id, name} */}
             <Text style={styles.value}>{toText(lecturer?.partner_uni?.name)}</Text>
           </View>
         </View>
@@ -148,20 +157,23 @@ const LecturerProfileScreen = ({ navigation }) => {
           <Text style={styles.cardTitle}>Teaching Overview</Text>
 
           <View style={styles.kpiRow}>
-            {/* Clickable KPI */}
+            {/* KPI 1: Active Modules (Clickable) */}
             <Pressable style={styles.kpiBox} onPress={goActiveClasses}>
               <View style={styles.kpiTopRow}>
-                <Text style={styles.kpiNumber}>{toText(teaching.activeClasses, "0")}</Text>
+                {/* ✅ Connected to API Count */}
+                <Text style={styles.kpiNumber}>{activeModulesCount}</Text>
                 <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
               </View>
-              <Text style={styles.kpiLabel}>Active Classes</Text>
+              {/* ✅ Renamed Label */}
+              <Text style={styles.kpiLabel}>Active Modules</Text>
               <Text style={styles.kpiHint}>Tap to view</Text>
             </Pressable>
 
-            {/* Static KPI */}
+            {/* KPI 2: Total Students (Static) */}
             <View style={styles.kpiBox}>
               <View style={styles.kpiTopRow}>
-                <Text style={styles.kpiNumber}>{toText(teaching.totalStudents, "0")}</Text>
+                {/* ✅ Connected to API Count */}
+                <Text style={styles.kpiNumber}>{totalStudentsCount}</Text>
               </View>
               <Text style={styles.kpiLabel}>Students</Text>
             </View>
@@ -169,13 +181,25 @@ const LecturerProfileScreen = ({ navigation }) => {
 
           <View style={styles.divider} />
 
-          {Array.isArray(teaching.modules) &&
-            teaching.modules.map((m, i) => (
-              <View key={String(i)} style={styles.moduleRow}>
+          {/* ✅ Module List from API */}
+          {activeModulesList.length > 0 ? (
+            activeModulesList.map((m, i) => (
+              <TouchableOpacity
+                key={m.id || i}
+                style={styles.moduleRow}
+                onPress={() => handleModuleTap(m)}
+                activeOpacity={0.7}
+              >
                 <Ionicons name="book-outline" size={16} color={COLORS.primary} />
-                <Text style={styles.moduleText}>{toText(m, "-")}</Text>
-              </View>
-            ))}
+                {/* ✅ Shows "Code - Name" */}
+                <Text style={styles.moduleText} numberOfLines={1}>
+                  {m.code} – {m.name}
+                </Text>
+              </TouchableOpacity>
+            ))
+          ) : (
+             <Text style={{color: COLORS.textMuted, marginTop: 5}}>No active modules.</Text>
+          )}
         </View>
 
         {/* Security */}

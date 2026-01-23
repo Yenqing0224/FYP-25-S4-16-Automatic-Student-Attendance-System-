@@ -1,5 +1,5 @@
-//src/screens/lecturer/profile/active_classes_screen.js
-import React, { useMemo, useState } from "react";
+// src/screens/lecturer/profile/active_classes_screen.js
+import React, { useMemo, useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -8,9 +8,12 @@ import {
   FlatList,
   TextInput,
   StatusBar,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { useFocusEffect } from "@react-navigation/native";
+import api from "../../../api/api_client"; // ✅ Import API
 
 const COLORS = {
   primary: "#6D5EF5",
@@ -22,88 +25,73 @@ const COLORS = {
   chipBg: "#ECE9FF",
 };
 
-const MOCK_CLASSES = [
-  {
-    id: "1",
-    moduleCode: "CSIT321",
-    moduleName: "Software Design",
-    section: "T01",
-    venue: "LT19",
-    time: "Mon 10:00–12:00",
-    students: 58,
-    status: "Active",
-  },
-  {
-    id: "2",
-    moduleCode: "CSIT314",
-    moduleName: "Agile Methods",
-    section: "T02",
-    venue: "TR+12",
-    time: "Wed 14:00–16:00",
-    students: 42,
-    status: "Active",
-  },
-  {
-    id: "3",
-    moduleCode: "CSIT998",
-    moduleName: "Capstone Lab",
-    section: "L03",
-    venue: "COM2-02-10",
-    time: "Fri 09:00–11:00",
-    students: 28,
-    status: "Active",
-  },
-];
-
 export default function LecturerActiveClassesScreen({ navigation }) {
+  const [loading, setLoading] = useState(true);
+  const [classes, setClasses] = useState([]); // ✅ Store API data here
   const [query, setQuery] = useState("");
 
+  // ✅ Fetch Data from Profile API
+  const fetchClasses = async () => {
+    try {
+      setLoading(true);
+      const res = await api.get("/profile/");
+      // The service returns the list in 'active_modules'
+      setClasses(res.data.active_modules || []);
+    } catch (err) {
+      console.error("Failed to fetch active classes:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchClasses();
+    }, [])
+  );
+
+  // ✅ Filter Logic (Updated for API fields)
   const data = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return MOCK_CLASSES;
-    return MOCK_CLASSES.filter((c) => {
-      const hay = `${c.moduleCode} ${c.moduleName} ${c.section} ${c.venue} ${c.time}`.toLowerCase();
+    if (!q) return classes;
+    return classes.filter((c) => {
+      const hay = `${c.code} ${c.name} ${c.status}`.toLowerCase();
       return hay.includes(q);
     });
-  }, [query]);
+  }, [query, classes]);
 
   const openClass = (item) => {
-    // If you already have class detail screen, navigate there:
-    // navigation.navigate("LecturerClassDetail", { classItem: item });
-    // For now, we can go back or just keep it as a placeholder.
-    navigation.navigate("LecturerClasses"); // change/remove if you don’t have this
+    // You can update this later to go to a specific detail page
+    // navigation.navigate("LecturerClassDetail", { module: item });
   };
 
   const renderItem = ({ item }) => (
-    <TouchableOpacity style={styles.card} onPress={() => openClass(item)}>
+    <TouchableOpacity style={styles.card} onPress={() => openClass(item)} activeOpacity={0.7}>
+      {/* Top Row: Code, Name & Status */}
       <View style={styles.topRow}>
         <View style={{ flex: 1 }}>
           <Text style={styles.title}>
-            {item.moduleCode} • {item.section}
+            {item.code}
           </Text>
-          <Text style={styles.subtitle}>{item.moduleName}</Text>
+          <Text style={styles.subtitle}>{item.name}</Text>
         </View>
 
         <View style={styles.statusChip}>
-          <Text style={styles.statusText}>{item.status}</Text>
+          {/* ✅ Status from API */}
+          <Text style={styles.statusText}>
+            {item.status ? item.status.charAt(0).toUpperCase() + item.status.slice(1) : "Active"}
+          </Text>
         </View>
       </View>
 
-      <View style={styles.metaRow}>
-        <View style={styles.metaItem}>
-          <Ionicons name="time-outline" size={14} color={COLORS.textMuted} />
-          <Text style={styles.metaText}>{item.time}</Text>
-        </View>
-        <View style={styles.metaItem}>
-          <Ionicons name="location-outline" size={14} color={COLORS.textMuted} />
-          <Text style={styles.metaText}>{item.venue}</Text>
-        </View>
-      </View>
+      {/* ❌ Removed Time/Venue MetaRow as requested */}
 
+      {/* Bottom Row: Students Count */}
       <View style={styles.bottomRow}>
         <View style={styles.metaItem}>
           <Ionicons name="people-outline" size={14} color={COLORS.textMuted} />
-          <Text style={styles.metaText}>{item.students} students</Text>
+          {/* ✅ Student Count from API */}
+          <Text style={styles.metaText}>{item.student_enrolled || 0} students</Text>
         </View>
 
         <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
@@ -132,25 +120,31 @@ export default function LecturerActiveClassesScreen({ navigation }) {
         <TextInput
           value={query}
           onChangeText={setQuery}
-          placeholder="Search module, venue, time..."
+          placeholder="Search module code or name..."
           placeholderTextColor={COLORS.textMuted}
           style={styles.searchInput}
         />
       </View>
 
       {/* List */}
-      <FlatList
-        data={data}
-        keyExtractor={(item) => item.id}
-        renderItem={renderItem}
-        contentContainerStyle={{ paddingBottom: 20 }}
-        ListEmptyComponent={
-          <View style={styles.emptyBox}>
-            <Text style={styles.emptyTitle}>No classes found</Text>
-            <Text style={styles.emptySub}>Try a different keyword.</Text>
-          </View>
-        }
-      />
+      {loading ? (
+        <View style={{ marginTop: 50 }}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
+        </View>
+      ) : (
+        <FlatList
+          data={data}
+          keyExtractor={(item) => String(item.id)}
+          renderItem={renderItem}
+          contentContainerStyle={{ paddingBottom: 20 }}
+          ListEmptyComponent={
+            <View style={styles.emptyBox}>
+              <Text style={styles.emptyTitle}>No active classes found</Text>
+              <Text style={styles.emptySub}>You are not teaching any active modules this semester.</Text>
+            </View>
+          }
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -213,7 +207,8 @@ const styles = StyleSheet.create({
   },
   statusText: { color: COLORS.primary, fontWeight: "900", fontSize: 12 },
 
-  metaRow: { marginTop: 10, flexDirection: "row", gap: 12, flexWrap: "wrap" },
+  // Removed metaRow style usage since we removed the Time/Venue section
+
   metaItem: { flexDirection: "row", alignItems: "center", gap: 6 },
   metaText: { color: COLORS.textMuted, fontWeight: "700" },
 
