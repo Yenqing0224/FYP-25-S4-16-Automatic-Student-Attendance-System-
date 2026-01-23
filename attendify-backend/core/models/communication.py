@@ -32,7 +32,7 @@ class News(models.Model):
         ordering = ['-news_date']
 
     def __str__(self):
-        return self.title
+        return self.title ({self.created_at})
 
 
 class Event(models.Model):
@@ -62,7 +62,7 @@ class Event(models.Model):
         ordering = ['-event_date']
 
     def __str__(self):
-        return f"{self.title} ({self.event_date.date()})"
+        return f"{self.title} ({self.event_date.date()}) [{self.status}]"
     
 
 class Announcement(models.Model):
@@ -75,4 +75,4 @@ class Announcement(models.Model):
     class Meta:
         ordering = ['-created_at'] # Newest first
     def __str__(self):
-        return f"{self.posted_by.username} - {self.title}"
+        return f"{self.posted_by.username} - {self.title} ({self.created_at})"

@@ -76,10 +76,22 @@ class Student(models.Model):
     # Attributes
     student_id = models.CharField(max_length=20, unique=True)
     programme = models.CharField(max_length=100)
-    attendance_rate = models.FloatField(default=100.0)
     attendance_threshold = models.FloatField(default=80.0)
     partner_uni = models.ForeignKey('PartnerUni', on_delete=models.SET_NULL, null=True, blank=True,related_name='students')
+    registration = models.BooleanField(default=False)
 
+    @property
+    def attendance_rate(self):
+        records = self.attendance_records.filter(session__status='completed')
+        
+        total = records.count()
+        
+        if total == 0:
+            return 100.0
+
+        present_count = records.filter(status='present').count()
+        
+        return round((present_count / total) * 100, 1)
 
     def __str__(self):
         return f"{self.user.username} ({self.student_id})"

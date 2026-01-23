@@ -35,7 +35,8 @@ class LecturerSerializer(serializers.ModelSerializer):
 class StudentSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
     partner_uni = PartnerUniSerializer(read_only=True)    
-
+    attendance_rate = serializers.FloatField(read_only=True)
+    
     class Meta:
         model = Student
         fields = '__all__'
