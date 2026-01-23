@@ -368,8 +368,6 @@ class AcademicService:
         except Student.DoesNotExist:
             raise Exception(f"Student with ID {student_id} not found.")
             
-        
-
         active_session = ClassSession.objects.filter(
             module__students=student,          
             date=time_stamp.date(),             
@@ -393,7 +391,6 @@ class AcademicService:
 
         if attendance.entry_time is None:
             attendance.entry_time = time_stamp
-            attendance.exit_time = time_stamp
             if AcademicLogic.is_valid_attendance_window(time_stamp, active_session):
                 attendance.status = 'present'
                 message = f"Entry marked for {student.user.username}"
