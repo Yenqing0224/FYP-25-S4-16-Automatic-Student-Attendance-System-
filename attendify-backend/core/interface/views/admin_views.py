@@ -67,8 +67,7 @@ def create_crud_views(model_class, serializer_class):
 @api_view(['GET'])
 @permission_classes([IsAdminUser])
 def get_student_semester_attendance(request, student_id):
-    service = AdminService()
-    data = service.get_student_semester_attendance(student_id)
+    data = AdminService.get_student_semester_attendance(student_id)
     
     if data is None:
         return Response({"error": "Student not found"}, status=404)

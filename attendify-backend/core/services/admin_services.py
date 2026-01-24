@@ -47,7 +47,8 @@ class AdminService:
             return serializer.data, None
         return None, serializer.errors
     
-
+    
+    @staticmethod
     def get_student_semester_attendance(student_id):
         try:
             student = Student.objects.get(student_id=student_id)
