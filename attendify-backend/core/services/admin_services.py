@@ -1,4 +1,5 @@
 from core.logic.admin_logics import AdminLogic
+from core.models import *
 
 class AdminService:
 
@@ -45,3 +46,44 @@ class AdminService:
             serializer.save()
             return serializer.data, None
         return None, serializer.errors
+    
+
+    def get_student_semester_attendance(student_id):
+        try:
+            student = Student.objects.get(student_id=student_id)
+        except Student.DoesNotExist:
+            return None
+
+        semesters = Semester.objects.all().order_by('-start_date')
+        results = []
+
+        for sem in semesters:
+            records = AttendanceRecord.objects.filter(
+                student=student,
+                session__module__semester=sem,
+                session__status='completed'
+            )
+
+            total_sessions = records.count()
+            present_count = records.filter(status='present').count()
+            on_leave_count = records.filter(status='on_leave').count()
+
+            effective_total = total_sessions - on_leave_count
+            
+            attendance_rate = "-"
+            
+            if effective_total > 0:
+                rate = (present_count / effective_total) * 100
+                attendance_rate = f"{round(rate, 2)}%"
+            elif total_sessions > 0 and effective_total == 0:
+                attendance_rate = "On Leave"
+
+            results.append({
+                "id": sem.id,
+                "name": sem.name,
+                "start_date": sem.start_date,
+                "end_date": sem.end_date,
+                "attendance_rate": attendance_rate
+            })
+
+        return results

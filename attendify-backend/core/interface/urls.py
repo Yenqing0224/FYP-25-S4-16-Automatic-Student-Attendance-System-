@@ -43,6 +43,8 @@ urlpatterns = [
 
 
     # Admin
+    # Custom
+    path('admin/semester-attendance/<str:student_id>/', admin_views.get_student_semester_attendance, name='student-semester-attendance'),
     # Users
     path('admin/crud/users/', admin_views.users_list, name='crud-users-list'),
     path('admin/crud/users/<int:pk>/', admin_views.users_detail, name='crud-users-detail'),
