@@ -1,4 +1,4 @@
-//src/screens/student/newsevent/announcement_detail_screen.js
+// src/screens/student/newsevent/announcement_detail_screen.js
 import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, StatusBar } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -13,8 +13,21 @@ const COLORS = {
   border: "#E5E7EB",
 };
 
+// ✅ Local helper (no shared import)
+const toText = (v, fallback = "-") => {
+  if (v == null) return fallback;
+  if (typeof v === "string" || typeof v === "number" || typeof v === "boolean") return String(v);
+  if (Array.isArray(v)) return v.map((x) => toText(x, "")).filter(Boolean).join(", ") || fallback;
+  if (typeof v === "object") return String(v.name ?? v.code ?? v.title ?? v.label ?? v.id ?? fallback);
+  return fallback;
+};
+
 export default function StudentAnnouncementDetailScreen({ route, navigation }) {
-  const announcement = route.params?.announcement;
+  const announcement = route.params?.announcement || {};
+
+  const title = toText(announcement?.title, "No title");
+  const dateLabel = toText(announcement?.dateLabel ?? announcement?.date, "");
+  const body = toText(announcement?.body ?? announcement?.desc, "No details.");
 
   return (
     <SafeAreaView style={styles.container}>
@@ -30,12 +43,10 @@ export default function StudentAnnouncementDetailScreen({ route, navigation }) {
 
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.card}>
-          <Text style={styles.title}>{announcement?.title || "No title"}</Text>
-          <Text style={styles.date}>{announcement?.dateLabel || announcement?.date || ""}</Text>
+          <Text style={styles.title}>{title}</Text>
+          {!!dateLabel && <Text style={styles.date}>{dateLabel}</Text>}
           <View style={styles.divider} />
-          <Text style={styles.body}>
-            {announcement?.body || announcement?.desc || "No details."}
-          </Text>
+          <Text style={styles.body}>{body}</Text>
         </View>
       </ScrollView>
     </SafeAreaView>

@@ -32,7 +32,6 @@ class User(AbstractUser):
     image_url = models.CharField(max_length=500, blank=True, null=True)
     role_type = models.CharField(max_length=10, choices=ROLE_CHOICES)
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='active')
-    face_embedding_512 = VectorField(dimensions=512, null=True, blank=True)
 
     def save(self, *args, **kwargs):
         if self.is_superuser:
@@ -77,10 +76,24 @@ class Student(models.Model):
     # Attributes
     student_id = models.CharField(max_length=20, unique=True)
     programme = models.CharField(max_length=100)
-    attendance_rate = models.FloatField(default=100.0)
     attendance_threshold = models.FloatField(default=80.0)
     partner_uni = models.ForeignKey('PartnerUni', on_delete=models.SET_NULL, null=True, blank=True,related_name='students')
+    registration = models.BooleanField(default=False)
 
+    @property
+    def attendance_rate(self):
+        records = self.attendance_records.filter(session__status='completed')
+        
+        total_present = records.filter(status='present').count()
+        total_on_leave = records.filter(status='on_leave').count()
+        total_sessions = records.count()
+        
+        effective_total = total_sessions - total_on_leave
+        
+        if effective_total <= 0:
+            return 100.0 
+            
+        return round((total_present / effective_total) * 100, 1)
 
     def __str__(self):
         return f"{self.user.username} ({self.student_id})"

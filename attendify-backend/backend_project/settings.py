@@ -13,6 +13,8 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 from pathlib import Path
 import dj_database_url
 import os
+from corsheaders.defaults import default_headers
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -172,11 +174,12 @@ CORS_ALLOWED_ORIGINS = [
     'http://localhost:8899',
     'http://127.0.0.1:8899',
     'https://attendify-app.netlify.app',
+    'https://hoppscotch.io',
 ]
 
 
 CORS_ALLOWED_ORIGIN_REGEXES = [
-    r"^https://.*--attendify-app\.netlify\.app$",
+    r"^https://.*\.netlify\.app$",
 ]
 
 
@@ -185,18 +188,20 @@ SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SAMESITE = 'None'
 CSRF_COOKIE_SECURE = True
 
-CORS_ALLOW_HEADERS = [
-    'accept',
-    'accept-encoding',
-    'authorization',
-    'content-type',
-    'dnt',
-    'origin',
-    'user-agent',
-    'x-csrftoken',
-    'x-requested-with',
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+]
+CORS_ALLOW_HEADERS = list(default_headers) + [
+    'content-language',
+    'clientid',
 ]
 
 CSRF_TRUSTED_ORIGINS = [
     "https://attendify-app.netlify.app",
+    "https://*.netlify.app",
 ]

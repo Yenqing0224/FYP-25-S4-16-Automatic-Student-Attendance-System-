@@ -7,7 +7,7 @@ class AcademicLogic:
     def get_upcoming_class_window():
         local_now = timezone.localtime(timezone.now())
         start_range = local_now
-        end_range = local_now + timedelta(minutes=30)
+        end_range = local_now + timedelta(minutes=40)
         target_date = start_range.date()
         
         return target_date, start_range.time(), end_range.time()
@@ -40,3 +40,16 @@ class AcademicLogic:
             return 'in_progress'
         else:
             return 'completed'
+        
+
+    @staticmethod
+    def is_valid_attendance_window(current_time, session):
+        session_start_dt = datetime.combine(session.date, session.start_time)
+
+        if timezone.is_aware(current_time):
+            session_start_dt = timezone.make_aware(session_start_dt)
+
+        earliest_allowed = session_start_dt - timedelta(minutes=30)
+        latest_allowed = session_start_dt + timedelta(minutes=30)
+
+        return earliest_allowed <= current_time <= latest_allowed

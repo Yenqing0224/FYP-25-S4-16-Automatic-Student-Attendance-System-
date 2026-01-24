@@ -1,5 +1,10 @@
 from rest_framework import serializers
-from core.models import User, Admin, Lecturer, Student
+from core.models import User, Admin, Lecturer, Student, PartnerUni
+
+class PartnerUniSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PartnerUni
+        fields = '__all__'
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -20,7 +25,7 @@ class AdminSerializer(serializers.ModelSerializer):
 
 class LecturerSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
-    partner_uni = serializers.CharField(source='partner_uni.name', read_only=True)
+    partner_uni = PartnerUniSerializer(read_only=True)    
 
     class Meta:
         model = Lecturer
@@ -29,7 +34,8 @@ class LecturerSerializer(serializers.ModelSerializer):
 
 class StudentSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
-    partner_uni = serializers.CharField(source='partner_uni.name', read_only=True)
+    partner_uni = PartnerUniSerializer(read_only=True)    
+    attendance_rate = serializers.FloatField(read_only=True)
     
     class Meta:
         model = Student

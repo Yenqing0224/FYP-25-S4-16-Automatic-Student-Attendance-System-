@@ -1,13 +1,6 @@
-import React, { useEffect, useMemo, useState, useCallback } from "react";
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
-  StatusBar, 
-  Alert, 
-  ActivityIndicator 
-} from "react-native";
+// src/screens/lecturer/sessions/sessions_screen.js
+import React, { useMemo, useState, useCallback, useEffect } from "react";
+import { View, Text, StyleSheet, TouchableOpacity, StatusBar, Alert, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as Calendar from "expo-calendar";
@@ -16,8 +9,9 @@ import { useFocusEffect } from "@react-navigation/native";
 
 import UpcomingTab from "./tabs/upcoming_tab";
 import PastTab from "./tabs/past_tab";
+import RescheduledTab from "./tabs/rescheduled_tab";
 import CalendarTab from "./tabs/calendar_tab";
-import api from "../../../api/api_client"; 
+import api from "../../../api/api_client";
 
 const COLORS = {
   primary: "#6D5EF5",
@@ -30,47 +24,114 @@ const COLORS = {
 };
 
 const REMINDER_KEY = "lecturerReminderIds_v1";
+const RESCHEDULE_HISTORY_KEY = "lecturerRescheduleHistory_v1";
+const RESCHEDULE_OVERRIDES_KEY = "lecturerRescheduleOverrides_v1";
+
+/** ✅ Always derive date + time from ISO so fields never mismatch */
+const deriveFieldsFromISO = (c) => {
+  const startISO = String(c?.startISO ?? "");
+  const endISO = String(c?.endISO ?? "");
+
+  const date = startISO.includes("T") ? startISO.split("T")[0] : String(c?.date ?? "");
+  const startTime = startISO.length >= 16 ? startISO.slice(11, 16) : "";
+  const endTime = endISO.length >= 16 ? endISO.slice(11, 16) : "";
+
+  return {
+    ...c,
+    date,
+    time: startTime && endTime ? `${startTime} – ${endTime}` : (c?.time ?? "-"),
+  };
+};
+
+/** ✅ Dedup same id; keep rescheduled if exists; else best venue */
+const dedupeByIdPreferRescheduled = (arr = []) => {
+  const map = new Map();
+
+  for (const item of arr) {
+    const id = String(item?.id ?? item?._id ?? "");
+    if (!id) continue;
+
+    const existing = map.get(id);
+    if (!existing) {
+      map.set(id, item);
+      continue;
+    }
+
+    const a = String(existing?.status ?? "").toLowerCase();
+    const b = String(item?.status ?? "").toLowerCase();
+
+    // Prefer rescheduled over active
+    if (a !== "rescheduled" && b === "rescheduled") {
+      map.set(id, item);
+      continue;
+    }
+    if (a === "rescheduled" && b !== "rescheduled") {
+      continue;
+    }
+
+    // If both same status, prefer better venue (not empty, not TBA)
+    const exVenue = String(existing?.venue ?? "").trim();
+    const itVenue = String(item?.venue ?? "").trim();
+    const exScore = exVenue && exVenue !== "TBA" ? 1 : 0;
+    const itScore = itVenue && itVenue !== "TBA" ? 1 : 0;
+
+    if (itScore > exScore) map.set(id, item);
+  }
+
+  return Array.from(map.values());
+};
+// ✅ ADD this helper near top (below your other helpers)
+const dedupePreferRescheduledBySignature = (arr = []) => {
+  const map = new Map();
+
+  const sig = (x) => {
+    const module = String(x?.module ?? "");
+    const title = String(x?.title ?? "");
+    const start = String(x?.startISO ?? "").slice(0, 16); // yyyy-mm-ddThh:mm
+    return `${module}|${title}|${start}`;
+  };
+
+  for (const item of arr) {
+    const key = sig(item);
+    if (!key) continue;
+
+    const existing = map.get(key);
+    if (!existing) {
+      map.set(key, item);
+      continue;
+    }
+
+    const a = String(existing?.status ?? "").toLowerCase();
+    const b = String(item?.status ?? "").toLowerCase();
+
+    // ✅ prefer rescheduled
+    if (a !== "rescheduled" && b === "rescheduled") map.set(key, item);
+  }
+
+  return Array.from(map.values());
+};
+
 
 const LecturerSessionsScreen = ({ navigation, route }) => {
   const [activeTab, setActiveTab] = useState("Upcoming");
   const [selectedDate, setSelectedDate] = useState(null);
-  
-  // Data State
+
   const [fullTimetable, setFullTimetable] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Calendar Logic State
   const [savedReminderIds, setSavedReminderIds] = useState(new Set());
   const [savingId, setSavingId] = useState(null);
 
-  // 1. Handle "Jump" from Home Screen
-  useFocusEffect(
-    useCallback(() => {
-      // If Home passed a specific tab (e.g. "Upcoming")
-      if (route.params?.tab) {
-        setActiveTab(route.params.tab);
-        navigation.setParams({ tab: null });
-      }
-      // If Home passed a date (e.g. "2026-01-17")
-      if (route.params?.targetDate) {
-        setActiveTab("Calendar");
-        const iso = route.params.targetDate;
-        const datePart = iso.includes("T") ? iso.split("T")[0] : iso;
-        setSelectedDate(datePart);
-        navigation.setParams({ targetDate: null });
-      }
-    }, [route.params?.tab, route.params?.targetDate])
-  );
+  const [rescheduleHistory, setRescheduleHistory] = useState([]);
+  const [overrides, setOverrides] = useState({});
 
-  // Set default selected date
   useEffect(() => {
     if (!selectedDate) {
       const sgTime = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Singapore" });
-      setSelectedDate(sgTime); 
+      setSelectedDate(sgTime);
     }
   }, [selectedDate]);
 
-  // Load Reminders
   useEffect(() => {
     (async () => {
       try {
@@ -79,59 +140,121 @@ const LecturerSessionsScreen = ({ navigation, route }) => {
           const arr = JSON.parse(raw);
           if (Array.isArray(arr)) setSavedReminderIds(new Set(arr));
         }
-      } catch (e) {
-        console.error("Failed to load reminder ids", e);
-      }
+      } catch { }
     })();
   }, []);
 
-  // Fetch Timetable on Focus
-  useFocusEffect(
-    useCallback(() => {
-      fetchTimetable();
-    }, [])
-  );
-
   const fetchTimetable = async () => {
+    setLoading(true);
     try {
       const res = await api.get("/timetable/");
-      const rawData = res.data;
+      const rawData = Array.isArray(res.data) ? res.data : [];
 
-      const formatted = rawData.map((c) => ({
-        id: String(c.id),
-        module: c.module?.code || "MOD",
-        title: c.module?.name || "Class",
-        venue: c.venue || "TBA",
-        time: `${c.start_time.slice(0,5)} – ${c.end_time.slice(0,5)}`,
-        startISO: `${c.date}T${c.start_time}`, 
-        endISO: `${c.date}T${c.end_time}`,
-        date: c.date, 
-      }));
+      const formatted = rawData.map((c) => {
+        const base = {
+          id: String(c.id),
+          module: c.module?.code ?? c.module?.name ?? c.module ?? "MOD",
+          title: c.module?.name ?? c.title ?? "Class",
+          venue: c.venue ?? "TBA",
+          startISO: `${c.date}T${c.start_time}`,
+          endISO: `${c.date}T${c.end_time}`,
+          status: (c.status ?? "active").toLowerCase(),
+        };
+        return deriveFieldsFromISO(base);
+      });
 
       setFullTimetable(formatted);
     } catch (err) {
       console.error("Timetable Fetch Error:", err);
+      Alert.alert("Error", "Could not load timetable.");
     } finally {
       setLoading(false);
     }
   };
 
-  // --- Derived Lists ---
+  const loadHistory = async () => {
+    try {
+      const raw = await AsyncStorage.getItem(RESCHEDULE_HISTORY_KEY);
+      const arr = raw ? JSON.parse(raw) : [];
+      setRescheduleHistory(Array.isArray(arr) ? arr : []);
+    } catch {
+      setRescheduleHistory([]);
+    }
+  };
+
+  const loadOverrides = async () => {
+    try {
+      const raw = await AsyncStorage.getItem(RESCHEDULE_OVERRIDES_KEY);
+      const obj = raw ? JSON.parse(raw) : {};
+      setOverrides(obj && typeof obj === "object" ? obj : {});
+    } catch {
+      setOverrides({});
+    }
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      if (route.params?.tab) {
+        setActiveTab(route.params.tab);
+        navigation.setParams({ tab: null });
+      }
+
+      if (route.params?.targetDate) {
+        setActiveTab("Calendar");
+        const iso = route.params.targetDate;
+        const datePart = iso.includes("T") ? iso.split("T")[0] : iso;
+        setSelectedDate(datePart);
+        navigation.setParams({ targetDate: null });
+      }
+
+      fetchTimetable();
+      loadHistory();
+      loadOverrides();
+
+      if (route.params?.refreshKey) navigation.setParams({ refreshKey: null });
+    }, [route.params?.tab, route.params?.targetDate, route.params?.refreshKey])
+  );
+
+
+  const mergedTimetable = useMemo(() => {
+    const merged = (fullTimetable || []).map((c) => {
+      const o = overrides?.[String(c.id)];
+      if (!o) return c;
+
+      const mergedOne = {
+        ...c,
+        ...o,
+        id: String(c.id),
+        status: "rescheduled",
+      };
+
+      return deriveFieldsFromISO(mergedOne);
+    });
+
+    // ✅ 1) dedupe by id
+    const byId = dedupeByIdPreferRescheduled(merged);
+
+    // ✅ 2) dedupe by signature (kills “Upcoming + Rescheduled duplicate”)
+    return dedupePreferRescheduledBySignature(byId);
+  }, [fullTimetable, overrides]);
+
   const upcoming = useMemo(() => {
-    const now = new Date();
-    return fullTimetable
-      .filter((c) => new Date(c.startISO) >= now)
+    const now = Date.now();
+    return mergedTimetable
+      .filter((c) => c.status !== "cancelled")
+      .filter((c) => new Date(c.startISO).getTime() >= now)
       .sort((a, b) => new Date(a.startISO) - new Date(b.startISO));
-  }, [fullTimetable]);
+  }, [mergedTimetable]);
 
   const past = useMemo(() => {
-    const now = new Date();
-    return fullTimetable
-      .filter((c) => new Date(c.startISO) < now)
-      .sort((a, b) => new Date(b.startISO) - new Date(a.startISO)); 
-  }, [fullTimetable]);
+    const now = Date.now();
+    return mergedTimetable
+      .filter((c) => c.status !== "cancelled")
+      .filter((c) => new Date(c.endISO).getTime() < now)
+      .sort((a, b) => new Date(b.startISO) - new Date(a.startISO));
+  }, [mergedTimetable]);
 
-  // --- Reminder Logic ---
+  // Reminder tracking
   const reminderIdFor = (cls) => `${cls.module}|${cls.startISO}|${cls.venue}`;
   const isAdded = (cls) => savedReminderIds.has(reminderIdFor(cls));
   const isSavingThis = (cls) => savingId === reminderIdFor(cls);
@@ -142,26 +265,16 @@ const LecturerSessionsScreen = ({ navigation, route }) => {
 
   const addReminderToCalendar = async (cls) => {
     const rid = reminderIdFor(cls);
-    if (savedReminderIds.has(rid)) {
-      Alert.alert("Already added", "This reminder is already tracked.");
-      return;
-    }
+    if (savedReminderIds.has(rid)) return;
 
     setSavingId(rid);
     try {
       const { status } = await Calendar.requestCalendarPermissionsAsync();
-      if (status !== "granted") {
-        Alert.alert("Permission needed", "Please allow Calendar access to add reminders.");
-        return;
-      }
+      if (status !== "granted") return;
 
       const calendars = await Calendar.getCalendarsAsync(Calendar.EntityTypes.EVENT);
       const defaultCal = calendars.find((c) => c.allowsModifications) || calendars[0];
-
-      if (!defaultCal) {
-        Alert.alert("No calendar found", "Please enable a calendar on your device.");
-        return;
-      }
+      if (!defaultCal) return;
 
       await Calendar.createEventAsync(defaultCal.id, {
         title: `${cls.module} - ${cls.title}`,
@@ -176,8 +289,6 @@ const LecturerSessionsScreen = ({ navigation, route }) => {
       next.add(rid);
       setSavedReminderIds(next);
       await persistReminderIds(next);
-
-      Alert.alert("Done", "Reminder added to your calendar.");
     } catch (e) {
       console.error(e);
       Alert.alert("Error", "Could not add reminder.");
@@ -188,61 +299,45 @@ const LecturerSessionsScreen = ({ navigation, route }) => {
 
   const removeReminderTracking = async (cls) => {
     const rid = reminderIdFor(cls);
-    Alert.alert(
-      "Remove reminder?",
-      "This removes it from Attendify tracking. You can delete the calendar event in your Calendar app.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Remove",
-          style: "destructive",
-          onPress: async () => {
-            const next = new Set(savedReminderIds);
-            next.delete(rid);
-            setSavedReminderIds(next);
-            await persistReminderIds(next);
-          },
+    Alert.alert("Remove reminder?", "This removes it from Attendify tracking.", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Remove",
+        style: "destructive",
+        onPress: async () => {
+          const next = new Set(savedReminderIds);
+          next.delete(rid);
+          setSavedReminderIds(next);
+          await persistReminderIds(next);
         },
-      ]
-    );
+      },
+    ]);
   };
 
-  const remindersAddedTodayCount = useMemo(() => {
-    let count = 0;
-    const now = new Date();
-    upcoming.forEach((cls) => {
-      if (isAdded(cls)) {
-         const d = new Date(cls.startISO);
-         if(d.getDate() === now.getDate()) count++;
-      }
-    });
-    return count;
-  }, [upcoming, savedReminderIds]);
-
   if (loading) {
-     return (
-        <SafeAreaView style={[styles.container, {justifyContent: 'center', alignItems: 'center'}]}>
-             <ActivityIndicator size="large" color={COLORS.primary} />
-        </SafeAreaView>
-     )
+    return (
+      <SafeAreaView style={[styles.container, { justifyContent: "center", alignItems: "center" }]}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+      </SafeAreaView>
+    );
   }
+
+  const tabs = ["Upcoming", "Past", "Rescheduled", "Calendar"];
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
 
-      {/* Header */}
       <View style={styles.headerRow}>
         <Text style={styles.headerTitle}>Sessions</Text>
         <View style={styles.badgePill}>
-          <Ionicons name="bookmark" size={14} color={COLORS.primary} />
-          <Text style={styles.badgeText}>{remindersAddedTodayCount} added today</Text>
+          <Ionicons name="calendar-outline" size={14} color={COLORS.primary} />
+          <Text style={styles.badgeText}>{upcoming.length} upcoming</Text>
         </View>
       </View>
 
-      {/* Tabs */}
       <View style={styles.tabRow}>
-        {["Upcoming", "Past", "Calendar"].map((t) => (
+        {tabs.map((t) => (
           <TouchableOpacity
             key={t}
             style={[styles.tab, activeTab === t && styles.tabActive]}
@@ -253,7 +348,6 @@ const LecturerSessionsScreen = ({ navigation, route }) => {
         ))}
       </View>
 
-      {/* Content */}
       {activeTab === "Upcoming" && (
         <UpcomingTab
           COLORS={COLORS}
@@ -276,17 +370,18 @@ const LecturerSessionsScreen = ({ navigation, route }) => {
         />
       )}
 
+      {activeTab === "Rescheduled" && <RescheduledTab COLORS={COLORS} navigation={navigation} list={rescheduleHistory} />}
+
       {activeTab === "Calendar" && (
         <CalendarTab
           COLORS={COLORS}
           navigation={navigation}
-          upcoming={fullTimetable} 
+          sessions={mergedTimetable}
           selectedDate={selectedDate}
           setSelectedDate={setSelectedDate}
           isAdded={isAdded}
           isSavingThis={isSavingThis}
           addReminderToCalendar={addReminderToCalendar}
-          removeReminderTracking={removeReminderTracking}
         />
       )}
     </SafeAreaView>
@@ -295,18 +390,12 @@ const LecturerSessionsScreen = ({ navigation, route }) => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
-  headerRow: {
-    paddingHorizontal: 20, paddingTop: 14, paddingBottom: 10,
-    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
-  },
+  headerRow: { paddingHorizontal: 20, paddingTop: 14, paddingBottom: 10, flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   headerTitle: { fontSize: 22, fontWeight: "900", color: COLORS.textDark },
-  badgePill: {
-    flexDirection: "row", alignItems: "center", gap: 6,
-    paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, backgroundColor: COLORS.soft,
-  },
+  badgePill: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, backgroundColor: COLORS.soft },
   badgeText: { fontWeight: "900", color: COLORS.primary, fontSize: 12 },
-  tabRow: { flexDirection: "row", paddingHorizontal: 20, gap: 10, marginBottom: 8 },
-  tab: { flex: 1, paddingVertical: 10, borderRadius: 14, backgroundColor: COLORS.soft, alignItems: "center" },
+  tabRow: { flexDirection: "row", paddingHorizontal: 20, gap: 10, marginBottom: 8, flexWrap: "wrap" },
+  tab: { paddingVertical: 10, paddingHorizontal: 14, borderRadius: 14, backgroundColor: COLORS.soft, alignItems: "center" },
   tabActive: { backgroundColor: COLORS.primary },
   tabText: { fontWeight: "800", color: COLORS.primary },
   tabTextActive: { color: "#fff" },

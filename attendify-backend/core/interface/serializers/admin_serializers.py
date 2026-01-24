@@ -64,13 +64,27 @@ class AdminSemesterSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class AdminModuleSerializer(serializers.ModelSerializer):
+    student_enrolled = serializers.IntegerField(read_only=True)
+    average_attendance = serializers.FloatField(read_only=True)
+
     class Meta:
         model = Module
         fields = '__all__'
 
 class AdminClassSessionSerializer(serializers.ModelSerializer):
+    total_students = serializers.IntegerField(read_only=True)
+    present_students = serializers.IntegerField(read_only=True)
+    absent_students = serializers.IntegerField(read_only=True)
+    on_leave_students = serializers.IntegerField(read_only=True)
+    attendance_rate = serializers.FloatField(read_only=True)
+
     class Meta:
         model = ClassSession
+        fields = '__all__'
+
+class AdminClassRoomSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ClassRoom
         fields = '__all__'
 
 class AdminAttendanceRecordSerializer(serializers.ModelSerializer):

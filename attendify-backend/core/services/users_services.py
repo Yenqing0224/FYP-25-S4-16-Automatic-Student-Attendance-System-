@@ -1,6 +1,8 @@
 from django.core.exceptions import ObjectDoesNotExist
 from core.logic.users_logics import UserLogic
-from core.models import Student, Lecturer
+from core.models import Student, Lecturer, Module
+from django.utils import timezone
+from django.db.models import Count
 
 
 class UserService:
@@ -9,7 +11,24 @@ class UserService:
         if user.role_type == 'student':
             return Student.objects.get(user=user)    
         elif user.role_type == 'lecturer':
-            return Lecturer.objects.get(user=user)
+            lecturer = Lecturer.objects.get(user=user)
+            today = timezone.localtime(timezone.now()).date()
+            active_modules = Module.objects.filter(
+                lecturer=lecturer,
+                status='active',
+                semester__start_date__lte=today,
+                semester__end_date__gte=today
+            ).annotate(student_enrolled=Count('students'))
+
+            total_students = active_modules.aggregate(
+                total=Count('students')
+            )['total'] or 0
+
+            lecturer.active_modules = active_modules
+            lecturer.active_modules_count = active_modules.count()
+            lecturer.total_students = total_students
+
+            return lecturer
         else:
             raise ValueError(f"No profile defined for role: {user.role_type}")
         

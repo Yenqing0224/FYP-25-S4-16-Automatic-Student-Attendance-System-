@@ -1,3 +1,4 @@
+// mobile-app/src/screens/student/notifications/notifications_detail_screen.js
 import React from 'react';
 import {
   View,

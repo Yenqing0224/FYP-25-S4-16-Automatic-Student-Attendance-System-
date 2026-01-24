@@ -1,26 +1,61 @@
+
+//  src/screens/lecturer/sessions/tabs/past_tab.js
+
+
 import React from "react";
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from "react-native";
 import { Swipeable } from "react-native-gesture-handler";
 import { Ionicons } from "@expo/vector-icons";
 
-const PastTab = ({
-  COLORS,
-  navigation,
-  list,
-  isAdded,
-  removeReminderTracking,
-}) => {
+const PastTab = ({ COLORS, navigation, list = [], isAdded, removeReminderTracking }) => {
+  const toText = (v, fallback = "-") => {
+    if (v == null) return fallback;
+    if (typeof v === "string" || typeof v === "number") return String(v);
+    if (typeof v === "object") {
+      if (v.name != null) return String(v.name);
+      if (v.title != null) return String(v.title);
+      if (v.label != null) return String(v.label);
+      if (v.code != null) return String(v.code);
+      if (v.id != null) return String(v.id);
+      if (v._id != null) return String(v._id);
+      return fallback;
+    }
+    return fallback;
+  };
+
+  const safeKey = (s, idx) => {
+    const raw = s?.id ?? s?._id;
+    if (typeof raw === "string" || typeof raw === "number") return String(raw);
+    if (raw && typeof raw === "object") {
+      if (raw.id != null) return String(raw.id);
+      if (raw._id != null) return String(raw._id);
+      if (raw.name != null) return String(raw.name);
+    }
+    return `past-${toText(s?.module, "m")}-${toText(s?.startISO, idx)}-${idx}`;
+  };
+
   const renderRightActions = (cls) => (
-    <TouchableOpacity style={styles.swipeDelete} onPress={() => removeReminderTracking(cls)}>
+    <TouchableOpacity style={styles.swipeDelete} onPress={() => removeReminderTracking?.(cls)}>
       <Ionicons name="trash-outline" size={18} color="#fff" />
       <Text style={styles.swipeDeleteText}>Remove</Text>
     </TouchableOpacity>
   );
 
-  const formatDate = (dateStr) => {
-    if (!dateStr) return "";
-    const d = new Date(dateStr);
-    return d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+  const formatDate = (dateVal) => {
+    const dateStr = toText(dateVal, "");
+    if (!dateStr) return "-";
+    if (dateStr.includes("-") && dateStr.length >= 10) {
+      const [y, m, d] = dateStr.slice(0, 10).split("-");
+      const dt = new Date(Number(y), Number(m) - 1, Number(d));
+      if (!isNaN(dt.getTime())) {
+        return dt.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+      }
+    }
+    const dt = new Date(dateStr);
+    if (!isNaN(dt.getTime())) {
+      return dt.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+    }
+    return "-";
   };
 
   return (
@@ -32,7 +67,13 @@ const PastTab = ({
           <Text style={styles.emptySub}>Your completed sessions will appear here.</Text>
         </View>
       ) : (
-        list.map((s) => {
+        list.map((s, idx) => {
+          const moduleText = toText(s?.module, "-");
+          const titleText = toText(s?.title, "Session");
+          const timeText = toText(s?.time, "-");
+          const venueText = toText(s?.venue, "-");
+          const dateText = formatDate(s?.date);
+
           const card = (
             <TouchableOpacity
               activeOpacity={0.9}
@@ -41,28 +82,27 @@ const PastTab = ({
             >
               <View style={styles.sessionTop}>
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.module, { color: COLORS.primary }]}>{s.module}</Text>
-                  <Text style={styles.sessionTitle}>{s.title}</Text>
+                  <Text style={[styles.module, { color: COLORS.primary }]}>{moduleText}</Text>
+                  <Text style={styles.sessionTitle}>{titleText}</Text>
                 </View>
                 <View style={styles.statusPill}>
                   <Text style={[styles.statusText, { color: COLORS.primary }]}>Completed</Text>
                 </View>
               </View>
 
-              {/* Date Row */}
               <View style={styles.metaRow}>
                 <Ionicons name="calendar-outline" size={16} color={COLORS.textMuted} />
-                <Text style={styles.metaText}>{formatDate(s.date)}</Text>
+                <Text style={styles.metaText}>{dateText}</Text>
               </View>
 
               <View style={styles.metaRow}>
                 <Ionicons name="time-outline" size={16} color={COLORS.textMuted} />
-                <Text style={styles.metaText}>{s.time}</Text>
+                <Text style={styles.metaText}>{timeText}</Text>
               </View>
 
               <View style={styles.metaRow}>
                 <Ionicons name="location-outline" size={16} color={COLORS.textMuted} />
-                <Text style={styles.metaText}>{s.venue}</Text>
+                <Text style={styles.metaText}>{venueText}</Text>
               </View>
 
               <View style={styles.actionsRow}>
@@ -76,14 +116,13 @@ const PastTab = ({
                 </View>
               </View>
 
-              {isAdded(s) && (
+              {isAdded?.(s) && (
                 <View style={styles.swipeHintRow}>
                   <Ionicons name="arrow-back-outline" size={14} color={COLORS.textMuted} />
                   <Text style={styles.swipeHintText}>Swipe left to remove</Text>
                 </View>
               )}
 
-              {/* Tap Hint */}
               <View style={styles.tapHintRow}>
                 <Ionicons name="hand-left-outline" size={14} color={COLORS.textMuted} />
                 <Text style={styles.tapHintText}>Tap card for details</Text>
@@ -94,8 +133,8 @@ const PastTab = ({
 
           return (
             <Swipeable
-              key={s.id}
-              enabled={isAdded(s)}
+              key={safeKey(s, idx)}
+              enabled={!!isAdded?.(s)}
               renderRightActions={() => renderRightActions(s)}
               overshootRight={false}
             >

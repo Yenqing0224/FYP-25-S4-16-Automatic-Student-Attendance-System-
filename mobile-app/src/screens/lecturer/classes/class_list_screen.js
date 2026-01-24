@@ -1,16 +1,18 @@
+// src/screens/lecturer/classes/class_list_screen.js
 import React, { useEffect, useState } from "react";
-import { 
-  View, 
-  Text, 
-  TouchableOpacity, 
-  StyleSheet, 
-  ScrollView, 
-  StatusBar, 
-  ActivityIndicator 
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  ScrollView,
+  StatusBar,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import api from "../../../api/api_client"; 
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import api from "../../../api/api_client";
 
 const COLORS = {
   primary: "#6D5EF5",
@@ -22,43 +24,89 @@ const COLORS = {
   soft: "#ECE9FF",
 };
 
+const RESCHEDULE_OVERRIDES_KEY = "lecturerRescheduleOverrides_v1";
+
+/* ✅ NEW: module color palette + mapper */
+const MODULE_COLORS = [
+  "#6D5EF5", // purple
+  "#10B981", // green
+  "#F59E0B", // amber
+  "#EF4444", // red
+  "#3B82F6", // blue
+  "#EC4899", // pink
+  "#14B8A6", // teal
+  "#8B5CF6", // violet
+];
+
+const getModuleColor = (moduleName = "") => {
+  const str = String(moduleName || "");
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return MODULE_COLORS[Math.abs(hash) % MODULE_COLORS.length];
+};
+
 const LecturerClassListScreen = ({ route, navigation }) => {
-  const mode = route.params?.mode || "today"; 
-  const passedClasses = route.params?.classes; 
-  
+  const mode = route.params?.mode || "today";
+  const passedClasses = route.params?.classes;
+
   const [loading, setLoading] = useState(false);
   const [classes, setClasses] = useState([]);
+  const [overrides, setOverrides] = useState({});
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const raw = await AsyncStorage.getItem(RESCHEDULE_OVERRIDES_KEY);
+        const obj = raw ? JSON.parse(raw) : {};
+        setOverrides(obj && typeof obj === "object" ? obj : {});
+      } catch {
+        setOverrides({});
+      }
+    })();
+  }, []);
 
   useEffect(() => {
     if (passedClasses && Array.isArray(passedClasses)) {
-        processData(passedClasses);
-    } else {
-        setLoading(true);
-        fetchClasses();
+      processData(passedClasses);
+      return;
     }
-  }, [passedClasses]);
+
+    setLoading(true);
+    fetchClasses();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [overrides]); // ✅ re-process after overrides loaded
 
   const processData = (rawData) => {
-      const formatted = rawData.map((c) => ({
-        id: c.id,
-        module: c.module?.code || "MOD",
-        title: c.module?.name || "Class",
-        venue: c.venue || "TBA",
-        date: c.date,
-        isToday: isDateToday(c.date),
-        fullDate: formatDate(c.date),
-        time: `${formatTime(c.start_time)} – ${formatTime(c.end_time)}`,
-        startISO: `${c.date}T${c.start_time}`,
-        endISO: `${c.date}T${c.end_time}`,
-      }));
+    const formatted = rawData.map((c) => ({
+      id: String(c.id),
+      module: c.module?.code || c.module?.name || c.module || "MOD",
+      title: c.module?.name || c.title || "Class",
+      venue: c.venue?.name || c.venue || "TBA",
+      date: c.date,
+      status: (c.status || "active").toLowerCase(),
+      isToday: isDateToday(c.date),
+      fullDate: formatDate(c.date),
+      time: `${formatTime(c.start_time)} – ${formatTime(c.end_time)}`,
+      startISO: `${c.date}T${c.start_time}`,
+      endISO: `${c.date}T${c.end_time}`,
+    }));
 
-      formatted.sort((a, b) => new Date(a.startISO) - new Date(b.startISO));
-      setClasses(formatted);
+    // ✅ apply override (afterSnapshot)
+    const merged = formatted.map((x) => {
+      const o = overrides?.[String(x.id)];
+      if (!o) return x;
+      return { ...x, ...o, id: String(x.id), status: "rescheduled" };
+    });
+
+    merged.sort((a, b) => new Date(a.startISO) - new Date(b.startISO));
+    setClasses(merged);
   };
 
   const fetchClasses = async () => {
     try {
-      const res = await api.get("/timetable/"); 
+      const res = await api.get("/timetable/");
       processData(res.data);
     } catch (err) {
       console.error("List Fetch Error:", err);
@@ -67,21 +115,26 @@ const LecturerClassListScreen = ({ route, navigation }) => {
     }
   };
 
-  const formatTime = (t) => (t ? t.slice(0, 5) : "");
+  const formatTime = (t) => (t ? String(t).slice(0, 5) : "");
 
   const formatDate = (dateStr) => {
     if (!dateStr) return "";
-    const parts = dateStr.split('-');
-    const d = new Date(parts[0], parts[1]-1, parts[2]); 
-    return d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+    const [y, m, d] = dateStr.split("-");
+    const dt = new Date(Number(y), Number(m) - 1, Number(d));
+    return dt.toLocaleDateString("en-GB", {
+      weekday: "short",
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
   };
 
   const isDateToday = (dateStr) => {
     if (!dateStr) return false;
-    const parts = dateStr.split('-');
-    const d = new Date(parts[0], parts[1]-1, parts[2]);
+    const [y, m, d] = dateStr.split("-");
+    const dt = new Date(Number(y), Number(m) - 1, Number(d));
     const today = new Date();
-    return d.toDateString() === today.toDateString();
+    return dt.toDateString() === today.toDateString();
   };
 
   if (loading) {
@@ -113,39 +166,64 @@ const LecturerClassListScreen = ({ route, navigation }) => {
             <Text style={styles.empty}>No classes found.</Text>
           </View>
         ) : (
-          classes.map((c) => (
-            <TouchableOpacity
-              key={c.id}
-              style={styles.card}
-              onPress={() => navigation.navigate("LecturerClassDetail", { cls: c })}
-            >
-              <View style={styles.topRow}>
-                <Text style={styles.module}>{c.module}</Text>
-                {c.isToday && (
-                    <View style={styles.pill}>
-                        <Text style={styles.pillText}>Today</Text>
+          classes.map((c) => {
+            const status = String(c.status ?? "active").toLowerCase();
+            const moduleColor = getModuleColor(c.module);
+
+            return (
+              <TouchableOpacity
+                key={c.id}
+                style={[styles.card, {
+                  borderColor: moduleColor + "55",
+                  backgroundColor: moduleColor + "10"
+                }]}
+                onPress={() => navigation.navigate("LecturerClassDetail", { cls: c })}
+                activeOpacity={0.9}
+              >
+                {/* ✅ left accent bar */}
+                <View style={{ flexDirection: "row" }}>
+                  <View style={[styles.moduleBar, { backgroundColor: moduleColor }]} />
+
+                  <View style={{ flex: 1 }}>
+                    <View style={styles.topRow}>
+                      <Text style={[styles.module, { color: moduleColor }]}>{c.module}</Text>
+
+                      <View style={{ flexDirection: "row", gap: 8 }}>
+                        {c.isToday && (
+                          <View style={[styles.pill, { backgroundColor: moduleColor + "22" }]}>
+                            <Text style={[styles.pillText, { color: moduleColor }]}>Today</Text>
+                          </View>
+                        )}
+
+                        {status === "rescheduled" && (
+                          <View style={[styles.pill, { backgroundColor: moduleColor + "22" }]}>
+                            <Text style={[styles.pillText, { color: COLORS.primary }]}>Rescheduled</Text>
+                          </View>
+                        )}
+                      </View>
                     </View>
-                )}
-              </View>
 
-              <Text style={styles.title}>{c.title}</Text>
-              
-              <View style={styles.metaRow}>
-                <Ionicons name="calendar-outline" size={16} color={COLORS.textMuted} />
-                <Text style={styles.metaText}>{c.fullDate}</Text>
-              </View>
+                    <Text style={styles.title}>{c.title}</Text>
 
-              <View style={styles.metaRow}>
-                <Ionicons name="time-outline" size={16} color={COLORS.textMuted} />
-                <Text style={styles.metaText}>{c.time}</Text>
-              </View>
-              
-              <View style={styles.metaRow}>
-                <Ionicons name="location-outline" size={16} color={COLORS.textMuted} />
-                <Text style={styles.metaText}>{c.venue}</Text>
-              </View>
-            </TouchableOpacity>
-          ))
+                    <View style={styles.metaRow}>
+                      <Ionicons name="calendar-outline" size={16} color={COLORS.textMuted} />
+                      <Text style={styles.metaText}>{c.fullDate}</Text>
+                    </View>
+
+                    <View style={styles.metaRow}>
+                      <Ionicons name="time-outline" size={16} color={COLORS.textMuted} />
+                      <Text style={styles.metaText}>{c.time}</Text>
+                    </View>
+
+                    <View style={styles.metaRow}>
+                      <Ionicons name="location-outline" size={16} color={COLORS.textMuted} />
+                      <Text style={styles.metaText}>{c.venue}</Text>
+                    </View>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            );
+          })
         )}
         <View style={{ height: 24 }} />
       </ScrollView>
@@ -155,15 +233,45 @@ const LecturerClassListScreen = ({ route, navigation }) => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
-  header: { paddingVertical: 16, paddingHorizontal: 20, flexDirection: "row", justifyContent: "space-between", alignItems: "center", borderBottomWidth: 1, borderBottomColor: COLORS.border },
+  header: {
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
   backBtn: { width: 30 },
   headerTitle: { fontSize: 18, fontWeight: "900", color: COLORS.textDark },
   content: { padding: 20 },
-  card: { backgroundColor: COLORS.card, borderWidth: 1, borderColor: COLORS.border, borderRadius: 16, padding: 16, marginBottom: 12 },
+
+  card: {
+    backgroundColor: COLORS.card,
+    borderWidth: 1,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+  },
+
+  moduleBar: {
+    width: 6,
+    borderRadius: 6,
+    marginRight: 12,
+  },
+
   topRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  pill: { backgroundColor: COLORS.soft, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 },
-  pillText: { color: COLORS.primary, fontWeight: "900", fontSize: 12 },
-  module: { fontWeight: "900", color: COLORS.primary, fontSize: 14 },
+
+  pill: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  pillText: { fontWeight: "900", fontSize: 12 },
+
+  module: { fontWeight: "900", fontSize: 14 },
   title: { marginTop: 4, marginBottom: 8, fontSize: 16, fontWeight: "900", color: COLORS.textDark },
   metaRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 6 },
   metaText: { color: COLORS.textMuted, fontWeight: "600", fontSize: 14 },

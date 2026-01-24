@@ -1,19 +1,8 @@
-// src/screens/lecturer/classes/
-import React, { useMemo } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  StatusBar,
-  ScrollView,
-  Alert,
-} from "react-native";
+// screens/lecturer/classes/class_detail_screen.js
+import React, { useMemo, useState } from "react";
+import { View, Text, StyleSheet, TouchableOpacity, StatusBar, ScrollView, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import * as Calendar from "expo-calendar";
-import * as Clipboard from "expo-clipboard";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const COLORS = {
   primary: "#6D5EF5",
@@ -23,127 +12,78 @@ const COLORS = {
   textMuted: "#6B7280",
   border: "#E5E7EB",
   soft: "#ECE9FF",
+  danger: "#DC2626",
 };
 
-const REMINDER_KEY = "lecturerReminderIds_v1";
+/* ✅ NEW: module color palette + mapper */
+const MODULE_COLORS = [
+  "#6D5EF5",
+  "#10B981",
+  "#F59E0B",
+  "#EF4444",
+  "#3B82F6",
+  "#EC4899",
+  "#14B8A6",
+  "#8B5CF6",
+];
 
-const LecturerClassDetailScreen = ({ route, navigation }) => {
+const getModuleColor = (moduleName = "") => {
+  const str = String(moduleName || "");
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return MODULE_COLORS[Math.abs(hash) % MODULE_COLORS.length];
+};
+
+const toText = (v, fallback = "-") => {
+  if (v == null) return fallback;
+  if (typeof v === "string" || typeof v === "number" || typeof v === "boolean") return String(v);
+  if (Array.isArray(v)) return v.map((x) => toText(x, "")).filter(Boolean).join(", ") || fallback;
+  if (typeof v === "object") return String(v.name ?? v.code ?? v.title ?? v.id ?? v._id ?? fallback);
+  return fallback;
+};
+
+export default function LecturerClassDetailScreen({ route, navigation }) {
   const cls = route?.params?.cls;
 
-  const titleText = cls?.title || "Class Details";
-  const moduleText = cls?.module || "-";
-  const venueText = cls?.venue || "-";
-  const timeText = cls?.time || "-";
-  const startISO = cls?.startISO || null;
-  const endISO = cls?.endISO || null;
+  const [busy, setBusy] = useState(false);
 
-  // ✅ Helper to fix the "-" date issue
-  const getDisplayDate = () => {
-    // 1. If passed pre-formatted
-    if (cls?.fullDate) return cls.fullDate;
-    
-    // 2. Fallback: Format raw date string
-    if (cls?.date) {
-      const parts = cls.date.split('-'); // YYYY-MM-DD
-      const d = new Date(parts[0], parts[1]-1, parts[2]);
-      return d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
-    }
-    return "-";
-  };
-  
-  const dateText = getDisplayDate();
+  const moduleText = toText(cls?.module, "MOD");
+  const titleText = toText(cls?.title, "Class");
+  const venueText = toText(cls?.venue, "TBA");
+  const timeText = toText(cls?.time, "-");
+  const dateText = toText(cls?.date, "-");
 
-  const isNextClass = useMemo(() => {
-    if (!startISO) return false;
-    const start = new Date(startISO).getTime();
-    const now = Date.now();
-    const diff = start - now;
-    return diff > 0 && diff <= 24 * 60 * 60 * 1000;
-  }, [startISO]);
+  const moduleColor = getModuleColor(moduleText);
 
-  const formatCopyText = () =>
-    `${moduleText} - ${titleText}\nDate: ${dateText}\nTime: ${timeText}\nVenue: ${venueText}`;
+  // ✅ Option A: once rescheduled, cannot reschedule again
+  const status = String(toText(cls?.status, "active")).toLowerCase();
+  const statusLabelLower = String(toText(cls?.statusLabel, "")).toLowerCase();
+  const isCancelled = status === "cancelled" || statusLabelLower === "cancelled";
+  const isRescheduled = status === "rescheduled" || statusLabelLower === "rescheduled";
 
-  const copyDetails = async () => {
-    try {
-      await Clipboard.setStringAsync(formatCopyText());
-      Alert.alert("Copied", "Class details copied to clipboard.");
-    } catch (e) {
-      console.error(e);
-      Alert.alert("Error", "Could not copy.");
-    }
-  };
+  const isUpcoming = useMemo(() => {
+    const t = new Date(toText(cls?.startISO, "")).getTime();
+    return !isNaN(t) && t > Date.now();
+  }, [cls?.startISO]);
 
-  const reminderIdFor = () => `${moduleText}|${startISO || ""}|${venueText}`;
+  const goReschedule = () => {
+    if (!cls?.id) return Alert.alert("Missing", "No session id found.");
 
-  const addReminderToCalendar = async () => {
-    if (!startISO || !endISO) {
-      Alert.alert("Missing time", "This class has no start/end time to add to calendar.");
+    // ✅ Block reschedule if already rescheduled (Option A)
+    if (isRescheduled) {
+      Alert.alert("Not allowed", "This class was already rescheduled and cannot be rescheduled again.");
       return;
     }
 
-    try {
-      const raw = await AsyncStorage.getItem(REMINDER_KEY);
-      const arr = raw ? JSON.parse(raw) : [];
-      const rid = reminderIdFor();
-      if (Array.isArray(arr) && arr.includes(rid)) {
-        Alert.alert("Already added", "Reminder already tracked in Attendify.");
-        return;
-      }
-
-      const { status } = await Calendar.requestCalendarPermissionsAsync();
-      if (status !== "granted") {
-        Alert.alert("Permission needed", "Please allow Calendar access to add reminders.");
-        return;
-      }
-
-      const calendars = await Calendar.getCalendarsAsync(Calendar.EntityTypes.EVENT);
-      const defaultCal = calendars.find((c) => c.allowsModifications) || calendars[0];
-
-      if (!defaultCal) {
-        Alert.alert("No calendar found", "Please enable a calendar on your device.");
-        return;
-      }
-
-      await Calendar.createEventAsync(defaultCal.id, {
-        title: `${moduleText} - ${titleText}`,
-        startDate: new Date(startISO),
-        endDate: new Date(endISO),
-        location: venueText,
-        notes: "Created from Attendify (Lecturer).",
-        timeZone: "Asia/Singapore",
-      });
-
-      const next = Array.isArray(arr) ? arr : [];
-      next.push(rid);
-      await AsyncStorage.setItem(REMINDER_KEY, JSON.stringify(next));
-
-      Alert.alert("Done", "Reminder added to your calendar.");
-    } catch (e) {
-      console.error(e);
-      Alert.alert("Error", "Could not add reminder.");
-    }
+    navigation.navigate("LecturerReschedule", { cls });
   };
-
-  if (!cls) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <Text style={styles.headerTitle}>Class Details</Text>
-        <View style={styles.card}>
-          <Text style={styles.emptyText}>No class data provided.</Text>
-          <TouchableOpacity style={styles.primaryBtn} onPress={() => navigation.goBack()}>
-            <Text style={styles.primaryBtnText}>Go back</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
-    );
-  }
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
 
-      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Ionicons name="chevron-back" size={26} color={COLORS.primary} />
@@ -153,86 +93,87 @@ const LecturerClassDetailScreen = ({ route, navigation }) => {
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
-        {isNextClass && (
-          <View style={styles.nextPill}>
-            <Ionicons name="sparkles-outline" size={16} color={COLORS.primary} />
-            <Text style={styles.nextPillText}>Next class within 24 hours</Text>
+        {/* ✅ RESCHEDULED / CANCELLED pill */}
+        {isRescheduled && !isCancelled && (
+          <View
+            style={[
+              styles.statusPill,
+              { backgroundColor: moduleColor + "22", borderColor: moduleColor + "55" },
+            ]}
+          >
+            <Ionicons name="swap-horizontal-outline" size={16} color={moduleColor} />
+            <Text style={[styles.statusPillText, { color: moduleColor }]}>RESCHEDULED</Text>
           </View>
         )}
 
-        {/* Main card */}
-        <View style={styles.card}>
-          <Text style={styles.module}>{moduleText}</Text>
-          <Text style={styles.title}>{titleText}</Text>
-
-          <View style={styles.divider} />
-
-          {/* ✅ Date Row Added */}
-          <View style={styles.infoRow}>
-            <View style={styles.infoLeft}>
-              <Ionicons name="calendar-outline" size={18} color={COLORS.textMuted} />
-              <Text style={styles.label}>Date</Text>
-            </View>
-            <Text style={styles.value}>{dateText}</Text>
+        {isCancelled && (
+          <View style={styles.cancelPill}>
+            <Ionicons name="close-circle-outline" size={16} color={COLORS.danger} />
+            <Text style={styles.cancelPillText}>CANCELLED</Text>
           </View>
+        )}
 
-          <View style={styles.infoRow}>
-            <View style={styles.infoLeft}>
-              <Ionicons name="time-outline" size={18} color={COLORS.textMuted} />
-              <Text style={styles.label}>Time</Text>
-            </View>
-            <Text style={styles.value}>{timeText}</Text>
-          </View>
+        <View style={[styles.card, { borderColor: moduleColor + "55" }]}>
+          <View style={{ flexDirection: "row" }}>
+            <View style={[styles.moduleBar, { backgroundColor: moduleColor }]} />
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.module, { color: moduleColor }]}>{moduleText}</Text>
+              <Text style={styles.title}>{titleText}</Text>
 
-          <View style={styles.infoRow}>
-            <View style={styles.infoLeft}>
-              <Ionicons name="location-outline" size={18} color={COLORS.textMuted} />
-              <Text style={styles.label}>Venue</Text>
-            </View>
-            <Text style={styles.value}>{venueText}</Text>
-          </View>
+              <View style={styles.divider} />
 
-          {cls?.enrolledCount != null && (
-            <View style={styles.infoRow}>
-              <View style={styles.infoLeft}>
-                <Ionicons name="people-outline" size={18} color={COLORS.textMuted} />
-                <Text style={styles.label}>Enrolled</Text>
+              <View style={styles.infoRow}>
+                <Text style={styles.label}>Date</Text>
+                <Text style={styles.value}>{dateText}</Text>
               </View>
-              <Text style={styles.value}>{cls.enrolledCount}</Text>
+              <View style={styles.infoRow}>
+                <Text style={styles.label}>Time</Text>
+                <Text style={styles.value}>{timeText}</Text>
+              </View>
+              <View style={styles.infoRow}>
+                <Text style={styles.label}>Venue</Text>
+                <Text style={styles.value}>{venueText}</Text>
+              </View>
             </View>
-          )}
-        </View>
-
-        {/* Actions card */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Actions</Text>
-
-          <View style={styles.actionsRow}>
-            <TouchableOpacity style={styles.primaryBtn} onPress={addReminderToCalendar}>
-              <Ionicons name="bookmark-outline" size={16} color="#fff" />
-              <Text style={styles.primaryBtnText}>Add reminder</Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.actionsRow}>
-            <TouchableOpacity style={styles.secondaryBtn} onPress={copyDetails}>
-              <Ionicons name="copy-outline" size={16} color={COLORS.primary} />
-              <Text style={styles.secondaryBtnText}>Copy details</Text>
-            </TouchableOpacity>
           </View>
         </View>
 
-        <View style={{ height: 24 }} />
+        {isUpcoming && !isCancelled && (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Actions</Text>
+
+            <View style={styles.actionsRow}>
+              <TouchableOpacity
+                style={[
+                  styles.primaryBtn,
+                  { backgroundColor: moduleColor },
+                  (busy || isRescheduled) && { opacity: 0.55 },
+                ]}
+                onPress={goReschedule}
+                disabled={busy || isRescheduled}
+              >
+                <Ionicons name="calendar-outline" size={16} color="#fff" />
+                <Text style={styles.primaryBtnText}>
+                  {isRescheduled ? "Already Rescheduled" : "Reschedule"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {isRescheduled && (
+              <Text style={styles.hintText}>
+                This class has been rescheduled once. Rescheduling again is disabled.
+              </Text>
+            )}
+          </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
-
   header: {
-    backgroundColor: COLORS.background,
     paddingVertical: 14,
     paddingHorizontal: 20,
     flexDirection: "row",
@@ -243,23 +184,35 @@ const styles = StyleSheet.create({
   },
   backBtn: { width: 30 },
   headerTitle: { fontSize: 20, fontWeight: "900", color: COLORS.textDark },
-
   content: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 24 },
 
-  nextPill: {
+  statusPill: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    backgroundColor: COLORS.soft,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 999,
     alignSelf: "flex-start",
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: COLORS.border,
   },
-  nextPillText: { color: COLORS.primary, fontWeight: "900", fontSize: 12 },
+  statusPillText: { fontWeight: "900", fontSize: 12 },
+
+  cancelPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "#FEE2E2",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    alignSelf: "flex-start",
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: "#FCA5A5",
+  },
+  cancelPillText: { color: COLORS.danger, fontWeight: "900", fontSize: 12 },
 
   card: {
     backgroundColor: COLORS.card,
@@ -270,23 +223,20 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
 
-  module: { fontWeight: "900", color: COLORS.primary },
+  moduleBar: { width: 6, borderRadius: 6, marginRight: 12 },
+
+  module: { fontWeight: "900" },
   title: { marginTop: 4, fontSize: 18, fontWeight: "900", color: COLORS.textDark },
-
   divider: { height: 1, backgroundColor: COLORS.border, marginVertical: 14 },
-
   infoRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 10 },
-  infoLeft: { flexDirection: "row", alignItems: "center", gap: 8 },
   label: { color: COLORS.textMuted, fontWeight: "800" },
   value: { color: COLORS.textDark, fontWeight: "900", maxWidth: "55%", textAlign: "right" },
 
   cardTitle: { fontSize: 16, fontWeight: "900", color: COLORS.textDark },
-
   actionsRow: { flexDirection: "row", gap: 10, marginTop: 12 },
 
   primaryBtn: {
     flex: 1,
-    backgroundColor: COLORS.primary,
     paddingVertical: 12,
     borderRadius: 14,
     flexDirection: "row",
@@ -296,21 +246,11 @@ const styles = StyleSheet.create({
   },
   primaryBtnText: { color: "#fff", fontWeight: "900" },
 
-  secondaryBtn: {
-    flex: 1,
-    backgroundColor: COLORS.soft,
-    paddingVertical: 12,
-    borderRadius: 14,
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    gap: 8,
-    borderWidth: 1,
-    borderColor: COLORS.border,
+  hintText: {
+    marginTop: 10,
+    color: COLORS.textMuted,
+    fontWeight: "700",
+    fontSize: 12,
+    lineHeight: 16,
   },
-  secondaryBtnText: { color: COLORS.primary, fontWeight: "900" },
-
-  emptyText: { color: COLORS.textMuted, fontWeight: "700", textAlign: "center", marginBottom: 12 },
 });
-
-export default LecturerClassDetailScreen;

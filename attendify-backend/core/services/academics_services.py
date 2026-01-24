@@ -1,7 +1,8 @@
-from core.models import Student, ClassSession, Semester, AttendanceRecord, Lecturer, LeaveRequest, Announcement
+from core.models import Student, ClassSession, Semester, AttendanceRecord, Lecturer, LeaveRequest, Announcement, Notification, ClassRoom
 from django.utils import timezone
-from datetime import timedelta
+from datetime import timedelta, datetime, time
 from django.db.models import Q
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from core.logic.academics_logics import AcademicLogic
 
 
@@ -25,8 +26,9 @@ class AcademicService:
             semester_range = f"{s_start} - {s_end}"
 
         todays_announcements = Announcement.objects.filter(
-            created_at__date=today_date
-        )
+            created_at__date__gte = today_date -timedelta(days=7),
+            created_at__date__lte = today_date
+        ).order_by('-created_at')
 
         todays_sessions = ClassSession.objects.filter(
             module__students=student,
@@ -74,8 +76,9 @@ class AcademicService:
         ).order_by('date', 'start_time').first()
 
         todays_announcements = Announcement.objects.filter(
-            created_at__date=today_date
-        )
+            created_at__date__gte = today_date -timedelta(days=7),
+            created_at__date__lte = today_date
+        ).order_by('-created_at')
 
         return {
             "stats": {
@@ -194,4 +197,235 @@ class AcademicService:
                 updated_count += 1
 
         return f"Updated status for {updated_count} sessions."
+    
+
+    def get_reschedule_options(self, user, data):
+        session_id = data.get('session_id')
+
+        try:
+            session = ClassSession.objects.get(id=session_id)
+        except ClassSession.DoesNotExist:
+            raise ValidationError("Class session not found.")
+        
+        if session.status != 'upcoming':
+            raise ValidationError(f"Only 'Upcoming' classes can be rescheduled.")
+
+        if "(Rescheduled)" in session.name:
+            raise ValidationError("This class is already a replacement class and cannot be rescheduled again.")
+        
+        try:
+            lecturer = Lecturer.objects.get(user=user)
+            if session.module.lecturer != lecturer:
+                raise PermissionDenied("You are not the lecturer for this module.")
+        except Lecturer.DoesNotExist:
+             raise PermissionDenied("User is not a lecturer.")
+
+        session_start_dt = timezone.make_aware(datetime.combine(session.date, session.start_time))
+        if timezone.now() > (session_start_dt - timedelta(hours=1)):
+             raise ValidationError("Too late! You can only reschedule up to 1 hour before the class starts.")
+
+        duration = datetime.combine(session.date, session.end_time) - datetime.combine(session.date, session.start_time)
+        start_date = timezone.now().date() + timedelta(days=1)
+        days_to_check = 14 
+        possible_slots = []
+
+        students = session.module.students.all()
+        total_student_count = students.count()
+        if total_student_count == 0:
+            total_student_count = 1 
+
+        for i in range(days_to_check):
+            current_date = start_date + timedelta(days=i)
+            
+            if current_date.weekday() > 4: 
+                continue
+            
+            current_slot_datetime = datetime.combine(current_date, time(8, 30))
+            latest_start_limit = datetime.combine(current_date, time(19, 0))
+
+            while current_slot_datetime <= latest_start_limit:
+                
+                slot_start = current_slot_datetime.time()
+                slot_end_dt = current_slot_datetime + duration
+                slot_end = slot_end_dt.time()
+                
+                if slot_end_dt.date() != current_date:
+                    current_slot_datetime += timedelta(minutes=30)
+                    continue
+
+                lecturer_busy = ClassSession.objects.filter(
+                    module__lecturer=lecturer, 
+                    date=current_date,
+                    status='upcoming',
+                    start_time__lt=slot_end, 
+                    end_time__gt=slot_start
+                ).exists()
+
+                if not lecturer_busy:
+                    conflict_count = ClassSession.objects.filter(
+                        module__students__in=students, 
+                        date=current_date,
+                        status='upcoming',
+                        start_time__lt=slot_end,
+                        end_time__gt=slot_start
+                    ).values('module__students').distinct().count()
+
+                    attendance_rate = (total_student_count - conflict_count) / total_student_count
+
+                    if attendance_rate >= 0.9:
+                        possible_slots.append({
+                            'date': current_date,
+                            'start_time': slot_start,
+                            'end_time': slot_end,
+                            'conflicts': conflict_count,
+                            'attendance_percentage': round(attendance_rate * 100, 1)
+                        })
+
+                current_slot_datetime += timedelta(minutes=30)
+
+        sorted_slots = sorted(possible_slots, key=lambda x: (-x['attendance_percentage'], x['date']))
+
+        return {
+            "status": "success",
+            "options": sorted_slots
+        }
+    
+
+    def reschedule_class(self, lecturer, data):
+        session_id = data.get('session_id')
+        new_date_str = data.get('date')
+        new_start_str = data.get('start_time')
+        new_end_str = data.get('end_time')
+
+        try:
+            session = ClassSession.objects.get(id=session_id)
+        except ClassSession.DoesNotExist:
+            raise ValidationError("Class session not found.")
+
+        if session.status != 'upcoming':
+            raise ValidationError(f"Only 'Upcoming' classes can be rescheduled.")
+        
+        if "(Rescheduled)" in session.name:
+            raise ValidationError("This class is already a replacement class and cannot be rescheduled again.")
+
+        try:
+            lecturer = Lecturer.objects.get(user=lecturer)
+            if session.module.lecturer != lecturer:
+                raise PermissionDenied("You are not the lecturer for this module.")
+        except Lecturer.DoesNotExist:
+             raise PermissionDenied("User is not a lecturer.")
+                    
+        try:
+            new_date = datetime.strptime(new_date_str, "%Y-%m-%d").date()
+            new_start = datetime.strptime(new_start_str, "%H:%M:%S").time()
+            new_end = datetime.strptime(new_end_str, "%H:%M:%S").time()
+        except (ValueError, TypeError):
+             raise ValidationError("Invalid date/time format. Use YYYY-MM-DD and HH:MM:SS.")
+        
+        available_venue = ClassRoom.objects.exclude(
+            sessions_venue__date=new_date,
+            sessions_venue__status=['upcoming', 'in_progress', 'completed'],
+            sessions_venue__start_time__lt=new_end,
+            sessions_venue__end_time__gt=new_start
+        ).first()
+
+        if not available_venue:
+            raise ValidationError("No classrooms are available at this selected time. Please choose a different slot.")
+
+        session.status = 'rescheduled'
+        session.save()
+
+        new_session = ClassSession.objects.create(
+            module=session.module,
+            type=session.type,
+            name=f"{session.name} (Rescheduled)",
+            date=new_date,
+            start_time=new_start,
+            end_time=new_end,
+            venue=available_venue,
+            status='upcoming'
+        )
+
+        students = session.module.students.all()
+        notifications = []
+        for student in students:
+            notifications.append(Notification(
+                recipient=student.user,
+                title="Class Rescheduled",
+                description=f"Your class {session.name} has been moved to {new_session.date} at {new_session.start_time} in {available_venue.name}."
+            ))
+        Notification.objects.bulk_create(notifications)
+
+        return {
+            "status": "success",
+            "message": "Class rescheduled successfully.",
+            "new_session": {
+                "id": new_session.id,
+                "date": new_session.date,
+                "time": new_session.start_time,
+                "venue": available_venue.name
+            }
+        }
+
+
+    def mark_attendance(self, student_id, time_stamp):
+        try:
+            student = Student.objects.get(student_id=student_id)
+        except Student.DoesNotExist:
+            raise Exception(f"Student with ID {student_id} not found.")
+            
+        active_session = ClassSession.objects.filter(
+            module__students=student,          
+            date=time_stamp.date(),             
+            start_time__lte=(time_stamp + timedelta(minutes=30)).time(),
+            end_time__gte=time_stamp.time()     
+        ).first()
+
+        if not active_session:
+            return {
+                "status": "ignored",
+                "message": f"Student {student.user.username} is not enrolled in any active session at this time."
+            }
+        
+        attendance, created = AttendanceRecord.objects.get_or_create(
+            session=active_session,
+            student=student,
+            defaults={'status': 'absent'}
+        )
+
+        message = ""
+
+        if attendance.entry_time is None:
+            attendance.entry_time = time_stamp
+            if AcademicLogic.is_valid_attendance_window(time_stamp, active_session):
+                attendance.status = 'present'
+                message = f"Entry marked for {student.user.username}"
+
+                Notification.objects.create(
+                    recipient=student.user,
+                    title="Attendance Marked",
+                    description=f"You have successfully marked attendance for {active_session.name}."
+                )
+            else:
+                message = f"Entry rejected. You must scan within +/- 30 mins of {active_session.start_time}"
+                Notification.objects.create(
+                    recipient=student.user,
+                    title="Attendance Alert",
+                    description=f"Your attendance for {active_session.name} was recorded but marked as ABSENT/LATE due to timing."
+                )
+            
+            attendance.save()
+        else:
+            attendance.exit_time = time_stamp
+            attendance.save()
+            message = f"Exit time updated for {student.user.username}"
+
+        return {
+            "status": "success",
+            "student": student.user.username,
+            "session": active_session.name,
+            "message": message,
+            "entry": timezone.localtime(attendance.entry_time).isoformat() if attendance.entry_time else None,
+            "exit": timezone.localtime(attendance.exit_time).isoformat() if attendance.exit_time else None
+        }
     

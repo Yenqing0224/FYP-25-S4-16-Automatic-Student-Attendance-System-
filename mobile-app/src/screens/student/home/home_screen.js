@@ -1,5 +1,5 @@
 // src/screens/student/home/home_screen.js
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -8,92 +8,116 @@ import {
   TouchableOpacity,
   StatusBar,
   ActivityIndicator,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Ionicons } from '@expo/vector-icons';
-import api from '../../../api/api_client';
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Ionicons } from "@expo/vector-icons";
+import api from "../../../api/api_client";
 
 const COLORS = {
-  primary: '#3A7AFE',
-  teal: '#2EC4B6',
-  lilac: '#A6C2FF',
-  background: '#F5F7FB',
-  textDark: '#111827',
-  textMuted: '#6B7280',
-  card: '#FFFFFF',
+  primary: "#3A7AFE",
+  teal: "#2EC4B6",
+  lilac: "#A6C2FF",
+  background: "#F5F7FB",
+  textDark: "#111827",
+  textMuted: "#6B7280",
+  card: "#FFFFFF",
+  border: "#E5E7EB",
+  danger: "#EF4444",
 };
 
 const READ_ANNOUNCEMENTS_KEY = "studentReadAnnouncements_v1";
+const ANNOUNCEMENT_EXPIRE_DAYS = 14;
 
-const HomeScreen = ({ navigation }) => {
+// ✅ Render-safe helper
+const toText = (v, fallback = "") => {
+  if (v == null) return fallback;
+  if (typeof v === "string" || typeof v === "number" || typeof v === "boolean") return String(v);
+  if (Array.isArray(v)) return v.map((x) => toText(x, "")).filter(Boolean).join(", ") || fallback;
+  if (typeof v === "object") return String(v.name ?? v.title ?? v.code ?? v.id ?? fallback);
+  return fallback;
+};
+
+export default function HomeScreen({ navigation }) {
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
 
   // Dashboard Data
-  const [semesterRange, setSemesterRange] = useState('Loading...');
+  const [semesterRange, setSemesterRange] = useState("Loading...");
   const [attendanceRate, setAttendanceRate] = useState(0);
   const [todayClasses, setTodayClasses] = useState([]);
   const [upcomingClasses, setUpcomingClasses] = useState([]);
   
-  // ✅ Announcements State
+  // Announcements Data
   const [announcements, setAnnouncements] = useState([]);
+  
+  // Loading States
+  const [loading, setLoading] = useState(true); // General dashboard loading
+
+  // UI States
   const [isAnnounceExpanded, setIsAnnounceExpanded] = useState(false);
   const [readAnnouncementIds, setReadAnnouncementIds] = useState(new Set());
+  const [showAllAnnouncements, setShowAllAnnouncements] = useState(false);
 
-  // 1. Load User & Read Announcements IDs
-  useEffect(() => {
-    const init = async () => {
-      try {
-        // Load User
-        const storedUser = await AsyncStorage.getItem('userInfo');
-        if (storedUser) setUser(JSON.parse(storedUser));
+  // ---------------- Helpers ----------------
+  const formatTime = (timeString) => (timeString ? String(timeString).slice(0, 5) : "");
 
-        // Load Read Announcements
-        const rawRead = await AsyncStorage.getItem(READ_ANNOUNCEMENTS_KEY);
-        if (rawRead) {
-          const arr = JSON.parse(rawRead);
-          if (Array.isArray(arr)) setReadAnnouncementIds(new Set(arr.map(String)));
-        }
-
-        fetchDashboardData();
-      } catch (error) {
-        console.error('Init Error:', error);
-      }
-    };
-    init();
-  }, []);
-
-  // 2. Fetch Dashboard Data
-  const fetchDashboardData = async () => {
-    try {
-      const response = await api.get('/dashboard/');
-      const data = response.data;
-
-      setSemesterRange(data.semester_range);
-      setAttendanceRate(data.attendance_rate);
-      setTodayClasses(data.today_classes || []);
-      setUpcomingClasses(data.upcoming_classes || []);
-
-      // ✅ Process Announcements from Dashboard API
-      if (data.announcements && Array.isArray(data.announcements)) {
-        const formattedAnnouncements = data.announcements.map(a => ({
-          id: a.id,
-          title: a.title,
-          desc: a.message || a.description || "", // Handle different key names if necessary
-          date: formatDate(a.created_at) || "Recent"
-        }));
-        setAnnouncements(formattedAnnouncements);
-      }
-
-    } catch (error) {
-      console.error('Dashboard Fetch Error:', error);
-    } finally {
-      setLoading(false);
-    }
+  const formatDate = (dateString) => {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
   };
 
-  // 3. Announcement Helpers
+  const formatDateLabel = (dStr) => {
+    if (!dStr) return "";
+    const d = new Date(dStr);
+    const today = new Date();
+    return d.toDateString() === today.toDateString()
+      ? "Today"
+      : d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+  };
+
+  const isCreatedToday = (createdAt) => {
+    if (!createdAt) return false;
+    const d = new Date(createdAt);
+    const today = new Date();
+    return d.toDateString() === today.toDateString();
+  };
+
+  const isExpired = (createdAt) => {
+    if (!createdAt) return false;
+    const d = new Date(createdAt);
+    const cutoff = Date.now() - ANNOUNCEMENT_EXPIRE_DAYS * 24 * 60 * 60 * 1000;
+    return d.getTime() < cutoff;
+  };
+
+  // ✅ Updated to map API keys correctly
+  const normalizeAnnouncement = (a) => {
+    const createdAt = a.created_at || a.createdAt || null;
+    return {
+      id: String(a.id),
+      title: toText(a.title, "Untitled"),
+      // API returns 'description', UI uses 'desc'
+      desc: toText(a.description ?? a.message ?? a.desc, ""),
+      created_at: createdAt,
+      // Generate "Today", "21 Jan" from created_at
+      date: createdAt ? formatDateLabel(createdAt) : "Recent", 
+    };
+  };
+
+  // ---------------- Persistence ----------------
+  useEffect(() => {
+    (async () => {
+      try {
+        const raw = await AsyncStorage.getItem(READ_ANNOUNCEMENTS_KEY);
+        if (!raw) return;
+        const arr = JSON.parse(raw);
+        if (Array.isArray(arr)) setReadAnnouncementIds(new Set(arr.map(String)));
+      } catch (e) {
+        console.log("Failed to load read announcements:", e);
+      }
+    })();
+  }, []);
+
   const persistReadIds = async (nextSet) => {
     try {
       await AsyncStorage.setItem(READ_ANNOUNCEMENTS_KEY, JSON.stringify(Array.from(nextSet)));
@@ -116,41 +140,86 @@ const HomeScreen = ({ navigation }) => {
     await persistReadIds(next);
   };
 
-  // --- UI Helpers ---
-  const formatTime = (timeString) => {
-    if (!timeString) return '';
-    return timeString.slice(0, 5);
+  // ---------------- Data Fetching ----------------
+  useEffect(() => {
+    const initDashboard = async () => {
+      try {
+        const storedUser = await AsyncStorage.getItem("userInfo");
+        if (storedUser) setUser(JSON.parse(storedUser));
+      } catch (error) {
+        console.error("Init Error:", error);
+      } finally {
+        fetchDashboardData();
+      }
+    };
+    initDashboard();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+      
+      // ✅ Fetch everything from one endpoint now
+      const dashRes = await api.get("/dashboard/");
+      const data = dashRes.data || {};
+
+      // 1. Basic Info
+      setSemesterRange(data.semester_range ?? "—");
+      setAttendanceRate(Number(data.attendance_rate ?? 0));
+      setTodayClasses(Array.isArray(data.today_classes) ? data.today_classes : []);
+      setUpcomingClasses(Array.isArray(data.upcoming_classes) ? data.upcoming_classes : []);
+
+      // 2. Announcements (Extracted from Dashboard response)
+      const rawAnnouncements = Array.isArray(data.announcements) ? data.announcements : [];
+
+      let merged = rawAnnouncements.map(normalizeAnnouncement);
+
+      // Filter out old stuff
+      merged = merged.filter((a) => !isExpired(a.created_at));
+
+      // Optional: Filter out unrelated keywords if needed (Kept from your original code)
+      const STUDENT_EXCLUDE_KEYWORDS = ["invigilation", "marking window", "grading", "lecturer briefing"];
+      merged = merged.filter((a) => {
+        const text = `${toText(a.title, "")} ${toText(a.desc, "")}`.toLowerCase();
+        return !STUDENT_EXCLUDE_KEYWORDS.some((k) => text.includes(k));
+      });
+
+      // Sort by newest first
+      merged.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+      setAnnouncements(merged);
+
+    } catch (error) {
+      console.error("Dashboard Fetch Error:", error?.response?.status, error?.config?.url);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const formatDate = (dateString) => {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
-  };
-
-  // Current Date logic
-  const [currentDate, setCurrentDate] = useState({ dayName: '', dateString: '' });
+  // ---------------- Current Date UI ----------------
+  const [currentDate, setCurrentDate] = useState({ dayName: "", dateString: "" });
   useEffect(() => {
     const now = new Date();
-    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     setCurrentDate({
       dayName: days[now.getDay()],
       dateString: `${now.getDate()}-${months[now.getMonth()]}-${now.getFullYear()}`,
     });
   }, []);
 
-  // Filter Announcements
-  const unreadAnnouncements = announcements.filter(
-    (a) => !readAnnouncementIds.has(String(a.id))
+  // ---------------- Derived Lists ----------------
+  const unreadAnnouncements = useMemo(
+    () => announcements.filter((a) => !readAnnouncementIds.has(String(a.id))),
+    [announcements, readAnnouncementIds]
   );
-  
-  // Decide what to show (Expand logic)
-  // If expanded, show ALL unread. If collapsed, show max 3 unread.
-  const visibleAnnouncements = isAnnounceExpanded
-    ? unreadAnnouncements
-    : unreadAnnouncements.slice(0, 3);
 
+  const listToShow = showAllAnnouncements ? announcements : unreadAnnouncements;
+  const visibleAnnouncements = isAnnounceExpanded ? listToShow : listToShow.slice(0, 3);
+  const hasAnyAnnouncements = listToShow.length > 0;
+
+  // ---------------- Render ----------------
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
@@ -161,7 +230,7 @@ const HomeScreen = ({ navigation }) => {
           <View>
             <Text style={styles.greetingLabel}>Hello,</Text>
             <Text style={styles.greetingName}>
-              {user ? `${user.first_name}` : "Student"} 👋
+              {user ? `${toText(user.first_name, "Student")}` : "Student"} 👋
             </Text>
 
             <View style={styles.chip}>
@@ -170,47 +239,58 @@ const HomeScreen = ({ navigation }) => {
           </View>
 
           <View style={styles.dateContainer}>
-            <Text style={styles.dateDay}>{currentDate.dayName}</Text>
-            <Text style={styles.dateText}>{currentDate.dateString}</Text>
+            <Text style={styles.dateDay}>{toText(currentDate.dayName, "")}</Text>
+            <Text style={styles.dateText}>{toText(currentDate.dateString, "")}</Text>
           </View>
         </View>
 
-        {/* ATTENDANCE CARD */}
+        {/* ATTENDANCE */}
         {attendanceRate !== null && attendanceRate !== undefined && (
-          <TouchableOpacity
-            activeOpacity={0.9}
-            onPress={() => navigation.navigate('AttendanceHistory')}
-          >
+          <TouchableOpacity activeOpacity={0.9} onPress={() => navigation.navigate("AttendanceHistory")}>
             <View style={styles.attendanceCard}>
               <Text style={styles.attendanceLabel}>Attendance rate</Text>
-              <Text style={styles.attendanceSubtitle}>{semesterRange}</Text>
+              <Text style={styles.attendanceSubtitle}>{toText(semesterRange, "—")}</Text>
 
               <View style={styles.attendanceCircle}>
                 <Text style={styles.attendancePercentage}>
-                  {loading ? "..." : `${attendanceRate.toFixed(0)}%`}
+                  {loading ? "..." : `${Number(attendanceRate || 0).toFixed(0)}%`}
                 </Text>
               </View>
             </View>
           </TouchableOpacity>
         )}
 
-        {/* ✅ ANNOUNCEMENTS SECTION */}
+        {/* ANNOUNCEMENTS */}
         <View style={styles.sectionHeaderRow}>
           <Text style={styles.sectionHeaderText}>Announcements</Text>
         </View>
 
-        <View style={[styles.announcementCard]}>
-          {/* Header Row (Collapsible) */}
+        <View style={[styles.attendanceCard, { paddingVertical: 16, alignItems: "stretch" }]}>
           <TouchableOpacity
             activeOpacity={0.85}
             onPress={() => setIsAnnounceExpanded((v) => !v)}
             style={styles.announceHeaderRow}
           >
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flex: 1 }}>
               <Ionicons name="megaphone-outline" size={18} color={COLORS.primary} />
-              <Text style={{ fontSize: 16, fontWeight: "800", color: COLORS.textDark }}>
-                Unread ({unreadAnnouncements.length})
-              </Text>
+
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <Text style={{ fontSize: 16, fontWeight: "800", color: COLORS.textDark }}>
+                  {showAllAnnouncements ? `All (${announcements.length})` : `Unread (${unreadAnnouncements.length})`}
+                </Text>
+
+                {!showAllAnnouncements && unreadAnnouncements.length > 0 && <View style={styles.unreadDot} />}
+
+                <TouchableOpacity
+                  onPress={() => setShowAllAnnouncements((v) => !v)}
+                  activeOpacity={0.85}
+                  style={styles.filterPill}
+                >
+                  <Text style={styles.filterPillText}>
+                    {showAllAnnouncements ? "Showing: All" : "Showing: Unread"}
+                  </Text>
+                </TouchableOpacity>
+              </View>
             </View>
 
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
@@ -225,69 +305,104 @@ const HomeScreen = ({ navigation }) => {
             </View>
           </TouchableOpacity>
 
-          {/* Mark All Read Button */}
-          {!loading && unreadAnnouncements.length > 0 && (
+          {!loading && !showAllAnnouncements && unreadAnnouncements.length > 0 && (
             <TouchableOpacity onPress={markAllRead} style={{ marginTop: 10, alignSelf: "flex-start" }}>
-              <Text style={{ color: COLORS.primary, fontWeight: "900", fontSize: 13 }}>
-                Mark all as read
-              </Text>
+              <Text style={{ color: COLORS.primary, fontWeight: "900", fontSize: 13 }}>Mark all as read</Text>
             </TouchableOpacity>
           )}
 
           <View style={{ height: 10 }} />
 
-          {/* List */}
           {loading ? (
-            <ActivityIndicator color={COLORS.primary} />
-          ) : unreadAnnouncements.length === 0 ? (
+            <View style={{ paddingVertical: 12 }}>
+              <ActivityIndicator color={COLORS.primary} />
+            </View>
+          ) : !hasAnyAnnouncements ? (
             <View style={{ paddingVertical: 10 }}>
               <Text style={{ color: COLORS.textMuted, fontWeight: "700" }}>
-                You’re all caught up ✅
+                {showAllAnnouncements ? "No announcements yet." : "You’re all caught up ✅"}
               </Text>
             </View>
           ) : (
-            visibleAnnouncements.map((a, idx) => (
-              <View key={a.id}>
-                <TouchableOpacity
-                  style={{ paddingVertical: 12 }}
-                  onPress={async () => {
-                    await markAnnouncementRead(a.id);
-                    // Ensure you have this screen registered in App.js or remove navigation if just marking read
-                    navigation.navigate("StudentAnnouncementDetail", { announcement: a }); 
-                  }}
-                >
-                  <Text style={{ fontWeight: "900", color: COLORS.textDark, fontSize: 15 }} numberOfLines={1}>
-                    {a.title}
-                  </Text>
+            visibleAnnouncements.map((a, idx) => {
+              const isRead = readAnnouncementIds.has(String(a.id));
 
-                  <Text
-                    style={{ marginTop: 4, color: COLORS.textMuted, fontWeight: "500", lineHeight: 20, fontSize: 13 }}
-                    numberOfLines={2}
+              return (
+                <View key={String(a.id)}>
+                  <TouchableOpacity
+                    style={{ paddingVertical: 12 }}
+                    onPress={async () => {
+                      if (!isRead) await markAnnouncementRead(a.id);
+                      navigation.navigate("StudentAnnouncementDetail", { announcement: a });
+                    }}
                   >
-                    {a.desc}
-                  </Text>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                      <Text
+                        style={{
+                          fontWeight: "900",
+                          color: COLORS.textDark,
+                          fontSize: 15,
+                          flex: 1,
+                          opacity: isRead ? 0.65 : 1,
+                        }}
+                        numberOfLines={1}
+                      >
+                        {toText(a.title, "Untitled")}
+                      </Text>
 
-                  <Text style={{ marginTop: 6, color: COLORS.textMuted, fontWeight: "800", fontSize: 11 }}>
-                    {a.date}
-                  </Text>
-                </TouchableOpacity>
+                      {!isRead && isCreatedToday(a.created_at) && (
+                        <View style={styles.newPill}>
+                          <Text style={styles.newPillText}>NEW</Text>
+                        </View>
+                      )}
 
-                {/* Divider */}
-                {idx !== visibleAnnouncements.length - 1 && (
-                  <View style={{ height: 1, backgroundColor: "#F3F4F6" }} />
-                )}
-              </View>
-            ))
+                      {showAllAnnouncements && isRead && (
+                        <View style={styles.readPill}>
+                          <Text style={styles.readPillText}>READ</Text>
+                        </View>
+                      )}
+                    </View>
+
+                    <Text
+                      style={{
+                        marginTop: 4,
+                        color: COLORS.textMuted,
+                        fontWeight: "700",
+                        lineHeight: 18,
+                        fontSize: 13,
+                        opacity: isRead ? 0.7 : 1,
+                      }}
+                      numberOfLines={2}
+                    >
+                      {toText(a.desc, "")}
+                    </Text>
+
+                    {!!a.date && (
+                      <Text style={{ marginTop: 6, color: COLORS.textMuted, fontWeight: "800", fontSize: 11 }}>
+                        {toText(a.date, "")}
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+
+                  {idx !== visibleAnnouncements.length - 1 && <View style={styles.divider} />}
+                </View>
+              );
+            })
           )}
 
-          {/* View More Button */}
-          {!loading && !isAnnounceExpanded && unreadAnnouncements.length > 3 && (
+          {!loading && !isAnnounceExpanded && listToShow.length > 3 && (
             <TouchableOpacity
               onPress={() => setIsAnnounceExpanded(true)}
-              style={{ marginTop: 8, paddingVertical: 8, alignItems: "center", borderTopWidth: 1, borderTopColor: '#F3F4F6' }}
+              style={{
+                marginTop: 8,
+                paddingVertical: 8,
+                alignItems: "center",
+                borderTopWidth: 1,
+                borderTopColor: COLORS.border,
+              }}
             >
               <Text style={{ color: COLORS.primary, fontWeight: "900", fontSize: 13 }}>
-                View {unreadAnnouncements.length - 3} more
+                View {listToShow.length - 3} more
               </Text>
             </TouchableOpacity>
           )}
@@ -309,21 +424,21 @@ const HomeScreen = ({ navigation }) => {
             </View>
           ) : (
             todayClasses.map((item) => (
-              <View key={item.id} style={styles.todayCard}>
+              <View key={String(item.id)} style={styles.todayCard}>
                 <View style={styles.todayCardInner}>
-                  <Text style={styles.cardTitle}>{item.module.code}</Text>
+                  <Text style={styles.cardTitle}>{toText(item.module?.code, "Module")}</Text>
 
                   <View style={styles.row}>
                     <Ionicons name="time-outline" size={16} color="#1E1B4B" />
-                    <Text style={styles.cardDetail}>{formatTime(item.start_time)}</Text>
+                    <Text style={styles.cardDetail}>{toText(formatTime(item.start_time), "-")}</Text>
                   </View>
 
                   <View style={styles.row}>
                     <Ionicons name="location-outline" size={16} color="#1E1B4B" />
-                    <Text style={styles.cardDetail}>{item.venue}</Text>
+                    <Text style={styles.cardDetail}>{toText(item.venue, "TBA")}</Text>
                   </View>
 
-                  <Text style={styles.cardSubtitle}>{item.module.name}</Text>
+                  <Text style={styles.cardSubtitle}>{toText(item.module?.name, "Class")}</Text>
                 </View>
               </View>
             ))
@@ -335,43 +450,37 @@ const HomeScreen = ({ navigation }) => {
           <Text style={styles.sectionHeaderText}>Upcoming Classes</Text>
         </View>
 
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.horizontalScrollContainer}
-        >
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalScrollContainer}>
           {upcomingClasses.length === 0 && !loading ? (
             <Text style={styles.noUpcomingText}>No upcoming classes found.</Text>
           ) : (
             upcomingClasses.map((item) => (
               <TouchableOpacity
-                key={item.id}
+                key={String(item.id)}
                 style={styles.upcomingCard}
                 onPress={async () => {
                   const dateToJump = item.date;
-                  await AsyncStorage.setItem('jumpToDate', dateToJump);
-                  navigation.navigate('Timetable', {
-                    screen: 'TimeTableMain',
-                  });
+                  await AsyncStorage.setItem("jumpToDate", String(dateToJump || ""));
+                  navigation.navigate("Timetable", { screen: "TimeTableMain" });
                 }}
               >
                 <View style={{ marginBottom: 8 }}>
                   <Text style={styles.upcomingLabel}>Date</Text>
-                  <Text style={styles.upcomingValue}>{formatDate(item.date)}</Text>
+                  <Text style={styles.upcomingValue}>{toText(formatDate(item.date), "-")}</Text>
                 </View>
 
                 <View style={{ marginBottom: 8 }}>
                   <Text style={styles.upcomingLabel}>Time</Text>
-                  <Text style={styles.upcomingValue}>{formatTime(item.start_time)}</Text>
+                  <Text style={styles.upcomingValue}>{toText(formatTime(item.start_time), "-")}</Text>
                 </View>
 
                 <View style={{ marginBottom: 12 }}>
                   <Text style={styles.upcomingLabel}>Venue</Text>
-                  <Text style={styles.upcomingValue}>{item.venue || 'TBA'}</Text>
+                  <Text style={styles.upcomingValue}>{toText(item.venue, "TBA")}</Text>
                 </View>
 
                 <Text style={styles.upcomingModule}>
-                  {item.module.code} — {item.module.name}
+                  {toText(item.module?.code, "MOD")} — {toText(item.module?.name, "Class")}
                 </Text>
               </TouchableOpacity>
             ))
@@ -382,70 +491,41 @@ const HomeScreen = ({ navigation }) => {
       </ScrollView>
     </SafeAreaView>
   );
-};
+}
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
-  scrollContent: {
-    paddingBottom: 24,
-  },
-  paddingContainer: {
-    paddingHorizontal: 20,
-  },
+  safeArea: { flex: 1, backgroundColor: COLORS.background },
+  scrollContent: { paddingBottom: 24 },
+  paddingContainer: { paddingHorizontal: 20 },
 
-  // HEADER
   headerContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     paddingHorizontal: 20,
     paddingTop: 20,
     paddingBottom: 10,
   },
-  greetingLabel: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: COLORS.textMuted,
-  },
+  greetingLabel: { fontSize: 14, fontWeight: "500", color: COLORS.textMuted },
   greetingName: {
     fontSize: 22,
-    fontWeight: '700',
+    fontWeight: "700",
     color: COLORS.textDark,
     marginTop: 2,
-    textTransform: 'capitalize',
+    textTransform: "capitalize",
   },
   chip: {
     marginTop: 8,
-    alignSelf: 'flex-start',
-    backgroundColor: '#E7F0FF',
+    alignSelf: "flex-start",
+    backgroundColor: "#E7F0FF",
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 999,
   },
-  chipText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: COLORS.primary,
-  },
-  dateContainer: {
-    alignItems: 'flex-end',
-    justifyContent: 'center',
-  },
-  dateDay: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.primary,
-  },
-  dateText: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: COLORS.textMuted,
-    marginTop: 2,
-  },
+  chipText: { fontSize: 11, fontWeight: "600", color: COLORS.primary },
+  dateContainer: { alignItems: "flex-end", justifyContent: "center" },
+  dateDay: { fontSize: 14, fontWeight: "600", color: COLORS.primary },
+  dateText: { fontSize: 13, fontWeight: "500", color: COLORS.textMuted, marginTop: 2 },
 
-  // ATTENDANCE CARD
   attendanceCard: {
     marginHorizontal: 20,
     marginTop: 12,
@@ -454,77 +534,36 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     paddingVertical: 26,
     paddingHorizontal: 20,
-    alignItems: 'center',
+    alignItems: "center",
     elevation: 3,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOpacity: 0.06,
     shadowOffset: { width: 0, height: 3 },
     shadowRadius: 6,
   },
-  attendanceLabel: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: COLORS.textDark,
-    marginBottom: 4,
-  },
-  attendanceSubtitle: {
-    fontSize: 14,
-    color: COLORS.textMuted,
-    marginBottom: 20,
-  },
+
+  attendanceLabel: { fontSize: 16, fontWeight: "700", color: COLORS.textDark, marginBottom: 4 },
+  attendanceSubtitle: { fontSize: 14, color: COLORS.textMuted, marginBottom: 20 },
   attendanceCircle: {
     width: 95,
     height: 95,
     borderRadius: 48,
-    backgroundColor: '#E3EDFF',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "#E3EDFF",
+    alignItems: "center",
+    justifyContent: "center",
   },
-  attendancePercentage: {
-    fontSize: 30,
-    fontWeight: '800',
-    color: COLORS.primary,
-  },
+  attendancePercentage: { fontSize: 30, fontWeight: "800", color: COLORS.primary },
 
-  // SECTION HEADER
-  sectionHeaderRow: {
-    paddingHorizontal: 20,
-    marginBottom: 8,
-  },
-  sectionHeaderText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: COLORS.textDark,
-  },
+  sectionHeaderRow: { paddingHorizontal: 20, marginBottom: 8 },
+  sectionHeaderText: { fontSize: 16, fontWeight: "700", color: COLORS.textDark },
 
-  // ✅ ANNOUNCEMENT STYLES
-  announcementCard: {
-    marginHorizontal: 20,
-    marginBottom: 22,
-    backgroundColor: COLORS.card,
-    borderRadius: 20,
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowOffset: { width: 0, height: 3 },
-    shadowRadius: 6,
-  },
-  announceHeaderRow: {
-    flexDirection: "row", 
-    justifyContent: "space-between", 
-    alignItems: "center" 
-  },
-
-  // TODAY CARDS
   todayCard: {
-    backgroundColor: '#8C99FF',
+    backgroundColor: "#8C99FF",
     borderRadius: 18,
     padding: 2,
     marginBottom: 14,
     elevation: 3,
-    shadowColor: '#8C99FF',
+    shadowColor: "#8C99FF",
     shadowOpacity: 0.12,
     shadowOffset: { width: 0, height: 3 },
     shadowRadius: 5,
@@ -532,90 +571,77 @@ const styles = StyleSheet.create({
   todayCardInner: {
     borderRadius: 16,
     padding: 14,
-    backgroundColor: 'rgba(255,255,255,0.95)',
+    backgroundColor: "rgba(255,255,255,0.95)",
   },
-  cardTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#1E1B4B',
-    marginBottom: 8,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-    gap: 6,
-  },
-  cardDetail: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1E1B4B',
-  },
-  cardSubtitle: {
-    marginTop: 10,
-    fontSize: 13,
-    fontWeight: '600',
-    color: COLORS.primary,
-  },
+  cardTitle: { fontSize: 16, fontWeight: "800", color: "#1E1B4B", marginBottom: 8 },
+  row: { flexDirection: "row", alignItems: "center", marginBottom: 4, gap: 6 },
+  cardDetail: { fontSize: 14, fontWeight: "600", color: "#1E1B4B" },
+  cardSubtitle: { marginTop: 10, fontSize: 13, fontWeight: "600", color: COLORS.primary },
 
-  // UPCOMING
-  horizontalScrollContainer: {
-    paddingHorizontal: 20,
-    paddingTop: 6,
-  },
+  horizontalScrollContainer: { paddingHorizontal: 20, paddingTop: 6 },
   upcomingCard: {
-    backgroundColor: '#3A7AFE',
+    backgroundColor: "#3A7AFE",
     borderRadius: 18,
     padding: 14,
     width: 160,
     marginRight: 12,
-    shadowColor: '#3A7AFE',
+    shadowColor: "#3A7AFE",
     shadowOpacity: 0.15,
     shadowOffset: { width: 0, height: 4 },
     shadowRadius: 6,
   },
   upcomingLabel: {
     fontSize: 11,
-    color: 'rgba(255,255,255,0.75)',
-    fontWeight: '600',
+    color: "rgba(255,255,255,0.75)",
+    fontWeight: "600",
     marginBottom: 2,
   },
-  upcomingValue: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    marginBottom: 6,
-  },
-  upcomingModule: {
-    marginTop: 6,
-    fontSize: 14,
-    fontWeight: '800',
-    color: '#FFFFFF',
-  },
-  noUpcomingText: {
-    marginLeft: 20,
-    color: COLORS.textMuted,
-    fontSize: 13,
-  },
+  upcomingValue: { fontSize: 14, fontWeight: "700", color: "#FFFFFF", marginBottom: 6 },
+  upcomingModule: { marginTop: 6, fontSize: 14, fontWeight: "800", color: "#FFFFFF" },
+  noUpcomingText: { marginLeft: 20, color: COLORS.textMuted, fontSize: 13 },
 
-  // EMPTY STATE
   emptyStateContainer: {
-    alignItems: 'center',
+    alignItems: "center",
     paddingVertical: 22,
-    backgroundColor: '#F0F4FF',
+    backgroundColor: "#F0F4FF",
     borderRadius: 18,
     gap: 8,
   },
-  emptyStateText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: COLORS.textDark,
-  },
-  emptyStateSubtext: {
-    fontSize: 13,
-    color: COLORS.textMuted,
-    marginTop: 2,
-  },
-});
+  emptyStateText: { fontSize: 15, fontWeight: "700", color: COLORS.textDark },
+  emptyStateSubtext: { fontSize: 13, color: COLORS.textMuted, marginTop: 2 },
 
-export default HomeScreen;
+  announceHeaderRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  divider: { height: 1, backgroundColor: COLORS.border },
+  unreadDot: { width: 8, height: 8, borderRadius: 99, backgroundColor: COLORS.danger },
+
+  filterPill: {
+    marginLeft: 8,
+    backgroundColor: "#E7F0FF",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  filterPillText: { fontSize: 11, fontWeight: "900", color: COLORS.primary },
+
+  newPill: {
+    backgroundColor: "#FEE2E2",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "#FCA5A5",
+  },
+  newPillText: { fontSize: 10, fontWeight: "900", color: "#B91C1C", letterSpacing: 0.6 },
+
+  readPill: {
+    backgroundColor: "#E5E7EB",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "#D1D5DB",
+  },
+  readPillText: { fontSize: 10, fontWeight: "900", color: "#374151", letterSpacing: 0.6 },
+});

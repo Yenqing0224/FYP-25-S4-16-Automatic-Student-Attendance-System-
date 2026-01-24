@@ -25,13 +25,14 @@ class News(models.Model):
     description = models.TextField(help_text="Full content of the news")
     news_date = models.DateTimeField(default=timezone.now) 
     image_url = models.CharField(max_length=500, blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         verbose_name_plural = "News" # Fixes Django showing "Newss"
         ordering = ['-news_date']
 
     def __str__(self):
-        return self.title
+        return self.title ({self.created_at})
 
 
 class Event(models.Model):
@@ -51,17 +52,17 @@ class Event(models.Model):
     venue = models.CharField(max_length=100)
     image_url = models.CharField(max_length=500, blank=True, null=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='upcoming')
+    created_at = models.DateTimeField(auto_now_add=True)
 
     # Stats
     total_student = models.IntegerField(default=0)
-    present_student = models.IntegerField(default=0)
-    absent_student = models.IntegerField(default=0)
+
 
     class Meta:
         ordering = ['-event_date']
 
     def __str__(self):
-        return f"{self.title} ({self.event_date.date()})"
+        return f"{self.title} ({self.event_date.date()}) [{self.status}]"
     
 
 class Announcement(models.Model):
@@ -74,4 +75,4 @@ class Announcement(models.Model):
     class Meta:
         ordering = ['-created_at'] # Newest first
     def __str__(self):
-        return f"{self.posted_by.username} - {self.title}"
+        return f"{self.posted_by.username} - {self.title} ({self.created_at})"

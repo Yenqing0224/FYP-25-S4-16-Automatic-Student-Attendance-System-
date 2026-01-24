@@ -64,6 +64,22 @@ def create_crud_views(model_class, serializer_class):
     return list_create, detail
 
 
+@api_view(['GET'])
+@permission_classes([IsAdminUser])
+def get_student_semester_attendance(request, student_id):
+    data = AdminService.get_student_semester_attendance(student_id)
+    
+    if data is None:
+        return Response({"error": "Student not found"}, status=404)
+
+    paginator = PageNumberPagination()
+    paginator.page_size = 10  
+    
+    result_page = paginator.paginate_queryset(data, request)
+    
+    return paginator.get_paginated_response(result_page)
+
+
 # Users
 users_list, users_detail = create_crud_views(User, AdminUserSerializer)
 students_list, students_detail = create_crud_views(Student, AdminStudentSerializer)
@@ -75,6 +91,7 @@ uni_list, uni_detail = create_crud_views(PartnerUni, AdminPartnerUniSerializer)
 semesters_list, semesters_detail = create_crud_views(Semester, AdminSemesterSerializer)
 modules_list, modules_detail = create_crud_views(Module, AdminModuleSerializer)
 sessions_list, sessions_detail = create_crud_views(ClassSession, AdminClassSessionSerializer)
+classroom_list, classroom_detail = create_crud_views(ClassRoom, AdminClassRoomSerializer)
 records_list, records_detail = create_crud_views(AttendanceRecord, AdminAttendanceRecordSerializer)
 
 # Communication
