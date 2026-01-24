@@ -1,3 +1,4 @@
+// src/screens/lecturer/classes/reschedule_screen.js
 import React, { useEffect, useState } from "react";
 import {
   View,
@@ -11,7 +12,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { Calendar } from "react-native-calendars"; 
+import { Calendar } from "react-native-calendars";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import api from "../../../api/api_client";
 
@@ -23,11 +24,12 @@ const COLORS = {
   textMuted: "#6B7280",
   border: "#E5E7EB",
   soft: "#ECE9FF",
-  success: "#10B981", 
+  success: "#10B981",
   disabled: "#D1D5DB",
 };
 
 const RESCHEDULE_OVERRIDES_KEY = "lecturerRescheduleOverrides_v1";
+const RESCHEDULE_HISTORY_KEY = "lecturerRescheduleHistory_v1";
 
 const toText = (v, fallback = "") => {
   if (v == null) return fallback;
@@ -40,20 +42,18 @@ export default function LecturerRescheduleScreen({ route, navigation }) {
   const cls = route?.params?.cls;
 
   const [loadingOptions, setLoadingOptions] = useState(true);
-  const [options, setOptions] = useState([]); 
-  const [markedDates, setMarkedDates] = useState({}); 
-  const [selectedDate, setSelectedDate] = useState(""); 
-  const [daySlots, setDaySlots] = useState([]); 
+  const [options, setOptions] = useState([]);
+  const [markedDates, setMarkedDates] = useState({});
+  const [selectedDate, setSelectedDate] = useState("");
+  const [daySlots, setDaySlots] = useState([]);
 
-  // Form State
   const [date, setDate] = useState("");
   const [startTime, setStartTime] = useState("");
-  const [endTime, setEndTime] = useState(""); 
-  const [venue, setVenue] = useState(toText(cls?.venue, "TBA")); // Read-only now
+  const [endTime, setEndTime] = useState("");
 
+  const [venue, setVenue] = useState(toText(cls?.venue, "TBA"));
   const [submitting, setSubmitting] = useState(false);
 
-  // 1. Fetch Options
   useEffect(() => {
     const loadOptions = async () => {
       if (!cls?.id) return;
@@ -74,7 +74,6 @@ export default function LecturerRescheduleScreen({ route, navigation }) {
     loadOptions();
   }, [cls?.id]);
 
-  // 2. Process Calendar Markers (FIXED: Added disabled: false)
   const processCalendarMarkers = (list) => {
     const markers = {};
     list.forEach((opt) => {
@@ -83,18 +82,16 @@ export default function LecturerRescheduleScreen({ route, navigation }) {
           marked: true,
           dotColor: COLORS.success,
           activeOpacity: 0.8,
-          status: "available",
-          disabled: false, // ✅ KEY FIX: Unlocks the date so it can be pressed
+          disabled: false,
         };
       }
     });
     setMarkedDates(markers);
   };
 
-  // 3. Handle Day Press
   const onDayPress = (day) => {
-    const dStr = day.dateString;
-    const availableOptions = options.filter((o) => o.date === dStr);
+    const dStr = day?.dateString;
+    const availableOptions = (options || []).filter((o) => o.date === dStr);
 
     if (availableOptions.length === 0) {
       Alert.alert("Unavailable", "No suggested slots available for this date.");
@@ -104,28 +101,38 @@ export default function LecturerRescheduleScreen({ route, navigation }) {
     setSelectedDate(dStr);
     setDaySlots(availableOptions);
 
-    // Auto-select first slot
-    if (availableOptions.length > 0) {
-      pickSlot(availableOptions[0]);
-    }
+    // auto pick first slot
+    pickSlot(availableOptions[0]);
   };
 
-  // 4. Pick Slot
   const pickSlot = (s) => {
     setDate(s.date);
     setStartTime(s.start_time ? s.start_time.slice(0, 5) : "");
     setEndTime(s.end_time ? s.end_time.slice(0, 5) : "");
-    if (s.venue) setVenue(s.venue); // Auto-update venue display
+    if (s.venue) setVenue(s.venue);
   };
 
-  // 5. Submit Payload
-  const saveOverride = async (sessionId, afterSnapshot) => {
+  const saveOverride = async (sessionId, overrideObj) => {
     try {
       const raw = await AsyncStorage.getItem(RESCHEDULE_OVERRIDES_KEY);
       const obj = raw ? JSON.parse(raw) : {};
-      const next = { ...obj, [String(sessionId)]: afterSnapshot };
+      const next = { ...(obj && typeof obj === "object" ? obj : {}), [String(sessionId)]: overrideObj };
       await AsyncStorage.setItem(RESCHEDULE_OVERRIDES_KEY, JSON.stringify(next));
-    } catch (e) { console.log(e); }
+    } catch (e) {
+      console.log("saveOverride error:", e);
+    }
+  };
+
+  const saveHistory = async (record) => {
+    try {
+      const raw = await AsyncStorage.getItem(RESCHEDULE_HISTORY_KEY);
+      const arr = raw ? JSON.parse(raw) : [];
+      const next = Array.isArray(arr) ? arr : [];
+      next.unshift(record); // newest first
+      await AsyncStorage.setItem(RESCHEDULE_HISTORY_KEY, JSON.stringify(next));
+    } catch (e) {
+      console.log("saveHistory error:", e);
+    }
   };
 
   const submit = async () => {
@@ -135,34 +142,67 @@ export default function LecturerRescheduleScreen({ route, navigation }) {
 
     setSubmitting(true);
     try {
-      // ✅ Strict Payload: session_id, date, start_time, end_time
+      const startPayload = startTime.length === 5 ? `${startTime}:00` : startTime;
+      const endPayload = endTime.length === 5 ? `${endTime}:00` : endTime;
+
       const payload = {
         session_id: String(cls.id),
-        date: date,
-        start_time: startTime.length === 5 ? `${startTime}:00` : startTime,
-        end_time: endTime.length === 5 ? `${endTime}:00` : endTime,
+        date,
+        start_time: startPayload,
+        end_time: endPayload,
       };
 
       await api.post("/reschedule-class/", payload);
 
-      // Save Local Override for UI update
+      // ✅ AFTER snapshot (what UI should show)
       const afterSnapshot = {
         ...cls,
-        date: payload.date,
+        id: String(cls.id),
         startISO: `${payload.date}T${payload.start_time}`,
         endISO: `${payload.date}T${payload.end_time}`,
-        time: `${startTime} – ${endTime}`,
         venue: venue,
         status: "rescheduled",
-        statusLabel: "Rescheduled",
       };
 
-      await saveOverride(cls.id, afterSnapshot);
-      
-      Alert.alert("Success", "Class rescheduled successfully.", [
-        { text: "OK", onPress: () => navigation.goBack() }
-      ]);
+      // ✅ store override (only important fields; time/date derived in Sessions screen)
+      await saveOverride(cls.id, {
+        startISO: afterSnapshot.startISO,
+        endISO: afterSnapshot.endISO,
+        venue: afterSnapshot.venue,
+      });
 
+      // ✅ store history (Before + After for Rescheduled tab)
+      await saveHistory({
+        key: `${cls.id}-${Date.now()}`,
+        session_id: String(cls.id),
+        module: cls?.module,
+        title: cls?.title,
+        statusLabel: "Rescheduled",
+
+        beforeStartISO: cls?.startISO,
+        beforeEndISO: cls?.endISO,
+        beforeVenue: cls?.venue,
+
+        afterStartISO: afterSnapshot.startISO,
+        afterEndISO: afterSnapshot.endISO,
+        afterVenue: afterSnapshot.venue,
+
+        // for opening detail page
+        afterSnapshot,
+      });
+
+      Alert.alert("Success", "Class rescheduled successfully.", [
+        {
+          text: "OK",
+          onPress: () => {
+            // ✅ go Sessions + open Rescheduled tab + force refresh
+            navigation.navigate("LecturerSessions", {
+              tab: "Rescheduled",
+              refreshKey: String(Date.now()),
+            });
+          },
+        },
+      ]);
     } catch (e) {
       Alert.alert("Error", e?.response?.data?.message || "Failed to reschedule.");
     } finally {
@@ -172,7 +212,6 @@ export default function LecturerRescheduleScreen({ route, navigation }) {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Ionicons name="chevron-back" size={26} color={COLORS.primary} />
@@ -182,8 +221,6 @@ export default function LecturerRescheduleScreen({ route, navigation }) {
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
-
-        {/* Info Card */}
         <View style={styles.card}>
           <Text style={styles.module}>{toText(cls?.module, "MOD")}</Text>
           <Text style={styles.title}>{toText(cls?.title, "Class")}</Text>
@@ -192,7 +229,6 @@ export default function LecturerRescheduleScreen({ route, navigation }) {
           </Text>
         </View>
 
-        {/* 1. Calendar */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>1. Select Date</Text>
 
@@ -206,7 +242,7 @@ export default function LecturerRescheduleScreen({ route, navigation }) {
               markedDates={{
                 ...markedDates,
                 [selectedDate]: {
-                  ...(markedDates[selectedDate] || {}), // Preserve disabled: false
+                  ...(markedDates[selectedDate] || {}),
                   selected: true,
                   selectedColor: COLORS.primary,
                 },
@@ -217,11 +253,11 @@ export default function LecturerRescheduleScreen({ route, navigation }) {
                 selectedDayBackgroundColor: COLORS.primary,
                 dotColor: COLORS.success,
               }}
-              disabledByDefault={true} 
+              disabledByDefault={true}
               disableAllTouchEventsForDisabledDays={true}
             />
           )}
-          
+
           <View style={styles.legendRow}>
             <View style={[styles.dot, { backgroundColor: COLORS.success }]} />
             <Text style={styles.legend}>Available</Text>
@@ -230,24 +266,23 @@ export default function LecturerRescheduleScreen({ route, navigation }) {
           </View>
         </View>
 
-        {/* 2. Slot Selection */}
         {selectedDate && daySlots.length > 0 && (
           <View style={styles.card}>
             <Text style={styles.cardTitle}>2. Select Time Slot</Text>
             <View style={styles.slotContainer}>
               {daySlots.map((s, idx) => {
-                const isSelected = s.start_time.startsWith(startTime);
+                const isSelected = s.start_time?.startsWith(startTime);
                 return (
                   <TouchableOpacity
                     key={idx}
                     style={[styles.slotChip, isSelected && styles.slotChipSelected]}
                     onPress={() => pickSlot(s)}
                   >
-                    <Text style={[styles.slotChipText, isSelected && { color: '#fff' }]}>
-                      {s.start_time.slice(0, 5)}
+                    <Text style={[styles.slotChipText, isSelected && { color: "#fff" }]}>
+                      {s.start_time?.slice(0, 5)}
                     </Text>
                     {s.attendance_percentage > 80 && (
-                      <Text style={[styles.highAttend, isSelected && { color: '#fff' }]}>High Attendance</Text>
+                      <Text style={[styles.highAttend, isSelected && { color: "#fff" }]}>High Attendance</Text>
                     )}
                   </TouchableOpacity>
                 );
@@ -256,17 +291,14 @@ export default function LecturerRescheduleScreen({ route, navigation }) {
           </View>
         )}
 
-        {/* 3. Confirm Details */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>3. Confirm Details</Text>
 
-          {/* Date */}
           <Text style={styles.label}>Date</Text>
           <View style={styles.readOnlyInput}>
             <Text style={styles.readOnlyText}>{date || "Select date above"}</Text>
           </View>
 
-          {/* Times */}
           <View style={{ flexDirection: "row", gap: 10 }}>
             <View style={{ flex: 1 }}>
               <Text style={styles.label}>Start Time</Text>
@@ -281,12 +313,11 @@ export default function LecturerRescheduleScreen({ route, navigation }) {
             <View style={{ flex: 1 }}>
               <Text style={styles.label}>End Time (Auto)</Text>
               <View style={styles.readOnlyInput}>
-                <Text style={{ fontWeight: '800', color: COLORS.textMuted }}>{endTime || "--:--"}</Text>
+                <Text style={{ fontWeight: "800", color: COLORS.textMuted }}>{endTime || "--:--"}</Text>
               </View>
             </View>
           </View>
 
-          {/* Confirm Button */}
           <TouchableOpacity
             style={[styles.primaryBtn, submitting && { opacity: 0.7 }]}
             onPress={submit}
@@ -305,35 +336,89 @@ export default function LecturerRescheduleScreen({ route, navigation }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
-  header: { paddingVertical: 14, paddingHorizontal: 20, flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderBottomWidth: 1, borderBottomColor: COLORS.border, backgroundColor: '#fff' },
+  header: {
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+    backgroundColor: "#fff",
+  },
   backBtn: { width: 30 },
   headerTitle: { fontSize: 18, fontWeight: "900", color: COLORS.textDark },
 
   content: { padding: 20 },
-  card: { backgroundColor: COLORS.card, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: COLORS.border, marginBottom: 16 },
+  card: {
+    backgroundColor: COLORS.card,
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    marginBottom: 16,
+  },
 
   module: { fontWeight: "900", color: COLORS.primary },
   title: { marginTop: 4, fontSize: 18, fontWeight: "900", color: COLORS.textDark },
   sub: { marginTop: 4, color: COLORS.textMuted, fontWeight: "600" },
 
   cardTitle: { fontSize: 16, fontWeight: "900", color: COLORS.textDark },
-  
-  legendRow: { flexDirection: 'row', alignItems: 'center', marginTop: 10 },
-  dot: { width: 8, height: 8, borderRadius: 4 },
-  legend: { fontSize: 12, color: COLORS.textMuted, fontWeight: '600', marginLeft: 6 },
 
-  slotContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 },
-  slotChip: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 10, backgroundColor: COLORS.soft, borderWidth: 1, borderColor: COLORS.border, alignItems: 'center' },
+  legendRow: { flexDirection: "row", alignItems: "center", marginTop: 10 },
+  dot: { width: 8, height: 8, borderRadius: 4 },
+  legend: { fontSize: 12, color: COLORS.textMuted, fontWeight: "600", marginLeft: 6 },
+
+  slotContainer: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 10 },
+  slotChip: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    backgroundColor: COLORS.soft,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    alignItems: "center",
+  },
   slotChipSelected: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
   slotChipText: { fontWeight: "800", color: COLORS.primary },
-  highAttend: { fontSize: 10, color: COLORS.success, fontWeight: '700' },
+  highAttend: { fontSize: 10, color: COLORS.success, fontWeight: "700" },
 
   label: { marginTop: 12, color: COLORS.textMuted, fontWeight: "700", fontSize: 13 },
-  input: { marginTop: 6, backgroundColor: "#fff", borderWidth: 1, borderColor: COLORS.border, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 12, fontWeight: "800", color: COLORS.textDark },
-  
-  readOnlyInput: { marginTop: 6, backgroundColor: '#f9fafb', borderWidth: 1, borderColor: COLORS.border, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  readOnlyText: { fontWeight: '800', color: COLORS.textDark },
+  input: {
+    marginTop: 6,
+    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    fontWeight: "800",
+    color: COLORS.textDark,
+  },
 
-  primaryBtn: { marginTop: 20, backgroundColor: COLORS.primary, paddingVertical: 14, borderRadius: 16, flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 8 },
+  readOnlyInput: {
+    marginTop: 6,
+    backgroundColor: "#f9fafb",
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  readOnlyText: { fontWeight: "800", color: COLORS.textDark },
+
+  primaryBtn: {
+    marginTop: 20,
+    backgroundColor: COLORS.primary,
+    paddingVertical: 14,
+    borderRadius: 16,
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 8,
+  },
   primaryBtnText: { color: "#fff", fontWeight: "900", fontSize: 15 },
 });

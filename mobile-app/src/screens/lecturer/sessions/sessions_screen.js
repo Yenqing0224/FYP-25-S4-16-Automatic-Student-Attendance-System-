@@ -27,6 +27,91 @@ const REMINDER_KEY = "lecturerReminderIds_v1";
 const RESCHEDULE_HISTORY_KEY = "lecturerRescheduleHistory_v1";
 const RESCHEDULE_OVERRIDES_KEY = "lecturerRescheduleOverrides_v1";
 
+/** ✅ Always derive date + time from ISO so fields never mismatch */
+const deriveFieldsFromISO = (c) => {
+  const startISO = String(c?.startISO ?? "");
+  const endISO = String(c?.endISO ?? "");
+
+  const date = startISO.includes("T") ? startISO.split("T")[0] : String(c?.date ?? "");
+  const startTime = startISO.length >= 16 ? startISO.slice(11, 16) : "";
+  const endTime = endISO.length >= 16 ? endISO.slice(11, 16) : "";
+
+  return {
+    ...c,
+    date,
+    time: startTime && endTime ? `${startTime} – ${endTime}` : (c?.time ?? "-"),
+  };
+};
+
+/** ✅ Dedup same id; keep rescheduled if exists; else best venue */
+const dedupeByIdPreferRescheduled = (arr = []) => {
+  const map = new Map();
+
+  for (const item of arr) {
+    const id = String(item?.id ?? item?._id ?? "");
+    if (!id) continue;
+
+    const existing = map.get(id);
+    if (!existing) {
+      map.set(id, item);
+      continue;
+    }
+
+    const a = String(existing?.status ?? "").toLowerCase();
+    const b = String(item?.status ?? "").toLowerCase();
+
+    // Prefer rescheduled over active
+    if (a !== "rescheduled" && b === "rescheduled") {
+      map.set(id, item);
+      continue;
+    }
+    if (a === "rescheduled" && b !== "rescheduled") {
+      continue;
+    }
+
+    // If both same status, prefer better venue (not empty, not TBA)
+    const exVenue = String(existing?.venue ?? "").trim();
+    const itVenue = String(item?.venue ?? "").trim();
+    const exScore = exVenue && exVenue !== "TBA" ? 1 : 0;
+    const itScore = itVenue && itVenue !== "TBA" ? 1 : 0;
+
+    if (itScore > exScore) map.set(id, item);
+  }
+
+  return Array.from(map.values());
+};
+// ✅ ADD this helper near top (below your other helpers)
+const dedupePreferRescheduledBySignature = (arr = []) => {
+  const map = new Map();
+
+  const sig = (x) => {
+    const module = String(x?.module ?? "");
+    const title = String(x?.title ?? "");
+    const start = String(x?.startISO ?? "").slice(0, 16); // yyyy-mm-ddThh:mm
+    return `${module}|${title}|${start}`;
+  };
+
+  for (const item of arr) {
+    const key = sig(item);
+    if (!key) continue;
+
+    const existing = map.get(key);
+    if (!existing) {
+      map.set(key, item);
+      continue;
+    }
+
+    const a = String(existing?.status ?? "").toLowerCase();
+    const b = String(item?.status ?? "").toLowerCase();
+
+    // ✅ prefer rescheduled
+    if (a !== "rescheduled" && b === "rescheduled") map.set(key, item);
+  }
+
+  return Array.from(map.values());
+};
+
+
 const LecturerSessionsScreen = ({ navigation, route }) => {
   const [activeTab, setActiveTab] = useState("Upcoming");
   const [selectedDate, setSelectedDate] = useState(null);
@@ -38,7 +123,7 @@ const LecturerSessionsScreen = ({ navigation, route }) => {
   const [savingId, setSavingId] = useState(null);
 
   const [rescheduleHistory, setRescheduleHistory] = useState([]);
-  const [overrides, setOverrides] = useState({}); // ✅ NEW
+  const [overrides, setOverrides] = useState({});
 
   useEffect(() => {
     if (!selectedDate) {
@@ -55,7 +140,7 @@ const LecturerSessionsScreen = ({ navigation, route }) => {
           const arr = JSON.parse(raw);
           if (Array.isArray(arr)) setSavedReminderIds(new Set(arr));
         }
-      } catch {}
+      } catch { }
     })();
   }, []);
 
@@ -65,17 +150,18 @@ const LecturerSessionsScreen = ({ navigation, route }) => {
       const res = await api.get("/timetable/");
       const rawData = Array.isArray(res.data) ? res.data : [];
 
-      const formatted = rawData.map((c) => ({
-        id: String(c.id),
-        module: c.module?.code ?? c.module?.name ?? c.module ?? "MOD",
-        title: c.module?.name ?? c.title ?? "Class",
-        venue: c.venue ?? "TBA",
-        time: `${String(c.start_time ?? "").slice(0, 5)} – ${String(c.end_time ?? "").slice(0, 5)}`,
-        startISO: `${c.date}T${c.start_time}`,
-        endISO: `${c.date}T${c.end_time}`,
-        date: c.date,
-        status: (c.status ?? "active").toLowerCase(),
-      }));
+      const formatted = rawData.map((c) => {
+        const base = {
+          id: String(c.id),
+          module: c.module?.code ?? c.module?.name ?? c.module ?? "MOD",
+          title: c.module?.name ?? c.title ?? "Class",
+          venue: c.venue ?? "TBA",
+          startISO: `${c.date}T${c.start_time}`,
+          endISO: `${c.date}T${c.end_time}`,
+          status: (c.status ?? "active").toLowerCase(),
+        };
+        return deriveFieldsFromISO(base);
+      });
 
       setFullTimetable(formatted);
     } catch (err) {
@@ -129,18 +215,27 @@ const LecturerSessionsScreen = ({ navigation, route }) => {
     }, [route.params?.tab, route.params?.targetDate, route.params?.refreshKey])
   );
 
-  // ✅ APPLY OVERRIDES EVERYWHERE
+
   const mergedTimetable = useMemo(() => {
-    return (fullTimetable || []).map((c) => {
+    const merged = (fullTimetable || []).map((c) => {
       const o = overrides?.[String(c.id)];
       if (!o) return c;
-      return {
+
+      const mergedOne = {
         ...c,
         ...o,
         id: String(c.id),
         status: "rescheduled",
       };
+
+      return deriveFieldsFromISO(mergedOne);
     });
+
+    // ✅ 1) dedupe by id
+    const byId = dedupeByIdPreferRescheduled(merged);
+
+    // ✅ 2) dedupe by signature (kills “Upcoming + Rescheduled duplicate”)
+    return dedupePreferRescheduledBySignature(byId);
   }, [fullTimetable, overrides]);
 
   const upcoming = useMemo(() => {
@@ -275,19 +370,13 @@ const LecturerSessionsScreen = ({ navigation, route }) => {
         />
       )}
 
-      {activeTab === "Rescheduled" && (
-        <RescheduledTab
-          COLORS={COLORS}
-          navigation={navigation}
-          list={rescheduleHistory}
-        />
-      )}
+      {activeTab === "Rescheduled" && <RescheduledTab COLORS={COLORS} navigation={navigation} list={rescheduleHistory} />}
 
       {activeTab === "Calendar" && (
         <CalendarTab
           COLORS={COLORS}
           navigation={navigation}
-          sessions={mergedTimetable} // ✅ IMPORTANT
+          sessions={mergedTimetable}
           selectedDate={selectedDate}
           setSelectedDate={setSelectedDate}
           isAdded={isAdded}

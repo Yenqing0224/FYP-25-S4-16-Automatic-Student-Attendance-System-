@@ -49,15 +49,11 @@ const UpcomingTab = ({
     return fallback;
   };
 
+  /** ✅ KEY FIX: make it unique even if id duplicates happen temporarily */
   const safeKey = (s, idx) => {
-    const raw = s?.id ?? s?._id;
-    if (typeof raw === "string" || typeof raw === "number") return String(raw);
-    if (raw && typeof raw === "object") {
-      if (raw.id != null) return String(raw.id);
-      if (raw._id != null) return String(raw._id);
-      if (raw.name != null) return String(raw.name);
-    }
-    return `up-${toText(s?.module, "m")}-${toText(s?.startISO, idx)}-${idx}`;
+    const id = String(s?.id ?? s?._id ?? idx);
+    const start = String(s?.startISO ?? "");
+    return `${id}-${start}-${idx}`;
   };
 
   const renderRightActions = (cls) => (
@@ -85,6 +81,16 @@ const UpcomingTab = ({
   };
 
   const goReschedule = (cls) => {
+    // ✅ Option A: once rescheduled, cannot reschedule again
+    const status = String(toText(cls?.status, "active")).toLowerCase();
+    const statusLabelLower = String(toText(cls?.statusLabel, "")).toLowerCase();
+    const isRescheduled = status === "rescheduled" || statusLabelLower === "rescheduled";
+
+    if (isRescheduled) {
+      Alert.alert("Not allowed", "This class was already rescheduled and cannot be rescheduled again.");
+      return;
+    }
+
     const startISO = toText(cls?.startISO, "");
     if (startISO) {
       const startMs = new Date(startISO).getTime();
@@ -111,7 +117,10 @@ const UpcomingTab = ({
           const dateText = formatDate(s?.date);
 
           const status = String(toText(s?.status, "active")).toLowerCase();
-          const statusLabel = status === "rescheduled" ? "Rescheduled" : "Upcoming";
+          const statusLabelLower = String(toText(s?.statusLabel, "")).toLowerCase();
+          const isRescheduled = status === "rescheduled" || statusLabelLower === "rescheduled";
+
+          const statusLabel = isRescheduled ? "Rescheduled" : "Upcoming";
 
           const moduleColor = getModuleColor(moduleText);
 
@@ -119,7 +128,7 @@ const UpcomingTab = ({
             <TouchableOpacity
               activeOpacity={0.9}
               onPress={() => navigation.navigate("LecturerClassDetail", { cls: s })}
-              style={[styles.sessionCard, { borderColor: moduleColor + "55" , backgroundColor: moduleColor + "10"}]}
+              style={[styles.sessionCard, { borderColor: moduleColor + "55", backgroundColor: moduleColor + "10" }]}
             >
               <View style={{ flexDirection: "row" }}>
                 <View style={[styles.moduleBar, { backgroundColor: moduleColor }]} />
@@ -161,21 +170,46 @@ const UpcomingTab = ({
                     </TouchableOpacity>
 
                     <TouchableOpacity
-                      style={[styles.secondaryBtnSmall, isAdded?.(s) && styles.secondaryBtnDisabled, { backgroundColor: moduleColor + "22" }]}
+                      style={[
+                        styles.secondaryBtnSmall,
+                        isAdded?.(s) && styles.secondaryBtnDisabled,
+                        { backgroundColor: moduleColor + "22" },
+                      ]}
                       disabled={!!isAdded?.(s) || !!isSavingThis?.(s)}
                       onPress={() => addReminderToCalendar?.(s)}
                     >
-                      <Ionicons name={isAdded?.(s) ? "checkmark-circle-outline" : "bookmark-outline"} size={16} color={moduleColor} />
+                      <Ionicons
+                        name={isAdded?.(s) ? "checkmark-circle-outline" : "bookmark-outline"}
+                        size={16}
+                        color={moduleColor}
+                      />
                       <Text style={[styles.secondaryBtnTextSmall, { color: moduleColor }]}>
                         {isSavingThis?.(s) ? "..." : isAdded?.(s) ? "Added" : "Reminder"}
                       </Text>
                     </TouchableOpacity>
 
-                    <TouchableOpacity style={[styles.secondaryBtnSmall, { backgroundColor: moduleColor + "22" }]} onPress={() => goReschedule(s)}>
+                    {/* ✅ Option A: disable Move button if rescheduled */}
+                    <TouchableOpacity
+                      style={[
+                        styles.secondaryBtnSmall,
+                        { backgroundColor: moduleColor + "22" },
+                        isRescheduled && { opacity: 0.55 },
+                      ]}
+                      onPress={() => goReschedule(s)}
+                      disabled={isRescheduled}
+                    >
                       <Ionicons name="calendar-outline" size={16} color={moduleColor} />
-                      <Text style={[styles.secondaryBtnTextSmall, { color: moduleColor }]}>Move</Text>
+                      <Text style={[styles.secondaryBtnTextSmall, { color: moduleColor }]}>
+                        {isRescheduled ? "Locked" : "Move"}
+                      </Text>
                     </TouchableOpacity>
                   </View>
+
+                  {isRescheduled && (
+                    <Text style={styles.lockHint}>
+                      This class has been rescheduled once. Rescheduling again is disabled.
+                    </Text>
+                  )}
 
                   {isAdded?.(s) && (
                     <View style={styles.swipeHintRow}>
@@ -247,6 +281,14 @@ const styles = StyleSheet.create({
   primaryBtnText: { color: "#fff", fontWeight: "900" },
 
   secondaryBtnDisabled: { opacity: 0.65 },
+
+  lockHint: {
+    marginTop: 10,
+    color: "#6B7280",
+    fontWeight: "700",
+    fontSize: 12,
+    lineHeight: 16,
+  },
 
   swipeHintRow: { marginTop: 10, flexDirection: "row", alignItems: "center", gap: 6 },
   swipeHintText: { color: "#6B7280", fontWeight: "700", fontSize: 12 },

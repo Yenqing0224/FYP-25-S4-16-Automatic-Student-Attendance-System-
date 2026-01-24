@@ -57,9 +57,11 @@ export default function LecturerClassDetailScreen({ route, navigation }) {
 
   const moduleColor = getModuleColor(moduleText);
 
+  // ✅ Option A: once rescheduled, cannot reschedule again
   const status = String(toText(cls?.status, "active")).toLowerCase();
-  const isCancelled = status === "cancelled";
-  const isRescheduled = status === "rescheduled";
+  const statusLabelLower = String(toText(cls?.statusLabel, "")).toLowerCase();
+  const isCancelled = status === "cancelled" || statusLabelLower === "cancelled";
+  const isRescheduled = status === "rescheduled" || statusLabelLower === "rescheduled";
 
   const isUpcoming = useMemo(() => {
     const t = new Date(toText(cls?.startISO, "")).getTime();
@@ -68,6 +70,13 @@ export default function LecturerClassDetailScreen({ route, navigation }) {
 
   const goReschedule = () => {
     if (!cls?.id) return Alert.alert("Missing", "No session id found.");
+
+    // ✅ Block reschedule if already rescheduled (Option A)
+    if (isRescheduled) {
+      Alert.alert("Not allowed", "This class was already rescheduled and cannot be rescheduled again.");
+      return;
+    }
+
     navigation.navigate("LecturerReschedule", { cls });
   };
 
@@ -134,11 +143,27 @@ export default function LecturerClassDetailScreen({ route, navigation }) {
             <Text style={styles.cardTitle}>Actions</Text>
 
             <View style={styles.actionsRow}>
-              <TouchableOpacity style={[styles.primaryBtn, { backgroundColor: moduleColor }]} onPress={goReschedule} disabled={busy}>
+              <TouchableOpacity
+                style={[
+                  styles.primaryBtn,
+                  { backgroundColor: moduleColor },
+                  (busy || isRescheduled) && { opacity: 0.55 },
+                ]}
+                onPress={goReschedule}
+                disabled={busy || isRescheduled}
+              >
                 <Ionicons name="calendar-outline" size={16} color="#fff" />
-                <Text style={styles.primaryBtnText}>Reschedule</Text>
+                <Text style={styles.primaryBtnText}>
+                  {isRescheduled ? "Already Rescheduled" : "Reschedule"}
+                </Text>
               </TouchableOpacity>
             </View>
+
+            {isRescheduled && (
+              <Text style={styles.hintText}>
+                This class has been rescheduled once. Rescheduling again is disabled.
+              </Text>
+            )}
           </View>
         )}
       </ScrollView>
@@ -220,4 +245,12 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   primaryBtnText: { color: "#fff", fontWeight: "900" },
+
+  hintText: {
+    marginTop: 10,
+    color: COLORS.textMuted,
+    fontWeight: "700",
+    fontSize: 12,
+    lineHeight: 16,
+  },
 });
