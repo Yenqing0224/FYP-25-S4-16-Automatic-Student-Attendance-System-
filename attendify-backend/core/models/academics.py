@@ -66,6 +66,7 @@ class ClassSession(models.Model):
         ('in_progress', 'In Progress'),
         ('completed', 'Completed'),
         ('cancelled', 'Cancelled'),
+        ('rescheduled', 'Rescheduled'),
     ]
 
     # Relationships

@@ -326,7 +326,7 @@ class AcademicService:
         if not available_venue:
             raise ValidationError("No classrooms are available at this selected time. Please choose a different slot.")
 
-        session.status = 'cancelled'
+        session.status = 'rescheduled'
         session.save()
 
         new_session = ClassSession.objects.create(
