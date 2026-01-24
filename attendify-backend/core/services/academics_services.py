@@ -210,6 +210,9 @@ class AcademicService:
         if session.status != 'upcoming':
             raise ValidationError(f"Only 'Upcoming' classes can be rescheduled.")
 
+        if "(Rescheduled)" in session.name:
+            raise ValidationError("This class is already a replacement class and cannot be rescheduled again.")
+        
         try:
             lecturer = Lecturer.objects.get(user=user)
             if session.module.lecturer != lecturer:
@@ -302,6 +305,9 @@ class AcademicService:
         if session.status != 'upcoming':
             raise ValidationError(f"Only 'Upcoming' classes can be rescheduled.")
         
+        if "(Rescheduled)" in session.name:
+            raise ValidationError("This class is already a replacement class and cannot be rescheduled again.")
+
         try:
             lecturer = Lecturer.objects.get(user=lecturer)
             if session.module.lecturer != lecturer:
