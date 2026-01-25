@@ -109,7 +109,7 @@ export default function LecturerActiveClassesScreen({ navigation }) {
           <Ionicons name="arrow-back" size={22} color={COLORS.textDark} />
         </TouchableOpacity>
 
-        <Text style={styles.headerTitle}>Active Classes</Text>
+        <Text style={styles.headerTitle}>Active Modules</Text>
 
         <View style={{ width: 38 }} />
       </View>
