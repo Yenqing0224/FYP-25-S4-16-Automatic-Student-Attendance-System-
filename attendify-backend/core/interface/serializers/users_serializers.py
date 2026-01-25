@@ -12,7 +12,7 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = ['id', 'username', 'email', 'first_name', 'last_name', 'phone_number',
                   'personal_email', 'address_street', 'address_unit',
-                  'address_postal',  'address_country','role_type', 'gender', 'image_url']
+                  'address_postal',  'address_country','role_type', 'gender', 'image_path']
 
 
 class AdminSerializer(serializers.ModelSerializer):

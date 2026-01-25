@@ -7,7 +7,7 @@ class AdminUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['id', 'username', 'password', 'email', 
-                  'first_name', 'last_name', 'phone_number', 'gender', 'personal_email', 'image_url',
+                  'first_name', 'last_name', 'phone_number', 'gender', 'personal_email', 'image_path',
                   'address_street', 'address_unit', 'address_postal', 'address_country', 
                   'role_type', 'status', 'is_staff', 'is_active']
 
