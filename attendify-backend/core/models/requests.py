@@ -44,4 +44,3 @@ class AttendanceAppeal(models.Model):
 
     def __str__(self):
         return f"Appeal: {self.student.user.username} - {self.session.name}"
-    

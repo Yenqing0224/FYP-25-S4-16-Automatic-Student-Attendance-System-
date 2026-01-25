@@ -40,6 +40,18 @@ class SupabaseStorageService:
         except Exception as e:
             print(f"Supabase Upload Error: {e}")
             return None
+    
+
+    def get_signed_url(self, bucket, file_path, expiry_duration=60):
+        try:
+            response = self.client.storage.from_(bucket).create_signed_url(
+                file_path, expiry_duration
+            )
+            return response.get('signedURL')
+        except Exception as e:
+            print(f"Signed URL Error: {e}")
+            return None
+        
         
     def delete_file(self, bucket, file_path_or_url):
         try:
