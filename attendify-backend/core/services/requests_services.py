@@ -35,9 +35,9 @@ class RequestService:
             start_date=data['start_date'],
             end_date=data['end_date'],
             reason=data['reason'],
-            description=data['description'], 
-            status='pending',
-            document_path=file_path
+            description=data['description'],
+            document_path=file_path,
+            status='pending'
         )
 
         return leave
@@ -77,9 +77,8 @@ class RequestService:
             session=session,
             reason=data['reason'],
             description=data['description'],
-            document_url=None,
-            status='pending',
-            document_path=file_path
+            document_path=file_path,
+            status='pending'
         )
 
         return appeal
