@@ -50,6 +50,18 @@ def apply_leaves(request):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
+def get_leave_document_url(request, leave_id):
+    service = RequestService()
+    url, error = service.get_leave_document_url(request.user, leave_id)
+    
+    if error:
+        return Response({"error": error}, status=404)
+        
+    return Response({"document_url": url}, status=200)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def get_student_appeals(request):
     service = RequestService()
 

@@ -41,6 +41,7 @@ urlpatterns = [
     path('apply-leaves/', requests_views.apply_leaves, name='apply-leaves'),
     path('apply-appeals/', requests_views.apply_appeals, name='apply-appeals'),
     path('get-appeals-document/<int:appeal_id>/', requests_views.get_appeal_document_url, name='get-appeal-document-url'),
+    path('get-leave-document/<int:leave_id>/', requests_views.get_leave_document_url, name='get-leave-document-url'),
 
 
     # Admin
