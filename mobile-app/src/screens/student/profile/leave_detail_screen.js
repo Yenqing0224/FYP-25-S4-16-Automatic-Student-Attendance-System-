@@ -1,5 +1,5 @@
-// mobile-app/screens/student/profile/leave_detail_screen.js
-import React from "react";
+// src/screens/student/profile/leave_detail_screen.js
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -9,8 +9,10 @@ import {
   Alert,
   Linking,
   StatusBar,
+  ActivityIndicator, // 👈 1. Import Spinner
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import api from "../../../api/api_client"; // 👈 2. Import API Client
 
 const COLORS = {
   background: "#F5F7FB",
@@ -29,8 +31,7 @@ const COLORS = {
 
 const LeaveDetailScreen = ({ navigation, route }) => {
   const { leave } = route.params || {};
-
-  const BASE_URL = "https://attendify-ekg6.onrender.com";
+  const [opening, setOpening] = useState(false); // 👈 3. Loading state
 
   if (!leave) {
     return (
@@ -49,7 +50,6 @@ const LeaveDetailScreen = ({ navigation, route }) => {
     );
   }
 
-  const docUrl = leave.document || leave.document_url;
   const descriptionText = leave.description || leave.remarks;
 
   // --- HELPERS ---
@@ -70,24 +70,38 @@ const LeaveDetailScreen = ({ navigation, route }) => {
       .replace(/\//g, "-");
   };
 
+  // ✅ Just-in-Time Link Generation (Matches Appeal Screen)
   const handleOpenFile = async () => {
-    if (!docUrl) {
+    const hasFile = leave.document_path || leave.document;
+
+    if (!hasFile) {
       Alert.alert("No file", "There is no file attached to this leave.");
       return;
     }
 
-    const fullUrl = docUrl.startsWith("http") ? docUrl : `${BASE_URL}${docUrl}`;
+    setOpening(true);
 
     try {
-      const supported = await Linking.canOpenURL(fullUrl);
-      if (supported) {
-        await Linking.openURL(fullUrl);
+      // 1. Call your new endpoint to get a fresh link
+      const response = await api.get(`/get-leave-document/${leave.id}/`);
+      const { document_url } = response.data;
+
+      if (document_url) {
+        // 2. Open the URL
+        const supported = await Linking.canOpenURL(document_url);
+        if (supported) {
+          await Linking.openURL(document_url);
+        } else {
+          await Linking.openURL(document_url);
+        }
       } else {
-        await Linking.openURL(fullUrl);
+        Alert.alert("Error", "Could not retrieve document link.");
       }
-    } catch (e) {
-      console.warn("Error opening file:", e);
-      Alert.alert("Error", "Failed to open the file.");
+    } catch (error) {
+      console.error("Open File Error:", error);
+      Alert.alert("Error", "Failed to open the file. Please try again.");
+    } finally {
+      setOpening(false);
     }
   };
 
@@ -173,12 +187,22 @@ const LeaveDetailScreen = ({ navigation, route }) => {
           <View style={styles.item}>
             <Text style={styles.label}>Attached File</Text>
 
-            {docUrl ? (
+            {(leave.document_path || leave.document) ? (
               <View>
                 <Text style={styles.fileName}>Document uploaded</Text>
-                <TouchableOpacity style={styles.fileButton} onPress={handleOpenFile}>
-                  <Text style={styles.fileButtonText}>View Document</Text>
+                
+                <TouchableOpacity 
+                  style={styles.fileButton} 
+                  onPress={handleOpenFile}
+                  disabled={opening}
+                >
+                   {opening ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <Text style={styles.fileButtonText}>View Document</Text>
+                  )}
                 </TouchableOpacity>
+
               </View>
             ) : (
               <Text style={styles.value}>No file attached</Text>
@@ -191,9 +215,7 @@ const LeaveDetailScreen = ({ navigation, route }) => {
 };
 
 const styles = StyleSheet.create({
-  // LAYOUT
   container: { flex: 1, backgroundColor: COLORS.background },
-
   header: {
     backgroundColor: COLORS.background,
     paddingVertical: 14,
@@ -210,17 +232,13 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: COLORS.textDark,
   },
-
   scrollContent: {
     paddingHorizontal: 16,
     paddingTop: 16,
     paddingBottom: 32,
   },
-
   errorBox: { flex: 1, alignItems: "center", justifyContent: "center" },
   errorText: { color: COLORS.textMuted },
-
-  // CARD
   cardWrapper: {
     backgroundColor: COLORS.card,
     borderRadius: 16,
@@ -231,22 +249,18 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 3,
   },
-
   row: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
     marginBottom: 12,
   },
-
   divider: {
     height: 1,
     backgroundColor: COLORS.borderSoft,
     marginVertical: 10,
   },
-
   item: { marginBottom: 16 },
-
   label: {
     fontSize: 13,
     color: COLORS.textMuted,
@@ -263,8 +277,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: COLORS.textDark,
   },
-
-  // STATUS
   statusBadge: {
     paddingHorizontal: 12,
     paddingVertical: 4,
@@ -275,8 +287,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     fontSize: 12,
   },
-
-  // REMARKS
   remarksBox: {
     backgroundColor: "#F9FAFB",
     padding: 10,
@@ -289,20 +299,23 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 22,
   },
-
-  // FILE
   fileName: {
     fontSize: 14,
     color: COLORS.textDark,
     marginBottom: 8,
     fontStyle: "italic",
   },
+  
+  // Updated File Button
   fileButton: {
     paddingVertical: 10,
     paddingHorizontal: 16,
     backgroundColor: COLORS.primary,
     borderRadius: 8,
     alignSelf: "flex-start",
+    minWidth: 140, // Ensures button doesn't shrink when spinner shows
+    alignItems: 'center',
+    justifyContent: 'center'
   },
   fileButtonText: {
     fontSize: 14,

@@ -1,4 +1,4 @@
-// mobile-app/screens/student/profile/leave_status_screen.js
+// src/screens/student/profile/leave_status_screen.js
 import React, { useState, useCallback } from "react";
 import {
   View,
@@ -11,9 +11,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
-// ❌ Removed AsyncStorage
-// ❌ Removed axios
-import api from "../../../api/api_client"; // 👈 1. Use Helper Client
+import api from "../../../api/api_client"; 
 
 const FILTERS = ["All", "Pending", "Approved", "Rejected"];
 
@@ -32,20 +30,17 @@ const getStatusStyle = (status) => {
   switch (normalized) {
     case "approved":
       return { bg: "#E8F8EE", text: "#15803D", stripe: "#4ADE80" }; 
-
     case "rejected":
       return { bg: "#F9E5E5", text: "#B91C1C", stripe: "#F87171" }; 
-
     case "pending":
     default:
       return {
-        bg: "#F7F4EC",       // ⬅️ VERY SOFT CREAM (barely yellow)
-        text: "#8B6B2C",     // muted gold-brown text
-        stripe: "#E6D892"    // soft pastel gold stripe
+        bg: "#F7F4EC",
+        text: "#8B6B2C",
+        stripe: "#E6D892"
       };
   }
 };
-
 
 const LeaveStatusScreen = ({ navigation }) => {
   const [selectedFilter, setSelectedFilter] = useState("All");
@@ -61,8 +56,6 @@ const LeaveStatusScreen = ({ navigation }) => {
 
   const fetchLeaves = async () => {
     try {
-      // 👈 2. Secure Fetch (No user_id param needed)
-      // The token automatically tells the backend which student's leaves to fetch.
       const response = await api.get('/leaves/');
       setLeaves(response.data);
     } catch (error) {
@@ -95,10 +88,10 @@ const LeaveStatusScreen = ({ navigation }) => {
     selectedFilter === "All"
       ? leaves
       : leaves.filter(
-        (item) =>
-          item.status &&
-          item.status.toLowerCase() === selectedFilter.toLowerCase()
-      );
+          (item) =>
+            item.status &&
+            item.status.toLowerCase() === selectedFilter.toLowerCase()
+        );
 
   return (
     <SafeAreaView style={styles.container}>
@@ -205,8 +198,8 @@ const LeaveStatusScreen = ({ navigation }) => {
                         {item.start_date === item.end_date
                           ? formatDate(item.start_date)
                           : `${formatDate(item.start_date)} - ${formatDate(
-                            item.end_date
-                          )}`}
+                              item.end_date
+                            )}`}
                       </Text>
                     </Text>
 
@@ -226,10 +219,9 @@ const LeaveStatusScreen = ({ navigation }) => {
                       </View>
                     ) : null}
 
-                    {/* --- 2. ADMIN REMARKS (Only if rejected/commented) --- */}
+                    {/* --- 2. ADMIN REMARKS --- */}
                     {item.remarks ? (
                       <View style={[styles.remarksBox, { marginTop: 8, backgroundColor: 'rgba(255,255,255,0.6)' }]}>
-                        {/* We use status color for the label to indicate it comes from Admin/System */}
                         <Text style={[styles.remarksLabel, { color: statusStyles.text }]}>
                           Admin Remarks
                         </Text>
@@ -250,8 +242,6 @@ const LeaveStatusScreen = ({ navigation }) => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
-
-  // HEADER
   header: {
     backgroundColor: COLORS.background,
     paddingVertical: 14,
@@ -268,8 +258,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: COLORS.textDark,
   },
-
-  // FILTERS
   filterContainer: {
     flexDirection: "row",
     paddingHorizontal: 16,
@@ -300,11 +288,7 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontWeight: "700",
   },
-
-  // CONTENT
   scrollContent: { paddingHorizontal: 16, paddingBottom: 40 },
-
-
   cardWrapper: {
     flexDirection: "row",
     borderRadius: 14,
@@ -339,10 +323,8 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   statusText: { fontSize: 12, fontWeight: "700" },
-
   label: { fontSize: 13, color: COLORS.textMuted, marginTop: 4 },
   value: { fontWeight: "600", color: COLORS.textDark },
-
   remarksBox: {
     marginTop: 10,
     backgroundColor: "rgba(255,255,255,0.9)",
@@ -356,8 +338,6 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   remarksText: { fontSize: 13, color: COLORS.textDark },
-
-  // EMPTY STATE
   emptyBox: { marginTop: 40, alignItems: "center" },
   emptyTitle: { fontSize: 16, fontWeight: "700", marginBottom: 8 },
   emptyText: {
