@@ -1,5 +1,5 @@
 // src/screens/student/profile/appeal_detail_screen.js
-import React from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -9,8 +9,10 @@ import {
   Alert,
   Linking,
   StatusBar,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import api from "../../../api/api_client";
 
 const COLORS = {
   primary: "#3A7AFE",
@@ -23,8 +25,7 @@ const COLORS = {
 
 const AppealDetailScreen = ({ navigation, route }) => {
   const { appeal } = route.params || {};
-
-  const BASE_URL = "https://attendify-ekg6.onrender.com";
+  const [opening, setOpening] = useState(false);
 
   if (!appeal) {
     return (
@@ -61,23 +62,42 @@ const AppealDetailScreen = ({ navigation, route }) => {
       .replace(/\//g, "-");
   };
 
+  // ✅ Helper for Time (HH:mm)
+  const formatTime = (timeString) => {
+    if (!timeString) return "";
+    return timeString.slice(0, 5);
+  };
+
+  // ✅ Just-in-Time Link Generation
   const handleOpenFile = async () => {
-    const docUrl = appeal.document_url;
-    if (!docUrl) {
+    const hasFile = appeal.document_path || appeal.document_url;
+
+    if (!hasFile) {
       Alert.alert("No file", "There is no file attached to this appeal.");
       return;
     }
-    const fullUrl = docUrl.startsWith("http") ? docUrl : `${BASE_URL}${docUrl}`;
+
+    setOpening(true);
+
     try {
-      const supported = await Linking.canOpenURL(fullUrl);
-      if (supported) {
-        await Linking.openURL(fullUrl);
+      const response = await api.get(`/get-appeals-document/${appeal.id}/`);
+      const { document_url } = response.data;
+
+      if (document_url) {
+        const supported = await Linking.canOpenURL(document_url);
+        if (supported) {
+          await Linking.openURL(document_url);
+        } else {
+          await Linking.openURL(document_url);
+        }
       } else {
-        await Linking.openURL(fullUrl);
+        Alert.alert("Error", "Could not retrieve document link.");
       }
-    } catch (e) {
-      console.warn("Error opening file:", e);
-      Alert.alert("Error", "Failed to open the file.");
+    } catch (error) {
+      console.error("Open File Error:", error);
+      Alert.alert("Error", "Failed to open the file. Please try again.");
+    } finally {
+      setOpening(false);
     }
   };
 
@@ -95,8 +115,8 @@ const AppealDetailScreen = ({ navigation, route }) => {
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* CARD WRAPPER */}
         <View style={styles.card}>
+          
           {/* 1. REASON + STATUS */}
           <View style={styles.row}>
             <View style={{ flex: 1 }}>
@@ -120,33 +140,43 @@ const AppealDetailScreen = ({ navigation, route }) => {
             </View>
           </View>
 
-          {/* 2. MODULE */}
+          {/* 2. MODULE (Fixed: Changed class_session -> session) */}
           <View style={styles.item}>
             <Text style={styles.label}>Module</Text>
             <Text style={styles.value}>
-              {appeal.class_session?.module
-                ? `${appeal.class_session.module.code} - ${appeal.class_session.module.name}`
+              {appeal.session?.module
+                ? `${appeal.session.module.code} - ${appeal.session.module.name}`
                 : "Unknown Module"}
             </Text>
           </View>
 
-          {/* 3. CLASS DATE */}
+          {/* 3. CLASS DATE (Fixed: Changed date_time -> date) */}
           <View style={styles.item}>
             <Text style={styles.label}>Class Date</Text>
             <Text style={styles.value}>
-              {appeal.class_session?.date_time
-                ? formatDate(appeal.class_session.date_time)
+              {appeal.session?.date
+                ? formatDate(appeal.session.date)
                 : "N.A."}
             </Text>
           </View>
 
-          {/* 4. SUBMITTED ON */}
+          {/* 4. CLASS TIME (✅ Newly Added) */}
+          <View style={styles.item}>
+            <Text style={styles.label}>Class Time</Text>
+            <Text style={styles.value}>
+              {appeal.session?.start_time && appeal.session?.end_time
+                ? `${formatTime(appeal.session.start_time)} - ${formatTime(appeal.session.end_time)}`
+                : "N.A."}
+            </Text>
+          </View>
+
+          {/* 5. SUBMITTED ON */}
           <View style={styles.item}>
             <Text style={styles.label}>Submitted On</Text>
             <Text style={styles.value}>{formatDate(appeal.created_at)}</Text>
           </View>
 
-          {/* 5. DESCRIPTION */}
+          {/* 6. DESCRIPTION */}
           {appeal.description ? (
             <View style={styles.item}>
               <Text style={styles.label}>Description</Text>
@@ -156,24 +186,29 @@ const AppealDetailScreen = ({ navigation, route }) => {
             </View>
           ) : null}
 
-          {/* 6. DOCUMENT */}
+          {/* 7. DOCUMENT */}
           <View style={styles.item}>
             <Text style={styles.label}>Attached File</Text>
-
-            {appeal.document_url ? (
+            {(appeal.document_path || appeal.document_url) ? (
               <View>
                 <Text style={styles.fileName}>Document Uploaded</Text>
                 <TouchableOpacity
                   style={styles.fileButton}
                   onPress={handleOpenFile}
+                  disabled={opening}
                 >
-                  <Text style={styles.fileButtonText}>View Document</Text>
+                  {opening ? (
+                    <ActivityIndicator size="small" color={COLORS.primary} />
+                  ) : (
+                    <Text style={styles.fileButtonText}>View Document</Text>
+                  )}
                 </TouchableOpacity>
               </View>
             ) : (
               <Text style={styles.value}>No file attached</Text>
             )}
           </View>
+          
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -181,9 +216,7 @@ const AppealDetailScreen = ({ navigation, route }) => {
 };
 
 const styles = StyleSheet.create({
-  // PAGE
   container: { flex: 1, backgroundColor: COLORS.background },
-
   header: {
     backgroundColor: COLORS.background,
     paddingVertical: 15,
@@ -196,17 +229,10 @@ const styles = StyleSheet.create({
   },
   backArrow: { fontSize: 24, color: COLORS.textDark, fontWeight: "300" },
   headerTitle: { fontSize: 18, fontWeight: "700", color: COLORS.textDark },
-
-  scrollContent: {
-    padding: 20,
-    paddingBottom: 30,
-  },
-
-  // ERROR
+  scrollContent: { padding: 20, paddingBottom: 30 },
   errorBox: { flex: 1, alignItems: "center", justifyContent: "center" },
   errorText: { color: COLORS.textMuted },
-
-  // CARD
+  
   card: {
     backgroundColor: COLORS.card,
     borderRadius: 18,
@@ -219,23 +245,19 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: COLORS.border,
   },
-
   row: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
     marginBottom: 20,
   },
-
   type: {
     fontSize: 18,
     fontWeight: "700",
     color: COLORS.textDark,
     marginTop: 2,
   },
-
   item: { marginBottom: 18 },
-
   label: {
     fontSize: 12,
     color: COLORS.textMuted,
@@ -248,14 +270,12 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: COLORS.textDark,
   },
-
   fileName: {
     fontSize: 13,
     color: COLORS.textMuted,
     marginBottom: 8,
     fontStyle: "italic",
   },
-
   statusBadge: {
     paddingHorizontal: 12,
     paddingVertical: 6,
@@ -267,11 +287,9 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     fontSize: 12,
   },
-
   approved: { backgroundColor: "#DFF6E3" },
   pending: { backgroundColor: "#FFF3CC" },
   rejected: { backgroundColor: "#F7D4D4" },
-
   remarksBox: {
     backgroundColor: "#F9FAFB",
     padding: 12,
@@ -284,7 +302,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 22,
   },
-
   fileButton: {
     paddingVertical: 10,
     paddingHorizontal: 16,
@@ -292,6 +309,9 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignSelf: "flex-start",
     marginTop: 4,
+    minWidth: 140,
+    alignItems: 'center',
+    justifyContent: 'center'
   },
   fileButtonText: {
     fontSize: 14,

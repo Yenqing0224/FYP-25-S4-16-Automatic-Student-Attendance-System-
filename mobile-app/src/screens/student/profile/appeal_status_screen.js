@@ -88,6 +88,12 @@ const AppealStatusScreen = ({ navigation }) => {
       .replace(/\//g, "-");
   };
 
+  const formatTime = (timeString) => {
+    if (!timeString) return "";
+    // If it's a full ISO string, extract time; if "HH:mm:ss", slice it
+    return timeString.slice(0, 5); 
+  };
+
   const filteredAppeals =
     selectedFilter === "All"
       ? appeals
@@ -202,15 +208,22 @@ const AppealStatusScreen = ({ navigation }) => {
                     <Text style={styles.label}>
                       Module:{" "}
                       <Text style={styles.value}>
-                        {item.class_session?.module?.code} -{" "}
-                        {item.class_session?.module?.name}
+                        {item.session?.module?.code} -{" "}
+                        {item.session?.module?.name}
                       </Text>
                     </Text>
 
                     <Text style={styles.label}>
                       Class Date:{" "}
                       <Text style={styles.value}>
-                        {formatDate(item.class_session?.date_time)}
+                        {formatDate(item.session?.date)}
+                      </Text>
+                    </Text>
+                    
+                    <Text style={styles.label}>
+                      Class Time:{" "}
+                      <Text style={styles.value}>
+                        {formatTime(item.session?.start_time)} - {formatTime(item.session?.end_time)}
                       </Text>
                     </Text>
 
