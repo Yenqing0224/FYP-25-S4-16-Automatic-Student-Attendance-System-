@@ -57,13 +57,29 @@ class RequestService:
         student = Student.objects.get(user=user)
         session = ClassSession.objects.get(id=data['session_id'])
 
+        file_path = None
+        document = data.get('document')
+
+        if document:
+            storage = SupabaseStorageService()
+            
+            folder_id = str(user.id)
+
+            file_path = storage.upload_file(
+                file_obj=document, 
+                bucket="secure-records", 
+                folder="appeal",
+                user_id=folder_id
+            )
+
         appeal = AttendanceAppeal.objects.create(
             student=student,
             session=session,
             reason=data['reason'],
             description=data['description'],
             document_url=None,
-            status='pending'
+            status='pending',
+            document_path=file_path
         )
 
         return appeal
