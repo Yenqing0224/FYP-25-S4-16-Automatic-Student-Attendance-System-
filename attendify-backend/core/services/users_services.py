@@ -18,7 +18,7 @@ class UserService:
                 status='active',
                 semester__start_date__lte=today,
                 semester__end_date__gte=today
-            ).annotate(student_enrolled=Count('students'))
+            ).annotate(_student_count=Count('students'))
 
             total_students = active_modules.aggregate(
                 total=Count('students')
