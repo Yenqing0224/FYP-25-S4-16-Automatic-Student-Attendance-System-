@@ -8,12 +8,11 @@ import {
   TextInput,
   ScrollView,
   Modal,
+  ActivityIndicator, // 👈 1. Import ActivityIndicator
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as DocumentPicker from "expo-document-picker";
-// ❌ Removed AsyncStorage (Not needed for ID anymore)
-// ❌ Removed axios
-import api from "../../../api/api_client"; // 👈 1. Use Helper Client
+import api from "../../../api/api_client";
 
 const COLORS = {
   primary: "#3A7AFE",
@@ -26,17 +25,32 @@ const COLORS = {
 
 const REASONS = ["Medical Leave", "Late", "Emergency", "Others"];
 
+// ✅ Helper to ensure correct file type for backend (PDF vs Image)
+const getMimeType = (fileName) => {
+  if (!fileName) return "application/octet-stream";
+  const lowerName = fileName.toLowerCase();
+  if (lowerName.endsWith(".pdf")) return "application/pdf";
+  if (lowerName.endsWith(".jpg") || lowerName.endsWith(".jpeg")) return "image/jpeg";
+  if (lowerName.endsWith(".png")) return "image/png";
+  if (lowerName.endsWith(".heic")) return "image/heic";
+  return "application/octet-stream";
+};
+
 const ApplyAppealScreen = ({ route, navigation }) => {
   // Get the class session data passed from ClassDetailScreen
   const { classSession } = route.params || {};
 
+  // -------- loading state --------
+  const [loading, setLoading] = useState(false); // 👈 2. Add loading state
+
   // -------- file --------
   const [fileName, setFileName] = useState("No file chosen");
   const [fileUri, setFileUri] = useState(null);
+  const [fileType, setFileType] = useState(null); // Store mime type
 
   // -------- reason --------
-  const [reason, setReason] = useState("");        
-  const [otherReason, setOtherReason] = useState(""); 
+  const [reason, setReason] = useState("");
+  const [otherReason, setOtherReason] = useState("");
   const [isReasonSheetVisible, setIsReasonSheetVisible] = useState(false);
 
   // ---------- SUBMIT ----------
@@ -45,7 +59,7 @@ const ApplyAppealScreen = ({ route, navigation }) => {
       alert("Please choose a reason.");
       return;
     }
-    
+
     // Check if file is required
     if (!fileUri) {
       alert("Please attach a supporting document.");
@@ -54,24 +68,24 @@ const ApplyAppealScreen = ({ route, navigation }) => {
 
     const trimmedOther = otherReason.trim();
     const mainReason = reason;
-    // If "Others", we use the text box value as description
     const description = reason === "Others" && trimmedOther ? trimmedOther : "";
 
+    // 👈 3. Start Loading
+    setLoading(true);
+
     try {
-      // 👈 2. Create FormData
       const formData = new FormData();
-      // ❌ No user_id needed (Handled by Token)
-      formData.append("session_id", String(classSession?.id)); 
+      formData.append("session_id", String(classSession?.id));
       formData.append("reason", mainReason);
       formData.append("description", description);
 
+      // ✅ Use dynamic file type
       formData.append("document", {
         uri: fileUri,
         name: fileName,
-        type: "application/pdf", // Adjust if allowing images (e.g. check file extension)
+        type: fileType || getMimeType(fileName),
       });
 
-      // 👈 3. Secure POST with Multipart Header
       await api.post('/apply-appeals/', formData, {
         headers: {
           "Content-Type": "multipart/form-data",
@@ -84,10 +98,13 @@ const ApplyAppealScreen = ({ route, navigation }) => {
         moduleName: classSession?.module?.name,
         reason: mainReason,
       });
-      
+
     } catch (err) {
       console.error("Submit appeal error:", err.response?.data || err);
       alert("Failed to submit appeal. Please try again.");
+    } finally {
+      // 👈 4. Stop Loading (Always runs)
+      setLoading(false);
     }
   };
 
@@ -114,6 +131,11 @@ const ApplyAppealScreen = ({ route, navigation }) => {
       const file = result.assets[0];
       setFileName(file.name || "Selected file");
       setFileUri(file.uri);
+      
+      // Save the mime type
+      const mime = file.mimeType || getMimeType(file.name);
+      setFileType(mime);
+
     } catch (err) {
       console.warn("Error picking document:", err);
       alert("Failed to pick file");
@@ -133,7 +155,7 @@ const ApplyAppealScreen = ({ route, navigation }) => {
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.formCard}>
-          
+
           {/* Module (Read Only) */}
           <View style={styles.fieldGroup}>
             <Text style={styles.label}>Module</Text>
@@ -200,9 +222,20 @@ const ApplyAppealScreen = ({ route, navigation }) => {
             </View>
           </View>
 
-          {/* Submit */}
-          <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
-            <Text style={styles.submitText}>Submit</Text>
+          {/* 👈 5. Updated Submit Button */}
+          <TouchableOpacity
+            style={[
+              styles.submitButton,
+              loading && { backgroundColor: "#8AB4F8" } // Lighter color when disabled
+            ]}
+            onPress={handleSubmit}
+            disabled={loading} // Prevent double click
+          >
+            {loading ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <Text style={styles.submitText}>Submit</Text>
+            )}
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -340,12 +373,15 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#FFFFFF",
   },
+  // Updated Submit Button Styles
   submitButton: {
     marginTop: 8,
     backgroundColor: COLORS.primary,
     paddingVertical: 12,
     borderRadius: 999,
     alignItems: "center",
+    justifyContent: 'center', // Keeps spinner centered
+    minHeight: 48, // Prevents collapse when text is removed for spinner
   },
   submitText: {
     fontSize: 15,
