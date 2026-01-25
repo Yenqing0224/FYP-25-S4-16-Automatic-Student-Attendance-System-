@@ -45,7 +45,7 @@ class RequestService:
 
     def get_leave_document_url(self, user, leave_id):
         try:
-            leave = LeaveRequest.objects.get(id=leave_id, student__user=user)
+            leave = LeaveRequest.objects.get(id=leave_id, user=user)
             
             file_path = getattr(leave, 'document_path', None)
 
