@@ -1,6 +1,7 @@
 from rest_framework.response import Response
 from core.models import LeaveRequest, Student, AttendanceAppeal, ClassSession
 from core.logic.requests_logics import RequestLogic
+from core.services.storage_services import SupabaseStorageService
 
 class RequestService:
     
@@ -14,6 +15,21 @@ class RequestService:
         if not is_valid:
             raise ValueError(message)
         
+        file_path = None
+        document = data.get('document')
+
+        if document:
+            storage = SupabaseStorageService()
+            
+            folder_id = str(user.id)
+
+            file_path = storage.upload_file(
+                file_obj=document, 
+                bucket="secure-records", 
+                folder="leave", 
+                user_id=folder_id
+            )
+
         leave = LeaveRequest.objects.create(
             user=user,
             start_date=data['start_date'],
@@ -21,6 +37,7 @@ class RequestService:
             reason=data['reason'],
             description=data['description'], 
             status='pending',
+            document_path=file_path
         )
 
         return leave
