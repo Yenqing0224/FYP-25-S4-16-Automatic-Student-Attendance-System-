@@ -271,6 +271,10 @@ export default function LecturerHomeScreen({ navigation, route }) {
 
       setAnnouncements(merged);
     } catch (error) {
+      if (error.response && error.response.status === 401) {
+        isSessionExpired = true;
+        return; // Stop here! Don't load sample data, don't log errors.
+      }
       console.error("Dashboard fetch error:", error);
       setAnnouncements(SAMPLE_LECTURER_ANNOUNCEMENTS.map(normalizeAnnouncement));
     } finally {

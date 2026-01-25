@@ -46,10 +46,10 @@ export default function HomeScreen({ navigation }) {
   const [attendanceRate, setAttendanceRate] = useState(0);
   const [todayClasses, setTodayClasses] = useState([]);
   const [upcomingClasses, setUpcomingClasses] = useState([]);
-  
+
   // Announcements Data
   const [announcements, setAnnouncements] = useState([]);
-  
+
   // Loading States
   const [loading, setLoading] = useState(true); // General dashboard loading
 
@@ -100,7 +100,7 @@ export default function HomeScreen({ navigation }) {
       desc: toText(a.description ?? a.message ?? a.desc, ""),
       created_at: createdAt,
       // Generate "Today", "21 Jan" from created_at
-      date: createdAt ? formatDateLabel(createdAt) : "Recent", 
+      date: createdAt ? formatDateLabel(createdAt) : "Recent",
     };
   };
 
@@ -157,10 +157,12 @@ export default function HomeScreen({ navigation }) {
   }, []);
 
   const fetchDashboardData = async () => {
+    // We declare this outside try/catch so 'finally' can check it
+    let isSessionExpired = false;
+
     try {
       setLoading(true);
-      
-      // ✅ Fetch everything from one endpoint now
+
       const dashRes = await api.get("/dashboard/");
       const data = dashRes.data || {};
 
@@ -170,30 +172,43 @@ export default function HomeScreen({ navigation }) {
       setTodayClasses(Array.isArray(data.today_classes) ? data.today_classes : []);
       setUpcomingClasses(Array.isArray(data.upcoming_classes) ? data.upcoming_classes : []);
 
-      // 2. Announcements (Extracted from Dashboard response)
+      // 2. Announcements
       const rawAnnouncements = Array.isArray(data.announcements) ? data.announcements : [];
-
       let merged = rawAnnouncements.map(normalizeAnnouncement);
 
-      // Filter out old stuff
+      // Filter expired
       merged = merged.filter((a) => !isExpired(a.created_at));
 
-      // Optional: Filter out unrelated keywords if needed (Kept from your original code)
+      // Filter keywords
       const STUDENT_EXCLUDE_KEYWORDS = ["invigilation", "marking window", "grading", "lecturer briefing"];
       merged = merged.filter((a) => {
         const text = `${toText(a.title, "")} ${toText(a.desc, "")}`.toLowerCase();
         return !STUDENT_EXCLUDE_KEYWORDS.some((k) => text.includes(k));
       });
 
-      // Sort by newest first
+      // Sort
       merged.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-
       setAnnouncements(merged);
 
     } catch (error) {
+      // 👇 CHECK FOR 401 HERE
+      if (error.response && error.response.status === 401) {
+        // Mark that session expired so we can skip setLoading(false)
+        isSessionExpired = true;
+        // Don't show error messages, don't log "Fetch Error"
+        return;
+      }
+
+      // Normal error handling (Network errors, 500s, etc.)
       console.error("Dashboard Fetch Error:", error?.response?.status, error?.config?.url);
+
     } finally {
-      setLoading(false);
+      // 👇 THE MAGIC TRICK
+      // Only stop the loading spinner if the session is VALID.
+      // If it's a 401, keep spinning! This hides the broken UI until the app navigates away.
+      if (!isSessionExpired) {
+        setLoading(false);
+      }
     }
   };
 
