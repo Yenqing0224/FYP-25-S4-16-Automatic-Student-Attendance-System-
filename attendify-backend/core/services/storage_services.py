@@ -40,3 +40,24 @@ class SupabaseStorageService:
         except Exception as e:
             print(f"Supabase Upload Error: {e}")
             return None
+        
+    def delete_file(self, bucket, file_path_or_url):
+        try:
+            clean_path = file_path_or_url
+
+            if file_path_or_url.startswith("http"):
+                parts = file_path_or_url.split(f"/{bucket}/")
+                
+                if len(parts) > 1:
+                    clean_path = parts[-1]
+                else:
+                    print("Could not extract path from URL")
+                    return False
+
+            self.client.storage.from_(bucket).remove([clean_path])
+            print(f"Deleted from Supabase: {clean_path}")
+            return True
+
+        except Exception as e:
+            print(f"Supabase Delete Error: {e}")
+            return False

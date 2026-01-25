@@ -10,6 +10,8 @@ class CoreConfig(AppConfig):
         if 'migrate' in sys.argv or 'makemigrations' in sys.argv or 'test' in sys.argv:
             return
 
+        import core.signals
+        
         from core import scheduler
         try:
             scheduler.start()
