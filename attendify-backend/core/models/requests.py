@@ -15,7 +15,7 @@ class LeaveRequest(models.Model):
     end_date = models.DateField()
     reason = models.CharField(max_length=100)
     description = models.TextField(null=True, blank=True)
-    document_url = models.CharField(max_length=500, blank=True, null=True)
+    document_path = models.CharField(max_length=500, blank=True, null=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     remarks = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -38,7 +38,7 @@ class AttendanceAppeal(models.Model):
     # Attributes
     reason = models.CharField(max_length=100)
     description = models.TextField(null=True, blank=True)
-    document_url = models.CharField(max_length=500, blank=True, null=True)
+    document_path = models.CharField(max_length=500, blank=True, null=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     created_at = models.DateTimeField(auto_now_add=True)
 

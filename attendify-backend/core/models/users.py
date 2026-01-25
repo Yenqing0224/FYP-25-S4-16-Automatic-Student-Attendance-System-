@@ -29,7 +29,7 @@ class User(AbstractUser):
     address_postal = models.CharField(max_length=20, default="", blank=True)
     address_country = models.CharField(max_length=100, default="Singapore", blank=True)
     personal_email = models.EmailField(blank=True, null=True)
-    image_url = models.CharField(max_length=500, blank=True, null=True)
+    image_path = models.CharField(max_length=500, blank=True, null=True)
     role_type = models.CharField(max_length=10, choices=ROLE_CHOICES)
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='active')
 
