@@ -92,3 +92,15 @@ def apply_appeals(request):
     except Exception as e:
         print(f"Appeal Error: {e}")
         return Response({"error": str(e)}, status=500)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_appeal_document_url(request, appeal_id):
+    service = RequestService()
+    url, error = service.get_appeal_document_url(request.user, appeal_id)
+    
+    if error:
+        return Response({"error": error}, status=404)
+        
+    return Response({"document_url": url}, status=200)

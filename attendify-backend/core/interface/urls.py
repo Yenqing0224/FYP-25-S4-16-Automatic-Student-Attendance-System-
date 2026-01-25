@@ -40,6 +40,7 @@ urlpatterns = [
     path('appeals/', requests_views.get_student_appeals, name='appeals'),
     path('apply-leaves/', requests_views.apply_leaves, name='apply-leaves'),
     path('apply-appeals/', requests_views.apply_appeals, name='apply-appeals'),
+    path('get-appeals-document/<int:appeal_id>/', requests_views.get_appeal_document_url, name='get-appeal-document-url'),
 
 
     # Admin

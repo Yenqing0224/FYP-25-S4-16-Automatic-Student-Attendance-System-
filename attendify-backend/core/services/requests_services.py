@@ -42,7 +42,7 @@ class RequestService:
 
         return leave
     
-    
+
     def get_student_appeals(self, user):
         student = Student.objects.get(user=user)
         return AttendanceAppeal.objects.filter(student=student).order_by('-created_at')
@@ -83,3 +83,27 @@ class RequestService:
 
         return appeal
 
+
+    def get_appeal_document_url(self, user, appeal_id):
+        try:
+            appeal = AttendanceAppeal.objects.get(id=appeal_id, student__user=user)
+            
+            file_path = getattr(appeal, 'document_path', None)
+
+            if not file_path:
+                return None, "No document attached to this appeal."
+
+            storage = SupabaseStorageService()
+            signed_url = storage.get_signed_url(
+                bucket="secure-records", 
+                file_path=file_path,
+                expiry_duration=60
+            )
+            
+            if not signed_url:
+                return None, "Could not generate document link."
+
+            return signed_url, None
+
+        except AttendanceAppeal.DoesNotExist:
+            return None, "Appeal record not found."
