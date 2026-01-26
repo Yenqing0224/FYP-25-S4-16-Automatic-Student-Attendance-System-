@@ -1,19 +1,3 @@
-"""
-    Copyright(c) 2021 the original author or authors
-
-    Licensed under the Apache License, Version 2.0 (the "License");
-    you may not use this file except in compliance with the License.
-    You may obtain a copy of the License at
-
-        https: // www.apache.org/licenses/LICENSE-2.0
-
-    Unless required by applicable law or agreed to in writing, software
-    distributed under the License is distributed on an "AS IS" BASIS,
-    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
-    or implied. See the License for the specific language governing
-    permissions and limitations under the License. 
- """
-
 import cv2
 import argparse
 import time
@@ -32,7 +16,7 @@ from compreface.service import RecognitionService
 
 # Global vars
 recog_interval = 0          # does reognition every x seconds
-absence_threshold = 600       # y seconds of not seen, will update leave time, RMB TO CHANGE 
+absence_threshold = 5       # y seconds of not seen, will update leave time, RMB TO CHANGE 
 liveness_history_len = 5    # stores how many history??
 spoof_threshold = 0.2       # can only be detected as spoof x% of the time
 blink_threshold = 0.20
@@ -79,32 +63,19 @@ class ThreadedCamera:
 
     def send_request(self, student_id, timestamp, duration):
         try:
+            duration_secs = int(duration) if duration else 0   # rounds down to int
             requests.post(
                 "https://attendify-ekg6.onrender.com/api/mark-attendance/",
                 json={
                     "student_id": student_id,
-                    "time_stamp": timestamp.isoformat(),
-                    "duration": duration
+                    "time_stamp": timestamp.isoformat() if timestamp else None,
+                    "duration": duration_secs
                 },
                 timeout=2
             )
         except requests.RequestException as e:
             print(f"Attendance API error: {student_id}: {e}")
 
-    """ # TESTING!!!! REMOVE THE SAME FN SIGNATURES LATER ON
-    def send_request(self, student_id, timestamp):
-        try:
-            requests.post(
-                "https://attendify-ekg6.onrender.com/api/mark-attendance/",
-                json={
-                    "student_id": student_id,
-                    "time_stamp": timestamp.isoformat() if timestamp else None,
-                },
-                timeout=2
-            )
-        except requests.RequestException as e:
-            print(f"Attendance API error: {student_id}: {e}")
-    """
 
     def show_frame(self):
         while self.capture.isOpened():
@@ -272,7 +243,6 @@ class ThreadedCamera:
                     student_state["curr_entry"] = now
                     student_state["present"] = True
                     self.send_request(student_id, student_state["entry"], 0)    # Updates entry time in DB, duration is 0 as student just entered
-                    #self.send_request(student_id, student_state["entry"])
 
                 # Student re-entry, exit would have data
                 if student_state["has_left"]:
@@ -280,8 +250,6 @@ class ThreadedCamera:
                     student_state["has_left"] = False
                     self.send_request(student_id, None, student_state["duration"])  # duration is not computed
                     # sets exit time back to '-'
-                    #self.send_request(student_id, None)
-
                 
                 # exit updated on both (student entry, student re-entry). But not updated in DB
                 student_state["exit"] = now
@@ -297,16 +265,17 @@ class ThreadedCamera:
             has_left = state.get("has_left")
 
             if exit_time and present and not has_left:
-                delta_minutes = (now - exit_time).total_seconds()
-                if delta_minutes > absence_threshold:
+                delta_seconds = (now - exit_time).total_seconds()
+                if delta_seconds > absence_threshold:
                     # Sets exit time and calculate duration
                     curr_entry = state.get("curr_entry")
                     duration = state.get("duration")
-                    duration += (exit_time - curr_entry).total_seconds()
+                    if curr_entry is not None:
+                        duration += (exit_time - curr_entry).total_seconds()
 
                     state["duration"] = duration
+                    state["curr_entry"] = None      # resets curr_entry
                     self.send_request(student_id, exit_time, duration)
-                    #self.send_request(student_id, exit_time)
                     state["liveness_history"].clear()
                     state["has_left"] = True    # set flag to True
 
