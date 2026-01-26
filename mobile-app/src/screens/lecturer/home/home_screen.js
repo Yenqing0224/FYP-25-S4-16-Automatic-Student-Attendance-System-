@@ -1,4 +1,4 @@
-// lecturer/home/home_screen.js
+// src/screens/lecturer/home/home_screen.js
 import React, { useEffect, useState, useCallback, useMemo } from "react";
 import {
   View,
@@ -9,7 +9,6 @@ import {
   ScrollView,
   ActivityIndicator,
   RefreshControl,
-  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -30,39 +29,7 @@ const COLORS = {
 
 const REMINDER_KEY = "lecturerReminderIds_v1";
 const READ_LECTURER_ANNOUNCEMENTS_KEY = "lecturerReadAnnouncements_v1";
-
-const ANNOUNCEMENT_EXPIRE_DAYS = 14;
-
-const SAMPLE_LECTURER_ANNOUNCEMENTS = [
-  {
-    id: "101",
-    title: "Week 6 Lecture Cancelled",
-    desc: "The Week 6 lecture is cancelled due to a department meeting. Please review the uploaded slides on LumiNUS.",
-    date: "Today",
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: "102",
-    title: "System Maintenance (Teaching Tools)",
-    desc: "Attendance and grading tools may be unavailable on Friday, 8:00–10:00 PM.",
-    date: "Fri",
-    created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-  },
-  {
-    id: "103",
-    title: "Marking Window Opens Monday",
-    desc: "Please begin grading from Monday. Target completion by Week 8 Friday.",
-    date: "Mon",
-    created_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-  },
-  {
-    id: "104",
-    title: "Invigilation Briefing",
-    desc: "Invigilation briefing on Wednesday, 3:00 PM at Seminar Room 5.",
-    date: "Wed",
-    created_at: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
-  },
-];
+const ANNOUNCEMENT_EXPIRE_DAYS = 30; // Increased window since API controls visibility
 
 export default function LecturerHomeScreen({ navigation, route }) {
   const [user, setUser] = useState(null);
@@ -79,7 +46,6 @@ export default function LecturerHomeScreen({ navigation, route }) {
 
   // announcements
   const [announcements, setAnnouncements] = useState([]);
-  const [loadingAnnouncements, setLoadingAnnouncements] = useState(true);
   const [isAnnounceExpanded, setIsAnnounceExpanded] = useState(false);
   const [readAnnouncementIds, setReadAnnouncementIds] = useState(new Set());
   const [showAllAnnouncements, setShowAllAnnouncements] = useState(false);
@@ -88,7 +54,7 @@ export default function LecturerHomeScreen({ navigation, route }) {
   const toText = (v, fallback = "-") => {
     if (v == null) return fallback;
     if (typeof v === "string" || typeof v === "number") return String(v);
-    if (typeof v === "object") return String(v.name ?? v.code ?? v.title ?? fallback); // ✅ handles {id,name}
+    if (typeof v === "object") return String(v.name ?? v.code ?? v.title ?? fallback);
     return fallback;
   };
 
@@ -121,28 +87,16 @@ export default function LecturerHomeScreen({ navigation, route }) {
     return d.toDateString() === today.toDateString();
   };
 
-  const isExpired = (createdAt) => {
-    if (!createdAt) return false;
-    const d = new Date(createdAt);
-    const cutoff = Date.now() - ANNOUNCEMENT_EXPIRE_DAYS * 24 * 60 * 60 * 1000;
-    return d.getTime() < cutoff;
-  };
-
   const normalizeAnnouncement = (a) => {
-    const createdAt = a.created_at || a.createdAt || a.created || null;
+    const createdAt = a.created_at || a.createdAt || null;
     return {
       id: String(a.id),
       title: toText(a.title, "Untitled"),
-      desc: toText(a.desc || a.body || a.description || a.message, ""),
+      // ✅ JSON uses 'description', your UI uses 'desc'
+      desc: toText(a.description || a.desc || a.body, ""), 
       created_at: createdAt,
-      date: toText(a.dateLabel || a.date, createdAt ? formatDateLabel(createdAt) : "Recent"),
+      date: toText(a.dateLabel, createdAt ? formatDateLabel(createdAt) : "Recent"),
     };
-  };
-
-  const uniqById = (arr) => {
-    const map = new Map();
-    arr.forEach((x) => map.set(String(x.id), x));
-    return Array.from(map.values());
   };
 
   // ---------- init ----------
@@ -164,12 +118,9 @@ export default function LecturerHomeScreen({ navigation, route }) {
     init();
   }, []);
 
-  // ✅ refetch when focused, and when refreshKey changes
   useFocusEffect(
     useCallback(() => {
       fetchDashboardData();
-
-      // clear refreshKey after consuming
       if (navigation?.setParams && route?.params?.refreshKey) {
         navigation.setParams({ refreshKey: null });
       }
@@ -183,7 +134,7 @@ export default function LecturerHomeScreen({ navigation, route }) {
         JSON.stringify(Array.from(nextSet))
       );
     } catch (e) {
-      console.log("Failed to save lecturer read announcements:", e);
+      console.log("Failed to save read ids:", e);
     }
   };
 
@@ -208,17 +159,18 @@ export default function LecturerHomeScreen({ navigation, route }) {
       const res = await api.get("/dashboard/");
       const data = res.data || {};
 
+      // 1. Stats
       setStats(data.stats || { today: 0, week: 0 });
       setTodayClasses(Array.isArray(data.today_sessions) ? data.today_sessions : []);
       setWeekClasses(Array.isArray(data.week_sessions) ? data.week_sessions : []);
 
-      // ✅ Next class (fixes object-as-text crash)
+      // 2. Next Class
       if (data.next_class) {
         const nc = data.next_class;
-
-        const moduleCode = toText(nc.module?.code ?? nc.module, "Module");
-        const moduleName = toText(nc.module?.name ?? nc.title ?? nc.module, "Class");
-
+        // Handle nested objects safely based on your JSON
+        const moduleCode = toText(nc.module?.code || nc.module, "Module");
+        const moduleName = toText(nc.module?.name || nc.title, "Class");
+        
         setNextClass({
           id: String(nc.id),
           module: moduleCode,
@@ -229,58 +181,28 @@ export default function LecturerHomeScreen({ navigation, route }) {
           startISO: `${nc.date}T${nc.start_time}`,
           endISO: `${nc.date}T${nc.end_time}`,
           time: `${formatTime(nc.start_time)} – ${formatTime(nc.end_time)}`,
-          venue: toText(nc.venue, "TBA"),
+          // Your JSON shows venue is an object {id, name}
+          venue: toText(nc.venue?.name || nc.venue, "TBA"),
+          status: nc.status // capture status for logic if needed
         });
       } else {
         setNextClass(null);
       }
 
-      // ✅ Announcements merge: dashboard + endpoint
-      const dashAnnouncements = Array.isArray(data.announcements) ? data.announcements : [];
-      const dashFormatted = dashAnnouncements.map(normalizeAnnouncement);
+      // 3. Announcements (Directly from Dashboard API)
+      const rawAnnouncements = Array.isArray(data.announcements) ? data.announcements : [];
+      const formatted = rawAnnouncements.map(normalizeAnnouncement);
+      
+      // Sort: Newest first
+      formatted.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
-      setLoadingAnnouncements(true);
+      setAnnouncements(formatted);
 
-      let endpointFormatted = [];
-      try {
-        const annRes = await api.get("/announcements/?audience=lecturers,all&active=1");
-        const raw = Array.isArray(annRes.data) ? annRes.data : [];
-        endpointFormatted = raw.map(normalizeAnnouncement);
-      } catch (e) {
-        endpointFormatted = [];
-      }
-
-      let merged = uniqById([...endpointFormatted, ...dashFormatted]);
-
-      // auto-expire
-      merged = merged.filter((a) => !isExpired(a.created_at));
-
-      // safety filter
-      const LECTURER_EXCLUDE_KEYWORDS = [
-        "assignment",
-        "deadline",
-        "attendance below",
-        "your attendance",
-      ];
-      merged = merged.filter((a) => {
-        const text = `${a.title} ${a.desc}`.toLowerCase();
-        return !LECTURER_EXCLUDE_KEYWORDS.some((k) => text.includes(k));
-      });
-
-      if (!merged.length) merged = SAMPLE_LECTURER_ANNOUNCEMENTS.map(normalizeAnnouncement);
-
-      setAnnouncements(merged);
     } catch (error) {
-      if (error.response && error.response.status === 401) {
-        isSessionExpired = true;
-        return; // Stop here! Don't load sample data, don't log errors.
-      }
       console.error("Dashboard fetch error:", error);
-      setAnnouncements(SAMPLE_LECTURER_ANNOUNCEMENTS.map(normalizeAnnouncement));
     } finally {
       setLoading(false);
       setRefreshing(false);
-      setLoadingAnnouncements(false);
     }
   };
 
@@ -291,17 +213,9 @@ export default function LecturerHomeScreen({ navigation, route }) {
 
   // ---------- navigation ----------
   const goToSessionsTab = () => {
-  // If you have a parent navigator (tabs), navigate via parent
-  const parent = navigation.getParent?.();
-
-  const params = {
-    screen: "LecturerSessionsMain", // ✅ your sessions stack screen name
-    params: { tab: "Upcoming" },
+    // Navigate using the stack structure we defined
+    navigation.navigate("LecturerSessionsMain", { tab: "Upcoming" });
   };
-
-  if (parent) parent.navigate("LSessions", params);
-  else navigation.navigate("LecturerSessionsMain", { tab: "Upcoming" }); // ✅ fallback
-};
 
   const goToClassList = (mode) => {
     const classesToSend = mode === "today" ? todayClasses : weekClasses;
@@ -383,6 +297,13 @@ export default function LecturerHomeScreen({ navigation, route }) {
             <>
               <Text style={styles.module}>{toText(nextClass.module, "Module")}</Text>
               <Text style={styles.title}>{toText(nextClass.title, "Class")}</Text>
+              
+              {/* Optional: Show status if rescheduled */}
+              {nextClass.status === 'rescheduled' && (
+                <View style={[styles.pill, {backgroundColor: '#FEE2E2', marginTop: 4, alignSelf: 'flex-start'}]}>
+                     <Text style={[styles.pillText, {color: '#DC2626'}]}>Rescheduled</Text>
+                </View>
+              )}
 
               <View style={styles.metaRow}>
                 <Ionicons name="calendar-outline" size={16} color={COLORS.textMuted} />
@@ -408,6 +329,7 @@ export default function LecturerHomeScreen({ navigation, route }) {
                 <TouchableOpacity
                   style={styles.secondaryBtn}
                   onPress={() =>
+                    // Pass nextClass (which is normalized) as 'cls'
                     navigation.navigate("LecturerClassDetail", { cls: nextClass })
                   }
                 >
@@ -466,7 +388,7 @@ export default function LecturerHomeScreen({ navigation, route }) {
             </View>
           </TouchableOpacity>
 
-          {!loadingAnnouncements && !showAllAnnouncements && unreadAnnouncements.length > 0 && (
+          {!loading && !showAllAnnouncements && unreadAnnouncements.length > 0 && (
             <TouchableOpacity onPress={markAllRead} style={{ marginTop: 10, alignSelf: "flex-start" }}>
               <Text style={{ color: COLORS.primary, fontWeight: "900", fontSize: 13 }}>
                 Mark all as read
@@ -476,9 +398,7 @@ export default function LecturerHomeScreen({ navigation, route }) {
 
           <View style={{ height: 10 }} />
 
-          {loadingAnnouncements ? (
-            <ActivityIndicator color={COLORS.primary} />
-          ) : !hasAnyAnnouncements ? (
+          {!hasAnyAnnouncements ? (
             <View style={{ paddingVertical: 10 }}>
               <Text style={{ color: COLORS.textMuted, fontWeight: "700" }}>
                 {showAllAnnouncements ? "No announcements yet." : "You’re all caught up ✅"}
@@ -494,7 +414,9 @@ export default function LecturerHomeScreen({ navigation, route }) {
                     style={{ paddingVertical: 12 }}
                     onPress={async () => {
                       if (!isRead) await markAnnouncementRead(a.id);
-                      navigation.navigate("LecturerAnnouncementDetail", { announcement: a });
+                      // If you have a detail screen for announcements:
+                      // navigation.navigate("LecturerAnnouncementDetail", { announcement: a });
+                      // For now just toggle read
                     }}
                   >
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
@@ -551,7 +473,7 @@ export default function LecturerHomeScreen({ navigation, route }) {
             })
           )}
 
-          {!loadingAnnouncements && !isAnnounceExpanded && listToShow.length > 3 && (
+          {!loading && !isAnnounceExpanded && listToShow.length > 3 && (
             <TouchableOpacity
               onPress={() => setIsAnnounceExpanded(true)}
               style={{
