@@ -13,6 +13,7 @@ class Notification(models.Model):
 
     class Meta:
         ordering = ['-date_sent'] # Newest first
+        indexes = [ models.Index(fields=['recipient', 'is_read']) ]
 
     def __str__(self):
         return f"{self.recipient.username} - {self.title}"
@@ -30,6 +31,7 @@ class News(models.Model):
     class Meta:
         verbose_name_plural = "News" # Fixes Django showing "Newss"
         ordering = ['-news_date']
+        indexes = [ models.Index(fields=['created_at']) ]
 
     def __str__(self):
         return self.title ({self.created_at})
@@ -60,6 +62,7 @@ class Event(models.Model):
 
     class Meta:
         ordering = ['-event_date']
+        indexes = [ models.Index(fields=['event_date', 'status']) ]
 
     def __str__(self):
         return f"{self.title} ({self.event_date.date()}) [{self.status}]"

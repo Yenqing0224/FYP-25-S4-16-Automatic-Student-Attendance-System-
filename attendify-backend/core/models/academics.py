@@ -15,6 +15,11 @@ class Semester(models.Model):
     start_date = models.DateField()
     end_date = models.DateField()
 
+    class Meta:
+        indexes = [
+            models.Index(fields=['start_date', 'end_date']),
+        ]
+
     def __str__(self):
         return self.name
     
@@ -50,6 +55,11 @@ class Module(models.Model):
     @property
     def student_enrolled(self):
         return self.students.count()
+    
+    class Meta:
+        indexes = [
+            models.Index(fields=['lecturer', 'status']),
+        ]
 
     def __str__(self):
         return f"{self.code} - {self.name}"
@@ -113,6 +123,8 @@ class ClassSession(models.Model):
     class Meta:
         indexes = [
             models.Index(fields=['date', 'start_time']),
+            models.Index(fields=['date', 'status']),
+            models.Index(fields=['venue', 'date', 'start_time']),
         ]
 
     def __str__(self):
@@ -148,6 +160,10 @@ class AttendanceRecord(models.Model):
 
     class Meta:
         unique_together = ('session', 'student')
+        indexes = [ 
+            models.Index(fields=['session', 'status']),
+            models.Index(fields=['student']),
+        ]
 
     def __str__(self):
         return f"{self.student.user.username} {self.session.name} ({self.session.date}): {self.status}"

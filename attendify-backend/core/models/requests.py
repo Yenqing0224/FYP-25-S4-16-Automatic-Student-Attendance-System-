@@ -20,6 +20,11 @@ class LeaveRequest(models.Model):
     remarks = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        indexes = [
+            models.Index(fields=['user', '-created_at']),
+        ]
+
     def __str__(self):
         return f"Leave: {self.user.username} ({self.start_date})"
 
@@ -41,6 +46,11 @@ class AttendanceAppeal(models.Model):
     document_path = models.CharField(max_length=500, blank=True, null=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['student', '-created_at']),
+        ]
 
     def __str__(self):
         return f"Appeal: {self.student.user.username} - {self.session.name}"
