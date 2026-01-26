@@ -1,6 +1,21 @@
 from rest_framework import serializers
 from core.models import *
+from core.services.storage_services import SupabaseStorageService
 
+
+# Helper Function
+def upload_to_supabase(file_obj, bucket, folder, dynamic_id=None):
+    if not file_obj:
+        return None
+    
+    storage = SupabaseStorageService()
+    
+    return storage.upload_file(
+        file_obj=file_obj, 
+        bucket=bucket, 
+        folder=folder, 
+        user_id=str(dynamic_id) if dynamic_id else None
+    )     
 
 # Users
 class AdminUserSerializer(serializers.ModelSerializer):
@@ -99,15 +114,61 @@ class AdminNotificationSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class AdminNewsSerializer(serializers.ModelSerializer):
+    upload_image = serializers.ImageField(write_only=True, required=False)
     class Meta:
         model = News
         fields = '__all__'
+        extra_kwargs = {'image_url': {'read_only': True}}
+    
+    def create(self, validated_data):
+        image_file = validated_data.pop('upload_image', None)
+        instance = super().create(validated_data)
+        
+        if image_file:
+            url = upload_to_supabase(image_file, "public-assets", "news", dynamic_id=None)
+            if url:
+                instance.image_url = url
+                instance.save()
+        return instance
+
+    def update(self, instance, validated_data):
+        image_file = validated_data.pop('upload_image', None)
+        if image_file:
+            url = upload_to_supabase(image_file, "public-assets", "news", dynamic_id=None)
+            if url:
+                instance.image_url = url
+        return super().update(instance, validated_data)
 
 class AdminEventSerializer(serializers.ModelSerializer):
+    upload_image = serializers.ImageField(write_only=True, required=False)
     class Meta:
         model = Event
         fields = '__all__'
+        extra_kwargs = {'image_url': {'read_only': True}}
 
+    def create(self, validated_data):
+        image_file = validated_data.pop('upload_image', None)
+        
+        instance = super().create(validated_data)
+        
+        if image_file:
+            url = upload_to_supabase(image_file, "public-assets", "events", dynamic_id=None)
+            if url:
+                instance.image_url = url
+                instance.save()
+                
+        return instance
+    
+    def update(self, instance, validated_data):
+        image_file = validated_data.pop('upload_image', None)
+        
+        if image_file:
+            url = upload_to_supabase(image_file, "public-assets", "events", dynamic_id=None)
+            if url:
+                instance.image_url = url
+                
+        return super().update(instance, validated_data)
+    
 class AdminAnnouncementSerializer(serializers.ModelSerializer):
     class Meta:
         model = Announcement

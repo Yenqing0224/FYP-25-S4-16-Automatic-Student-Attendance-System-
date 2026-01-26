@@ -1,8 +1,9 @@
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, parser_classes
 from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from rest_framework.pagination import PageNumberPagination
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 # Import Service
 from core.services.admin_services import AdminService
 
@@ -14,6 +15,7 @@ def create_crud_views(model_class, serializer_class):
     
     @api_view(['GET', 'POST'])
     @permission_classes([IsAdminUser])
+    @parser_classes([MultiPartParser, FormParser, JSONParser])
     def list_create(request):
         service = AdminService(model_class)
 
@@ -41,6 +43,7 @@ def create_crud_views(model_class, serializer_class):
 
     @api_view(['GET', 'PATCH', 'DELETE'])
     @permission_classes([IsAdminUser])
+    @parser_classes([MultiPartParser, FormParser, JSONParser])
     def detail(request, pk):
         try:
             item = model_class.objects.get(pk=pk)
