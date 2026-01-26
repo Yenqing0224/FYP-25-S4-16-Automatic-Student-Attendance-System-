@@ -134,6 +134,8 @@ class AdminNewsSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         image_file = validated_data.pop('upload_image', None)
         if image_file:
+            storage = SupabaseStorageService()
+            storage.delete_file("public-assets", instance.image_url)
             url = upload_to_supabase(image_file, "public-assets", "news", dynamic_id=None)
             if url:
                 instance.image_url = url
@@ -163,6 +165,8 @@ class AdminEventSerializer(serializers.ModelSerializer):
         image_file = validated_data.pop('upload_image', None)
         
         if image_file:
+            storage = SupabaseStorageService()
+            storage.delete_file("public-assets", instance.image_url)
             url = upload_to_supabase(image_file, "public-assets", "events", dynamic_id=None)
             if url:
                 instance.image_url = url
