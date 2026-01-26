@@ -18,8 +18,18 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect } from "@react-navigation/native";
 import api from "../../../api/api_client";
 import * as ExpoCalendar from "expo-calendar";
+import { Ionicons } from '@expo/vector-icons';
 
 const REMINDER_KEY = "studentReminderIds_v1";
+const COLORS = {
+  primary: '#3A7AFE',
+  background: '#F5F7FB',
+  card: '#FFFFFF',
+  textDark: '#111827',
+  textMuted: '#6B7280',
+  borderSoft: '#E5E7EB',
+};
+
 
 // ✅ render-safe helper (prevents {id,name} crash)
 const toText = (v, fallback = "") => {
@@ -426,11 +436,14 @@ const TimetableScreen = ({ navigation }) => {
         <StatusBar barStyle="dark-content" backgroundColor="#F0F2FA" />
 
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.navigate("Home")}>
-            <Text style={styles.backArrow}>{"<"}</Text>
+          <TouchableOpacity onPress={() => navigation.navigate('Home')} style={styles.headerIconBox}>
+            <Ionicons name="chevron-back" size={24} color={COLORS.primary} />
           </TouchableOpacity>
+
           <Text style={styles.headerTitle}>Timetable</Text>
-          <View style={{ width: 20 }} />
+
+
+          <View style={styles.headerIconBox} />
         </View>
 
         {loading ? (
@@ -493,15 +506,30 @@ const styles = StyleSheet.create({
   scrollContent: { paddingBottom: 24 },
 
   header: {
-    backgroundColor: "#F0F2FA",
-    paddingVertical: 15,
+    backgroundColor: COLORS.background,
+    paddingVertical: 14,
     paddingHorizontal: 20,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    elevation: 2,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E6E6E6',
   },
-  backArrow: { fontSize: 24, color: "#4B5563", fontWeight: "300" },
-  headerTitle: { fontSize: 18, fontWeight: "700", color: "#111827", letterSpacing: 0.3 },
+  headerIconBox: {
+    width: 32,
+    alignItems: 'flex-start',
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: COLORS.textDark,
+  },
 
   calendarCard: {
     backgroundColor: "#FFFFFF",

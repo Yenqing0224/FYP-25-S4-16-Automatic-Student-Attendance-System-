@@ -1,43 +1,47 @@
 // mobile-app/screens/student/profile/profile_screen.js
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
-  Switch,
   ScrollView,
   StatusBar,
   ActivityIndicator,
   Alert,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import api from '../../../api/api_client';
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import api from "../../../api/api_client";
+import { Ionicons } from "@expo/vector-icons";
+
+// ✅ NEW: auto-register push (no toggle UI)
+import { registerForPushAndSync } from "../../../../utils/push";
+
+
 
 const COLORS = {
-  primary: '#3A7AFE',
-  background: '#F5F7FB',
-  card: '#FFFFFF',
-  textDark: '#111827',
-  textMuted: '#6B7280',
-  borderSoft: '#E5E7EB',
+  primary: "#3A7AFE",
+  background: "#F5F7FB",
+  card: "#FFFFFF",
+  textDark: "#111827",
+  textMuted: "#6B7280",
+  borderSoft: "#E5E7EB",
 };
 
 const ProfileScreen = ({ navigation }) => {
-  const [isPushEnabled, setIsPushEnabled] = useState(false);
   const [student, setStudent] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const toggleSwitch = () => setIsPushEnabled(prev => !prev);
-
   useEffect(() => {
     loadProfile();
+    // ✅ Always attempt to register push token (OS permission decides)
+    registerForPushAndSync();
   }, []);
 
   const loadProfile = async () => {
     try {
-      const response = await api.get('/profile/');
+      const response = await api.get("/profile/");
       setStudent(response.data);
     } catch (error) {
       console.error("Profile Load Error:", error);
@@ -47,59 +51,65 @@ const ProfileScreen = ({ navigation }) => {
   };
 
   const handleLogout = async () => {
-    Alert.alert(
-      "Log Out",
-      "Are you sure you want to log out?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Log Out",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              // 1. Call the Logout API
-              await api.post('/logout/');
+    Alert.alert("Log Out", "Are you sure you want to log out?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Log Out",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            // 1) Call logout API
+            await api.post("/logout/");
 
-              // 2. If successful, clear local storage
-              await AsyncStorage.removeItem('userInfo');
-              await AsyncStorage.removeItem('userToken');
-              
-              // 3. Reset Navigation to Login
-              navigation.reset({
-                index: 0,
-                routes: [{ name: 'Login' }],
-              });
-            } catch (e) {
-              console.error("Logout failed:", e);
-              // Optional: You can choose to force logout here even if API fails
-              // or show an alert. 
-              Alert.alert("Error", "Failed to communicate with the server. Please check your connection.");
-              
-              // If you want to force logout even on server error, uncomment below:
-              /*
-              await AsyncStorage.removeItem('userInfo');
-              await AsyncStorage.removeItem('userToken');
-              navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
-              */
-            }
+            // 2) Clear local storage
+            await AsyncStorage.removeItem("userInfo");
+            await AsyncStorage.removeItem("userToken");
+
+            // 3) Reset to Login
+            navigation.reset({
+              index: 0,
+              routes: [{ name: "Login" }],
+            });
+          } catch (e) {
+            console.error("Logout failed:", e);
+            Alert.alert(
+              "Error",
+              "Failed to communicate with the server. Please check your connection."
+            );
           }
-        }
-      ]
-    );
+        },
+      },
+    ]);
   };
+
+  const firstLetter =
+    student?.user?.username?.[0]?.toUpperCase() ||
+    student?.user?.first_name?.[0]?.toUpperCase() ||
+    "S";
+
+  const fullName = student?.user
+    ? `${student.user.first_name || ""} ${student.user.last_name || ""}`.trim() ||
+      student.user.username ||
+      "Student"
+    : "Loading...";
 
   return (
     <View style={styles.mainContainer}>
-      <SafeAreaView edges={['top']} style={styles.topSafeArea} />
+      <SafeAreaView edges={["top"]} style={styles.topSafeArea} />
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
 
       {/* HEADER */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.navigate('Home')}>
-          <Text style={styles.backArrow}>{'<'}</Text>
+        <TouchableOpacity
+          onPress={() => navigation.navigate("Home")}
+          style={styles.headerIconBox}
+        >
+          <Ionicons name="chevron-back" size={24} color={COLORS.primary} />
         </TouchableOpacity>
+
         <Text style={styles.headerTitle}>Profile</Text>
-        <View style={{ width: 24 }} />
+
+        <View style={styles.headerIconBox} />
       </View>
 
       {/* BODY */}
@@ -114,32 +124,20 @@ const ProfileScreen = ({ navigation }) => {
           <View style={styles.profileCard}>
             <View style={styles.avatarContainer}>
               <View style={styles.avatarPlaceholder}>
-                <Text style={styles.avatarLetter}>
-                  {student?.user?.username
-                    ? student.user.username[0].toUpperCase()
-                    : 'S'}
-                </Text>
+                <Text style={styles.avatarLetter}>{firstLetter}</Text>
               </View>
             </View>
 
             <View style={styles.textSection}>
-              <Text style={styles.name}>
-                {student?.user
-                  ? `${student.user.first_name} ${student.user.last_name}`
-                  : "Loading..."}
-              </Text>
+              <Text style={styles.name}>{fullName}</Text>
 
-              <Text style={styles.degree}>
-                {student?.programme || "Student"}
-              </Text>
+              <Text style={styles.degree}>{student?.programme || "Student"}</Text>
 
-              <Text style={styles.emailText}>
-                {student?.user?.email || ""}
-              </Text>
+              <Text style={styles.emailText}>{student?.user?.email || ""}</Text>
 
               <TouchableOpacity
                 style={styles.editButton}
-                onPress={() => navigation.navigate('EditProfile')}
+                onPress={() => navigation.navigate("EditProfile")}
               >
                 <Text style={styles.editButtonText}>Edit Profile</Text>
               </TouchableOpacity>
@@ -148,27 +146,12 @@ const ProfileScreen = ({ navigation }) => {
 
           {/* SETTINGS CARD */}
           <View style={styles.settingsCard}>
-            {/* Push Notification */}
-            <View style={[styles.menuItem, styles.menuItemBorder]}>
-              <View>
-                <Text style={styles.menuText}>Push notification</Text>
-                <Text style={styles.menuSubText}>
-                  Receive important alerts about attendance and modules.
-                </Text>
-              </View>
-              <Switch
-                trackColor={{ false: "#E5E7EB", true: COLORS.primary }}
-                thumbColor={"#fff"}
-                ios_backgroundColor="#E5E7EB"
-                onValueChange={toggleSwitch}
-                value={isPushEnabled}
-              />
-            </View>
+            {/* ✅ Push toggle removed */}
 
             {/* Apply Leave */}
             <TouchableOpacity
               style={[styles.menuItem, styles.menuItemBorder]}
-              onPress={() => navigation.navigate('ApplyLeave')}
+              onPress={() => navigation.navigate("ApplyLeave")}
             >
               <View>
                 <Text style={styles.menuText}>Apply Leave of Absence</Text>
@@ -176,13 +159,13 @@ const ProfileScreen = ({ navigation }) => {
                   Submit leave requests for upcoming classes.
                 </Text>
               </View>
-              <Text style={styles.arrow}>{'>'}</Text>
+              <Text style={styles.arrow}>{">"}</Text>
             </TouchableOpacity>
 
             {/* Leave Status */}
             <TouchableOpacity
               style={[styles.menuItem, styles.menuItemBorder]}
-              onPress={() => navigation.navigate('LeaveStatus')}
+              onPress={() => navigation.navigate("LeaveStatus")}
             >
               <View>
                 <Text style={styles.menuText}>Leave Status</Text>
@@ -190,13 +173,13 @@ const ProfileScreen = ({ navigation }) => {
                   Track approval status for your leave submissions.
                 </Text>
               </View>
-              <Text style={styles.arrow}>{'>'}</Text>
+              <Text style={styles.arrow}>{">"}</Text>
             </TouchableOpacity>
 
             {/* Appeals Status */}
             <TouchableOpacity
               style={[styles.menuItem, styles.menuItemBorder]}
-              onPress={() => navigation.navigate('AppealStatus')}
+              onPress={() => navigation.navigate("AppealStatus")}
             >
               <View>
                 <Text style={styles.menuText}>Appeal Module Status</Text>
@@ -204,13 +187,13 @@ const ProfileScreen = ({ navigation }) => {
                   View updates on your module appeals.
                 </Text>
               </View>
-              <Text style={styles.arrow}>{'>'}</Text>
+              <Text style={styles.arrow}>{">"}</Text>
             </TouchableOpacity>
 
-            {/* 🔐 Change Password */}
+            {/* Change Password */}
             <TouchableOpacity
               style={[styles.menuItem, styles.menuItemBorder]}
-              onPress={() => navigation.navigate('ChangePassword')}
+              onPress={() => navigation.navigate("ChangePassword")}
             >
               <View>
                 <Text style={styles.menuText}>Change Password</Text>
@@ -218,13 +201,13 @@ const ProfileScreen = ({ navigation }) => {
                   Update your login password securely.
                 </Text>
               </View>
-              <Text style={styles.arrow}>{'>'}</Text>
+              <Text style={styles.arrow}>{">"}</Text>
             </TouchableOpacity>
 
             {/* FAQ */}
             <TouchableOpacity
               style={[styles.menuItem, styles.menuItemBorder]}
-              onPress={() => navigation.navigate('FAQ')}
+              onPress={() => navigation.navigate("FAQ")}
             >
               <View>
                 <Text style={styles.menuText}>FAQ</Text>
@@ -232,18 +215,13 @@ const ProfileScreen = ({ navigation }) => {
                   Find answers to common questions.
                 </Text>
               </View>
-              <Text style={styles.arrow}>{'>'}</Text>
+              <Text style={styles.arrow}>{">"}</Text>
             </TouchableOpacity>
 
             {/* Logout */}
-            <TouchableOpacity
-              style={styles.menuItem}
-              onPress={handleLogout}
-            >
-              <Text style={[styles.menuText, { color: '#B91C1C' }]}>
-                Log out
-              </Text>
-              <Text style={[styles.arrow, { color: '#B91C1C' }]}>{'>'}</Text>
+            <TouchableOpacity style={styles.menuItem} onPress={handleLogout}>
+              <Text style={[styles.menuText, { color: "#B91C1C" }]}>Log out</Text>
+              <Text style={[styles.arrow, { color: "#B91C1C" }]}>{">"}</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -266,16 +244,25 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
     paddingVertical: 14,
     paddingHorizontal: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: COLORS.borderSoft,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+
+    shadowColor: "#000",
+    shadowOpacity: 0.04,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    elevation: 2,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E6E6E6",
   },
-  backArrow: { fontSize: 24, color: COLORS.textDark, fontWeight: '300' },
+  headerIconBox: {
+    width: 32,
+    alignItems: "flex-start",
+  },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 20,
+    fontWeight: "700",
     color: COLORS.textDark,
   },
 
@@ -287,8 +274,8 @@ const styles = StyleSheet.create({
 
   loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   loadingText: {
     marginTop: 8,
@@ -297,13 +284,13 @@ const styles = StyleSheet.create({
 
   // PROFILE CARD
   profileCard: {
-    flexDirection: 'row',
+    flexDirection: "row",
     padding: 18,
     borderRadius: 18,
     backgroundColor: COLORS.card,
     marginBottom: 20,
 
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOpacity: 0.06,
     shadowOffset: { width: 0, height: 3 },
     shadowRadius: 6,
@@ -316,22 +303,22 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#CBD5F5',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "#CBD5F5",
+    justifyContent: "center",
+    alignItems: "center",
   },
   avatarLetter: {
     fontSize: 34,
-    color: '#1E1B4B',
-    fontWeight: '800',
+    color: "#1E1B4B",
+    fontWeight: "800",
   },
   textSection: {
     flex: 1,
-    justifyContent: 'center',
+    justifyContent: "center",
   },
   name: {
     fontSize: 20,
-    fontWeight: '800',
+    fontWeight: "800",
     color: COLORS.textDark,
     marginBottom: 4,
   },
@@ -350,12 +337,12 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
     paddingHorizontal: 16,
     borderRadius: 999,
-    alignSelf: 'flex-start',
+    alignSelf: "flex-start",
   },
   editButtonText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: "700",
   },
 
   // SETTINGS CARD
@@ -365,7 +352,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 4,
 
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOpacity: 0.03,
     shadowOffset: { width: 0, height: 2 },
     shadowRadius: 4,
@@ -373,9 +360,9 @@ const styles = StyleSheet.create({
   },
 
   menuItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingVertical: 14,
   },
   menuItemBorder: {
@@ -384,7 +371,7 @@ const styles = StyleSheet.create({
   },
   menuText: {
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: "700",
     color: COLORS.textDark,
   },
   menuSubText: {
@@ -396,7 +383,7 @@ const styles = StyleSheet.create({
   arrow: {
     fontSize: 18,
     color: COLORS.textMuted,
-    fontWeight: '300',
+    fontWeight: "300",
   },
 });
 

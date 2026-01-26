@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import api from '../../../api/api_client'; // 👈 1. Import helper client (Replaces axios)
+import { Ionicons } from '@expo/vector-icons';
 
 const COLORS = {
   primary: '#3A7AFE',
@@ -41,7 +42,7 @@ const NewsEventsScreen = ({ navigation }) => {
     try {
       // 👈 2. Use 'api.get'. It automatically adds the Base URL and Token
       const response = await api.get('/newsevent/');
-      
+
       setNewsList(response.data.news);
       setEventsList(response.data.events);
     } catch (error) {
@@ -70,15 +71,15 @@ const NewsEventsScreen = ({ navigation }) => {
 
         {/* HEADER */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Text style={styles.backArrow}>{'<'}</Text>
+          <TouchableOpacity onPress={() => navigation.navigate('Home')} style={styles.headerIconBox}>
+            <Ionicons name="chevron-back" size={24} color={COLORS.primary} />
           </TouchableOpacity>
 
-          <Text style={styles.headerTitle}>News & Events</Text>
+          <Text style={styles.headerTitle}>Newsevent</Text>
 
-          <View style={{ width: 24 }} />
+
+          <View style={styles.headerIconBox} />
         </View>
-
         {loading ? (
           <View style={styles.loadingBox}>
             <ActivityIndicator size="large" color={COLORS.primary} />
@@ -173,35 +174,29 @@ const styles = StyleSheet.create({
   contentContainer: { flex: 1 },
 
   header: {
-    backgroundColor: '#F5F7FB',
-    paddingVertical: 16,
+    backgroundColor: COLORS.background,
+    paddingVertical: 14,
     paddingHorizontal: 20,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+
     shadowColor: '#000',
-    shadowOpacity: 0.05,
+    shadowOpacity: 0.04,
     shadowOffset: { width: 0, height: 2 },
     shadowRadius: 4,
-    elevation: 3,
+    elevation: 2,
     borderBottomWidth: 1,
-    borderBottomColor: '#E4E4E4',
+    borderBottomColor: '#E6E6E6',
   },
-
-  backArrow: {
-    fontSize: 26,
-    fontWeight: '300',
-    color: '#3A7AFE',
+  headerIconBox: {
+    width: 32,
+    alignItems: 'flex-start',
   },
-
   headerTitle: {
-    flex: 1,
-    textAlign: 'center',
     fontSize: 20,
-    fontWeight: '800',
-    color: '#111827',
-    letterSpacing: 0.4,
-    marginRight: 24,
+    fontWeight: '700',
+    color: COLORS.textDark,
   },
 
   scrollContent: { paddingBottom: 20 },

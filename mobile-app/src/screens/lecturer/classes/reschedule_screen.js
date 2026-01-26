@@ -196,7 +196,7 @@ export default function LecturerRescheduleScreen({ route, navigation }) {
           text: "OK",
           onPress: () => {
             // ✅ go Sessions + open Rescheduled tab + force refresh
-            navigation.navigate("LecturerSessions", {
+            navigation.navigate("LecturerSessionsMain", {
               tab: "Rescheduled",
               refreshKey: String(Date.now()),
             });
