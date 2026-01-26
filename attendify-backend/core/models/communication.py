@@ -34,7 +34,7 @@ class News(models.Model):
         indexes = [ models.Index(fields=['created_at']) ]
 
     def __str__(self):
-        return self.title ({self.created_at})
+        return f"self.title ({self.created_at})"
 
 
 class Event(models.Model):
