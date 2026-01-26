@@ -1,7 +1,7 @@
 from core.models import Student, ClassSession, Semester, AttendanceRecord, Lecturer, LeaveRequest, Announcement, Notification, ClassRoom
 from django.utils import timezone
 from datetime import timedelta, datetime, time
-from django.db.models import Q
+from django.db.models import Q, Prefetch
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from core.logic.academics_logics import AcademicLogic
 
@@ -96,15 +96,29 @@ class AcademicService:
         if user.role_type == 'student':
             profile = Student.objects.get(user=user)
             filter_kwargs = {'module__students': profile}
+            attendance_prefetch = Prefetch(
+                'attendance_records', 
+                queryset=AttendanceRecord.objects.filter(student=profile),
+                to_attr='my_attendance'
+            )
+
+            return ClassSession.objects.filter(**filter_kwargs)\
+                .select_related('module', 'venue')\
+                .prefetch_related(attendance_prefetch)\
+                .order_by('date', 'start_time')
+        
         elif user.role_type == 'lecturer':
             profile = Lecturer.objects.get(user=user)
             filter_kwargs = {'module__lecturer': profile}
+
+            return ClassSession.objects.filter(**filter_kwargs)\
+            .select_related('module', 'venue')\
+            .order_by('date', 'start_time')
+        
         else:
             raise ValueError("Timetable not available for this role")
         
-        return ClassSession.objects.filter(**filter_kwargs)\
-            .select_related('module', 'venue')\
-            .order_by('date', 'start_time')
+        
     
 
     def get_class_details(self, user, session_id):

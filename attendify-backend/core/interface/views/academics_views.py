@@ -2,11 +2,10 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework import status
-from core.models import Student, ClassSession, Semester, AttendanceRecord, Lecturer, User
+from core.models import Student, ClassSession, Lecturer
 from core.services.academics_services import AcademicService
-from pgvector.django import CosineDistance
 # Serializers
-from core.interface.serializers.academics_serializers import ClassSessionSerializer, AttendanceRecordSerializer, FaceRecognitionSerializer
+from core.interface.serializers.academics_serializers import ClassSessionSerializer, AttendanceRecordSerializer, TimeTableSerializer, FaceRecognitionSerializer
 from core.interface.serializers.communication_serializers import AnnouncementSerializer
 from core.interface.serializers.users_serializers import MultiFaceEmbeddingSerializer
 
@@ -62,7 +61,7 @@ def get_timetable(request):
     try:
         sessions = service.get_timetable(request.user)
 
-        return Response(ClassSessionSerializer(sessions, many=True).data)
+        return Response(TimeTableSerializer(sessions, many=True).data)
 
     except (Student.DoesNotExist, Lecturer.DoesNotExist):
         return Response({"error": "Profile not found"}, status=404)

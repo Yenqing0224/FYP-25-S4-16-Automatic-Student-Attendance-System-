@@ -52,3 +52,40 @@ class AttendanceRecordSerializer(serializers.ModelSerializer):
 class FaceRecognitionSerializer(serializers.Serializer):
     student_id = serializers.CharField(max_length=50)
     time_stamp = serializers.DateTimeField()
+
+
+class TimeTableSerializer(serializers.ModelSerializer):
+    module = serializers.SerializerMethodField()
+    venue = serializers.CharField(source='venue.name', read_only=True, default="TBA")
+    attendance = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ClassSession
+        fields = [
+            'id', 
+            'type', 
+            'date', 
+            'start_time', 
+            'end_time', 
+            'status', 
+            'module',     
+            'venue',  
+            'attendance' 
+        ]
+
+    def get_module(self, obj):
+        return {
+            "code": obj.module.code,
+            "name": obj.module.name
+        }
+
+    def get_attendance(self, obj):
+        if hasattr(obj, 'my_attendance') and obj.my_attendance:
+            record = obj.my_attendance[0]
+            return {
+                "status": record.status,
+                "entry_time": record.entry_time,
+                "exit_time": record.exit_time,
+                "remarks": record.remarks
+            }
+        return None
