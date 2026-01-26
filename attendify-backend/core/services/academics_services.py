@@ -102,7 +102,9 @@ class AcademicService:
         else:
             raise ValueError("Timetable not available for this role")
         
-        return ClassSession.objects.filter(**filter_kwargs).order_by('date', 'start_time')
+        return ClassSession.objects.filter(**filter_kwargs)\
+            .select_related('module', 'venue')\
+            .order_by('date', 'start_time')
     
 
     def get_class_details(self, user, session_id):

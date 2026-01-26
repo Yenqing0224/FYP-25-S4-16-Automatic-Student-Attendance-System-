@@ -110,6 +110,11 @@ class ClassSession(models.Model):
         rate = (self.present_students / effective_total) * 100
         return round(rate, 2)
 
+    class Meta:
+        indexes = [
+            models.Index(fields=['date', 'start_time']),
+        ]
+
     def __str__(self):
         formatted_date = self.date.strftime('%Y-%m-%d')
         return f"{self.module.code} - {self.name} ({formatted_date}) [{self.status}]"
