@@ -35,11 +35,15 @@ class AcademicService:
             date=today_date
         ).order_by('start_time')
         
+        end_of_week = today_date + timedelta(days= 6 - today_date.weekday())
+
         upcoming_sessions = ClassSession.objects.filter(
             module__students=student,
-            date=today_date,
-            start_time__gte=current_time
-        ).order_by('start_time')[:5]
+            date__range=[today_date, end_of_week],
+            ).filter(
+            Q(date__gt=today_date) | 
+            Q(date=today_date, start_time__gte=current_time)
+        ).order_by('date', 'start_time')
 
         return {
             "attendance_rate": student.attendance_rate,
