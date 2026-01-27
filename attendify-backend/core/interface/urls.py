@@ -47,6 +47,7 @@ urlpatterns = [
     # Admin
     # Custom
     path('admin/semester-attendance/<str:student_id>/', admin_views.get_student_semester_attendance, name='student-semester-attendance'),
+    path('admin/get-document-url/', admin_views.get_secure_document_url, name='get_secure_document_url'),
     # Users
     path('admin/crud/users/', admin_views.users_list, name='crud-users-list'),
     path('admin/crud/users/<int:pk>/', admin_views.users_detail, name='crud-users-detail'),

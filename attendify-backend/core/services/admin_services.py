@@ -1,5 +1,6 @@
 from core.logic.admin_logics import AdminLogic
 from core.models import *
+from core.services.storage_services import SupabaseStorageService
 
 class AdminService:
 
@@ -88,3 +89,31 @@ class AdminService:
             })
 
         return results
+    
+
+    @staticmethod
+    def get_secure_document_url(doc_id, doc_type):
+        model_mapping = {
+            'leave': LeaveRequest,
+            'appeal': AttendanceAppeal
+        }
+        
+        ModelClass = model_mapping.get(doc_type)
+        if not ModelClass:
+            raise ValueError("Invalid document type. Must be 'leave' or 'appeal'.")
+
+        try:
+            record = ModelClass.objects.get(id=doc_id)
+        except ModelClass.DoesNotExist:
+            raise ValueError(f"{doc_type.capitalize()} record with ID {doc_id} not found.")
+
+        if not record.document_path:
+            raise ValueError("No document is attached to this record.")
+        
+        storage = SupabaseStorageService()
+        signed_url = storage.get_signed_url("secure-records", record.document_path, expiry_duration=60)
+        
+        if not signed_url:
+            raise Exception("Failed to generate signed URL from storage.")
+            
+        return signed_url

@@ -70,17 +70,42 @@ def create_crud_views(model_class, serializer_class):
 @api_view(['GET'])
 @permission_classes([IsAdminUser])
 def get_student_semester_attendance(request, student_id):
-    data = AdminService.get_student_semester_attendance(student_id)
+    try:
+        data = AdminService.get_student_semester_attendance(student_id)
     
-    if data is None:
-        return Response({"error": "Student not found"}, status=404)
+        if data is None:
+            return Response({"error": "Student not found"}, status=404)
 
-    paginator = PageNumberPagination()
-    paginator.page_size = 10  
+        paginator = PageNumberPagination()
+        paginator.page_size = 10  
     
-    result_page = paginator.paginate_queryset(data, request)
+        result_page = paginator.paginate_queryset(data, request)
     
-    return paginator.get_paginated_response(result_page)
+        return paginator.get_paginated_response(result_page)
+    
+    except Exception as e:
+        return Response({"error": "Internal Server Error"}, status=500)
+
+
+@api_view(['POST'])
+@permission_classes([IsAdminUser])
+def get_secure_document_url(request):
+    doc_id = request.data.get('id')
+    doc_type = request.data.get('type')
+
+    if not doc_id or not doc_type:
+        return Response({"error": "Both 'id' and 'type' are required."}, status=400)
+
+    try:
+        url = AdminService.get_secure_document_url(doc_id, doc_type)
+        
+        return Response({"url": url}, status=200)
+
+    except ValueError as e:
+        return Response({"error": str(e)}, status=400)
+        
+    except Exception as e:
+        return Response({"error": "Internal Server Error"}, status=500)
 
 
 # Users
