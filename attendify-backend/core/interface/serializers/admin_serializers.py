@@ -19,27 +19,48 @@ def upload_to_supabase(file_obj, bucket, folder, dynamic_id=None):
 
 # Users
 class AdminUserSerializer(serializers.ModelSerializer):
+    upload_image = serializers.ImageField(write_only=True, required=False)
     class Meta:
         model = User
         fields = ['id', 'username', 'password', 'email', 
                   'first_name', 'last_name', 'phone_number', 'gender', 'personal_email', 'image_path',
                   'address_street', 'address_unit', 'address_postal', 'address_country', 
                   'role_type', 'status', 'is_staff', 'is_active']
+        extra_kwargs = {'image_path': {'read_only': True}}
 
     def create(self, validated_data):
         password = validated_data.pop('password', None)
+        image_file = validated_data.pop('upload_image', None)
         instance = self.Meta.model(**validated_data)
         
         if password is not None:
             instance.set_password(password)
             
         instance.save()
+
+        if image_file:
+            url = upload_to_supabase(image_file, "secure-records", "users", dynamic_id=instance.id)
+            if url:
+                instance.image_path = url
+                instance.save()
         return instance
 
     def update(self, instance, validated_data):
-
         password = validated_data.pop('password', None)
+        image_file = validated_data.pop('upload_image', None)
         
+        if image_file:
+            if instance.image_path:
+                try:
+                    storage = SupabaseStorageService()
+                    storage.delete_file("secure-records", instance.image_path)
+                except Exception as e:
+                    print(f"Error deleting old profile image: {e}")
+
+            url = upload_to_supabase(image_file, "secure-records", "users", dynamic_id=instance.id)
+            if url:
+                instance.image_path = url
+
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
 

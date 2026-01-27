@@ -95,7 +95,8 @@ class AdminService:
     def get_secure_document_url(doc_id, doc_type):
         model_mapping = {
             'leave': LeaveRequest,
-            'appeal': AttendanceAppeal
+            'appeal': AttendanceAppeal,
+            'user' : User
         }
         
         ModelClass = model_mapping.get(doc_type)
@@ -107,11 +108,16 @@ class AdminService:
         except ModelClass.DoesNotExist:
             raise ValueError(f"{doc_type.capitalize()} record with ID {doc_id} not found.")
 
-        if not record.document_path:
+        if doc_type == 'user':
+            file_path = record.image_path
+        else:
+            file_path = record.document_path
+
+        if not file_path:
             raise ValueError("No document is attached to this record.")
         
         storage = SupabaseStorageService()
-        signed_url = storage.get_signed_url("secure-records", record.document_path, expiry_duration=60)
+        signed_url = storage.get_signed_url("secure-records", file_path, expiry_duration=60)
         
         if not signed_url:
             raise Exception("Failed to generate signed URL from storage.")
