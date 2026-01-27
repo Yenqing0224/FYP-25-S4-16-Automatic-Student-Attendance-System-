@@ -122,9 +122,7 @@ class AcademicService:
         else:
             raise ValueError("Timetable not available for this role")
         
-        
     
-
     def get_class_details(self, user, session_id):
         student = Student.objects.get(user=user)
 
