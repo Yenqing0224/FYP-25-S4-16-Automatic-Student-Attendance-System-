@@ -386,7 +386,7 @@ class AcademicService:
         }
 
 
-    def mark_attendance(self, student_id, time_stamp):
+    def mark_attendance(self, student_id, venue, time_stamp, flag):
         try:
             student = Student.objects.get(student_id=student_id)
         except Student.DoesNotExist:
@@ -396,7 +396,8 @@ class AcademicService:
             module__students=student,          
             date=time_stamp.date(),             
             start_time__lte=(time_stamp + timedelta(minutes=30)).time(),
-            end_time__gte=time_stamp.time()     
+            end_time__gte=time_stamp.time(),
+            venue=venue
         ).first()
 
         if not active_session:
@@ -411,13 +412,16 @@ class AcademicService:
             defaults={'status': 'absent'}
         )
 
-        message = ""
 
         if attendance.entry_time is None:
-            attendance.entry_time = time_stamp
+            naive_start_dt = datetime.combine(active_session.date, active_session.start_time)
+            official_start_dt = timezone.make_aware(naive_start_dt)
+            if time_stamp < official_start_dt:
+                attendance.entry_time = official_start_dt
+            else:
+                attendance.entry_time = time_stamp
             if AcademicLogic.is_valid_attendance_window(time_stamp, active_session):
                 attendance.status = 'present'
-                message = f"Entry marked for {student.user.username}"
 
                 Notification.objects.create(
                     recipient=student.user,
@@ -425,24 +429,25 @@ class AcademicService:
                     description=f"You have successfully marked attendance for {active_session.name}."
                 )
             else:
-                message = f"Entry rejected. You must scan within +/- 30 mins of {active_session.start_time}"
                 Notification.objects.create(
                     recipient=student.user,
                     title="Attendance Alert",
                     description=f"Your attendance for {active_session.name} was recorded but marked as ABSENT/LATE due to timing."
                 )
-            
+            current_entry_time = attendance.entry_time
             attendance.save()
         else:
-            attendance.exit_time = time_stamp
-            attendance.save()
-            message = f"Exit time updated for {student.user.username}"
+            if not flag:
+                attendance.exit_time = time_stamp
+                attendance.duration = attendance.exit_time() - current_entry_time
+                attendance.save()
+            if flag:
+                current_entry_time = time_stamp
 
         return {
             "status": "success",
             "student": student.user.username,
             "session": active_session.name,
-            "message": message,
             "entry": timezone.localtime(attendance.entry_time).isoformat() if attendance.entry_time else None,
             "exit": timezone.localtime(attendance.exit_time).isoformat() if attendance.exit_time else None
         }
