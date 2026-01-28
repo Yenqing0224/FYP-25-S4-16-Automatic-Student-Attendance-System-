@@ -3,7 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as NavigationService from '../../utils/navigationService';
 import { Alert } from 'react-native';
 
-const BASE_URL = 'https://attendify-ekg6.onrender.com/api';
+const BASE_URL = 'https://attendify-40rk.onrender.com/api';
 
 // 2. Create the Axios Instance
 const api = axios.create({

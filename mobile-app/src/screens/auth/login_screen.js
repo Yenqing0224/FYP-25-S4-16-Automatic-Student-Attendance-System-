@@ -26,7 +26,7 @@ const LoginScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  const API_URL = "https://attendify-ekg6.onrender.com/api/login/";
+  const API_URL = "https://attendify-40rk.onrender.com/api/login/";
 
   const canSubmit = useMemo(() => {
     return username.trim().length > 0 && password.trim().length > 0 && !loading;
