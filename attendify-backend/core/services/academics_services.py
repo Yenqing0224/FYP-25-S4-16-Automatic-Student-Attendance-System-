@@ -435,7 +435,12 @@ class AcademicService:
                 )
             attendance.save()
         else:
-            if entry_time_stamp > exit_time_stamp:
+            if entry_time_stamp < official_start_dt and exit_time_stamp > official_start_dt:
+                entry_time_stamp = official_start_dt
+
+            if exit_time_stamp < official_start_dt:
+                pass
+            elif entry_time_stamp > exit_time_stamp:
                 attendance.exit_time = None
                 attendance.save()
             else:
