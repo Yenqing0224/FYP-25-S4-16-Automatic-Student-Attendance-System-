@@ -410,10 +410,7 @@ class AcademicService:
         attendance, created = AttendanceRecord.objects.get_or_create(
             session=active_session,
             student=student,
-            defaults={
-                'status': 'absent',
-                'duration': 0
-            }
+            defaults={'status': 'absent','duration': 0}
         )
 
         if attendance.entry_time is None:
