@@ -1,6 +1,14 @@
 // src/screens/lecturer/sessions/sessions_screen.js
 import React, { useMemo, useState, useCallback, useEffect } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, StatusBar, Alert, ActivityIndicator } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  StatusBar,
+  Alert,
+  ActivityIndicator,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as Calendar from "expo-calendar";
@@ -32,14 +40,17 @@ const deriveFieldsFromISO = (c) => {
   const startISO = String(c?.startISO ?? "");
   const endISO = String(c?.endISO ?? "");
 
-  const date = startISO.includes("T") ? startISO.split("T")[0] : String(c?.date ?? "");
+  const date = startISO.includes("T")
+    ? startISO.split("T")[0]
+    : String(c?.date ?? "");
   const startTime = startISO.length >= 16 ? startISO.slice(11, 16) : "";
   const endTime = endISO.length >= 16 ? endISO.slice(11, 16) : "";
 
   return {
     ...c,
     date,
-    time: startTime && endTime ? `${startTime} – ${endTime}` : (c?.time ?? "-"),
+    time:
+      startTime && endTime ? `${startTime} – ${endTime}` : c?.time ?? "-",
   };
 };
 
@@ -80,7 +91,8 @@ const dedupeByIdPreferRescheduled = (arr = []) => {
 
   return Array.from(map.values());
 };
-// ✅ ADD this helper near top (below your other helpers)
+
+/** ✅ Dedupe “Upcoming + Rescheduled duplicate” by signature; prefer rescheduled */
 const dedupePreferRescheduledBySignature = (arr = []) => {
   const map = new Map();
 
@@ -104,13 +116,11 @@ const dedupePreferRescheduledBySignature = (arr = []) => {
     const a = String(existing?.status ?? "").toLowerCase();
     const b = String(item?.status ?? "").toLowerCase();
 
-    // ✅ prefer rescheduled
     if (a !== "rescheduled" && b === "rescheduled") map.set(key, item);
   }
 
   return Array.from(map.values());
 };
-
 
 const LecturerSessionsScreen = ({ navigation, route }) => {
   const [activeTab, setActiveTab] = useState("Upcoming");
@@ -127,7 +137,9 @@ const LecturerSessionsScreen = ({ navigation, route }) => {
 
   useEffect(() => {
     if (!selectedDate) {
-      const sgTime = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Singapore" });
+      const sgTime = new Date().toLocaleDateString("en-CA", {
+        timeZone: "Asia/Singapore",
+      });
       setSelectedDate(sgTime);
     }
   }, [selectedDate]);
@@ -140,7 +152,7 @@ const LecturerSessionsScreen = ({ navigation, route }) => {
           const arr = JSON.parse(raw);
           if (Array.isArray(arr)) setSavedReminderIds(new Set(arr));
         }
-      } catch { }
+      } catch {}
     })();
   }, []);
 
@@ -215,7 +227,6 @@ const LecturerSessionsScreen = ({ navigation, route }) => {
     }, [route.params?.tab, route.params?.targetDate, route.params?.refreshKey])
   );
 
-
   const mergedTimetable = useMemo(() => {
     const merged = (fullTimetable || []).map((c) => {
       const o = overrides?.[String(c.id)];
@@ -231,10 +242,7 @@ const LecturerSessionsScreen = ({ navigation, route }) => {
       return deriveFieldsFromISO(mergedOne);
     });
 
-    // ✅ 1) dedupe by id
     const byId = dedupeByIdPreferRescheduled(merged);
-
-    // ✅ 2) dedupe by signature (kills “Upcoming + Rescheduled duplicate”)
     return dedupePreferRescheduledBySignature(byId);
   }, [fullTimetable, overrides]);
 
@@ -260,7 +268,10 @@ const LecturerSessionsScreen = ({ navigation, route }) => {
   const isSavingThis = (cls) => savingId === reminderIdFor(cls);
 
   const persistReminderIds = async (nextSet) => {
-    await AsyncStorage.setItem(REMINDER_KEY, JSON.stringify(Array.from(nextSet)));
+    await AsyncStorage.setItem(
+      REMINDER_KEY,
+      JSON.stringify(Array.from(nextSet))
+    );
   };
 
   const addReminderToCalendar = async (cls) => {
@@ -272,8 +283,11 @@ const LecturerSessionsScreen = ({ navigation, route }) => {
       const { status } = await Calendar.requestCalendarPermissionsAsync();
       if (status !== "granted") return;
 
-      const calendars = await Calendar.getCalendarsAsync(Calendar.EntityTypes.EVENT);
-      const defaultCal = calendars.find((c) => c.allowsModifications) || calendars[0];
+      const calendars = await Calendar.getCalendarsAsync(
+        Calendar.EntityTypes.EVENT
+      );
+      const defaultCal =
+        calendars.find((c) => c.allowsModifications) || calendars[0];
       if (!defaultCal) return;
 
       await Calendar.createEventAsync(defaultCal.id, {
@@ -316,7 +330,12 @@ const LecturerSessionsScreen = ({ navigation, route }) => {
 
   if (loading) {
     return (
-      <SafeAreaView style={[styles.container, { justifyContent: "center", alignItems: "center" }]}>
+      <SafeAreaView
+        style={[
+          styles.container,
+          { justifyContent: "center", alignItems: "center" },
+        ]}
+      >
         <ActivityIndicator size="large" color={COLORS.primary} />
       </SafeAreaView>
     );
@@ -328,26 +347,41 @@ const LecturerSessionsScreen = ({ navigation, route }) => {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
 
-      <View style={styles.headerRow}>
-        <Text style={styles.headerTitle}>Sessions</Text>
+      {/* HEADER */}
+      <View style={styles.header}>
+        <View style={styles.headerLeft}>
+          <Text style={styles.headerTitle}>Sessions</Text>
+          <Text style={styles.headerSubText}>
+            Manage upcoming, past & rescheduled classes
+          </Text>
+        </View>
+
         <View style={styles.badgePill}>
           <Ionicons name="calendar-outline" size={14} color={COLORS.primary} />
           <Text style={styles.badgeText}>{upcoming.length} upcoming</Text>
         </View>
       </View>
 
-      <View style={styles.tabRow}>
-        {tabs.map((t) => (
-          <TouchableOpacity
-            key={t}
-            style={[styles.tab, activeTab === t && styles.tabActive]}
-            onPress={() => setActiveTab(t)}
-          >
-            <Text style={[styles.tabText, activeTab === t && styles.tabTextActive]}>{t}</Text>
-          </TouchableOpacity>
-        ))}
+      {/* TABS */}
+      <View style={styles.tabBar}>
+        {tabs.map((t) => {
+          const active = activeTab === t;
+          return (
+            <TouchableOpacity
+              key={t}
+              style={[styles.tabBtn, active && styles.tabBtnActive]}
+              onPress={() => setActiveTab(t)}
+              activeOpacity={0.85}
+            >
+              <Text style={[styles.tabLabel, active && styles.tabLabelActive]}>
+                {t}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
       </View>
 
+      {/* CONTENT */}
       {activeTab === "Upcoming" && (
         <UpcomingTab
           COLORS={COLORS}
@@ -370,7 +404,13 @@ const LecturerSessionsScreen = ({ navigation, route }) => {
         />
       )}
 
-      {activeTab === "Rescheduled" && <RescheduledTab COLORS={COLORS} navigation={navigation} list={rescheduleHistory} />}
+      {activeTab === "Rescheduled" && (
+        <RescheduledTab
+          COLORS={COLORS}
+          navigation={navigation}
+          list={rescheduleHistory}
+        />
+      )}
 
       {activeTab === "Calendar" && (
         <CalendarTab
@@ -384,21 +424,97 @@ const LecturerSessionsScreen = ({ navigation, route }) => {
           addReminderToCalendar={addReminderToCalendar}
         />
       )}
+
+      {/* FAB */}
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={() => setActiveTab("Calendar")}
+        activeOpacity={0.9}
+      >
+        <Ionicons name="calendar" size={18} color="#fff" />
+      </TouchableOpacity>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
-  headerRow: { paddingHorizontal: 20, paddingTop: 14, paddingBottom: 10, flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+
+  // HEADER
+  header: {
+    backgroundColor: COLORS.background,
+    paddingHorizontal: 20,
+    paddingTop: 14,
+    paddingBottom: 12,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(0,0,0,0.06)",
+  },
+  headerLeft: { flex: 1, paddingRight: 12 },
   headerTitle: { fontSize: 22, fontWeight: "900", color: COLORS.textDark },
-  badgePill: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, backgroundColor: COLORS.soft },
+  headerSubText: { marginTop: 2, fontSize: 12.5, color: COLORS.textMuted },
+
+  badgePill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 999,
+    backgroundColor: COLORS.soft,
+  },
   badgeText: { fontWeight: "900", color: COLORS.primary, fontSize: 12 },
-  tabRow: { flexDirection: "row", paddingHorizontal: 20, gap: 10, marginBottom: 8, flexWrap: "wrap" },
-  tab: { paddingVertical: 10, paddingHorizontal: 14, borderRadius: 14, backgroundColor: COLORS.soft, alignItems: "center" },
-  tabActive: { backgroundColor: COLORS.primary },
-  tabText: { fontWeight: "800", color: COLORS.primary },
-  tabTextActive: { color: "#fff" },
+
+  // TABS (SEGMENTED)
+  tabBar: {
+    marginTop: 12,
+    marginHorizontal: 16,
+    padding: 6,
+    borderRadius: 16,
+    backgroundColor: COLORS.soft,
+    flexDirection: "row",
+  },
+  tabBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  tabBtnActive: {
+    backgroundColor: COLORS.card,
+    shadowColor: "#000",
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 2,
+  },
+  tabLabel: {
+    fontWeight: "800",
+    color: COLORS.primary,
+    fontSize: 12.5,
+  },
+  tabLabelActive: { color: COLORS.textDark },
+
+  // FAB
+  fab: {
+    position: "absolute",
+    right: 18,
+    bottom: 18,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: COLORS.primary,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 5,
+  },
 });
 
 export default LecturerSessionsScreen;

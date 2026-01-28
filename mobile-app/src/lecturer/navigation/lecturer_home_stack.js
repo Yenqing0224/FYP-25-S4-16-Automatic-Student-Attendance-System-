@@ -7,7 +7,8 @@ import LecturerClassListScreen from "../../screens/lecturer/classes/class_list_s
 import LecturerClassDetailScreen from "../../screens/lecturer/classes/class_detail_screen";
 import LecturerAnnouncementDetailScreen from "../../screens/lecturer/announcements/announcement_detail_screen";
 import LecturerRescheduleScreen from "../../screens/lecturer/classes/reschedule_screen";
-
+import LecturerSessionsScreen from "../../screens/lecturer/sessions/sessions_screen";
+import LecturerProfile from "../../screens/lecturer/profile/profile_screen";
 const Stack = createNativeStackNavigator();
 
 export default function LecturerHomeStack() {
@@ -17,10 +18,9 @@ export default function LecturerHomeStack() {
       <Stack.Screen name="LecturerClassList" component={LecturerClassListScreen} />
       <Stack.Screen name="LecturerClassDetail" component={LecturerClassDetailScreen} />
       <Stack.Screen name="LecturerReschedule" component={LecturerRescheduleScreen} />
-      <Stack.Screen
-        name="LecturerAnnouncementDetail"
-        component={LecturerAnnouncementDetailScreen}
-      />
+      <Stack.Screen name="LecturerSessionsMain" component={LecturerSessionsScreen} />
+      <Stack.Screen name="LecturerProfile" component={LecturerProfile} />
+      <Stack.Screen name="LecturerAnnouncementDetail" component={LecturerAnnouncementDetailScreen}/>
     </Stack.Navigator>
   );
 }
