@@ -51,7 +51,7 @@ export default function HomeScreen({ navigation }) {
   const [announcements, setAnnouncements] = useState([]);
 
   // Loading States
-  const [loading, setLoading] = useState(true); // General dashboard loading
+  const [loading, setLoading] = useState(true);
 
   // UI States
   const [isAnnounceExpanded, setIsAnnounceExpanded] = useState(false);
@@ -90,16 +90,13 @@ export default function HomeScreen({ navigation }) {
     return d.getTime() < cutoff;
   };
 
-  // ✅ Updated to map API keys correctly
   const normalizeAnnouncement = (a) => {
     const createdAt = a.created_at || a.createdAt || null;
     return {
       id: String(a.id),
       title: toText(a.title, "Untitled"),
-      // API returns 'description', UI uses 'desc'
       desc: toText(a.description ?? a.message ?? a.desc, ""),
       created_at: createdAt,
-      // Generate "Today", "21 Jan" from created_at
       date: createdAt ? formatDateLabel(createdAt) : "Recent",
     };
   };
@@ -157,7 +154,6 @@ export default function HomeScreen({ navigation }) {
   }, []);
 
   const fetchDashboardData = async () => {
-    // We declare this outside try/catch so 'finally' can check it
     let isSessionExpired = false;
 
     try {
@@ -176,39 +172,24 @@ export default function HomeScreen({ navigation }) {
       const rawAnnouncements = Array.isArray(data.announcements) ? data.announcements : [];
       let merged = rawAnnouncements.map(normalizeAnnouncement);
 
-      // Filter expired
       merged = merged.filter((a) => !isExpired(a.created_at));
 
-      // Filter keywords
       const STUDENT_EXCLUDE_KEYWORDS = ["invigilation", "marking window", "grading", "lecturer briefing"];
       merged = merged.filter((a) => {
         const text = `${toText(a.title, "")} ${toText(a.desc, "")}`.toLowerCase();
         return !STUDENT_EXCLUDE_KEYWORDS.some((k) => text.includes(k));
       });
 
-      // Sort
       merged.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
       setAnnouncements(merged);
-
     } catch (error) {
-      // 👇 CHECK FOR 401 HERE
       if (error.response && error.response.status === 401) {
-        // Mark that session expired so we can skip setLoading(false)
         isSessionExpired = true;
-        // Don't show error messages, don't log "Fetch Error"
         return;
       }
-
-      // Normal error handling (Network errors, 500s, etc.)
       console.error("Dashboard Fetch Error:", error?.response?.status, error?.config?.url);
-
     } finally {
-      // 👇 THE MAGIC TRICK
-      // Only stop the loading spinner if the session is VALID.
-      // If it's a 401, keep spinning! This hides the broken UI until the app navigates away.
-      if (!isSessionExpired) {
-        setLoading(false);
-      }
+      if (!isSessionExpired) setLoading(false);
     }
   };
 
@@ -239,7 +220,7 @@ export default function HomeScreen({ navigation }) {
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* HEADER */}
         <View style={styles.headerContainer}>
           <View>
@@ -266,10 +247,12 @@ export default function HomeScreen({ navigation }) {
               <Text style={styles.attendanceLabel}>Attendance rate</Text>
               <Text style={styles.attendanceSubtitle}>{toText(semesterRange, "—")}</Text>
 
-              <View style={styles.attendanceCircle}>
+              <View style={styles.attendanceCircle2}>
+                <Ionicons name="trending-up-outline" size={18} color={COLORS.primary} />
                 <Text style={styles.attendancePercentage}>
                   {loading ? "..." : `${Number(attendanceRate || 0).toFixed(0)}%`}
                 </Text>
+                <Text style={styles.attendanceMiniText}>Overall</Text>
               </View>
             </View>
           </TouchableOpacity>
@@ -441,7 +424,9 @@ export default function HomeScreen({ navigation }) {
             todayClasses.map((item) => (
               <View key={String(item.id)} style={styles.todayCard}>
                 <View style={styles.todayCardInner}>
-                  <Text style={styles.cardTitle}>{toText(item.module?.code, "Module")}</Text>
+                  <Text style={styles.cardTitle} numberOfLines={1}>
+                    {toText(item.module?.code, "Module")}
+                  </Text>
 
                   <View style={styles.row}>
                     <Ionicons name="time-outline" size={16} color="#1E1B4B" />
@@ -450,10 +435,14 @@ export default function HomeScreen({ navigation }) {
 
                   <View style={styles.row}>
                     <Ionicons name="location-outline" size={16} color="#1E1B4B" />
-                    <Text style={styles.cardDetail}>{toText(item.venue, "TBA")}</Text>
+                    <Text style={styles.cardDetail} numberOfLines={1}>
+                      {toText(item.venue, "TBA")}
+                    </Text>
                   </View>
 
-                  <Text style={styles.cardSubtitle}>{toText(item.module?.name, "Class")}</Text>
+                  <Text style={styles.cardSubtitle} numberOfLines={1}>
+                    {toText(item.module?.name, "Class")}
+                  </Text>
                 </View>
               </View>
             ))
@@ -461,42 +450,70 @@ export default function HomeScreen({ navigation }) {
         </View>
 
         {/* UPCOMING */}
-        <View style={styles.sectionHeaderRow}>
-          <Text style={styles.sectionHeaderText}>Upcoming Classes</Text>
+        <View style={styles.sectionHeaderRow2}>
+          <View style={styles.sectionTitleRow}>
+            <Text style={styles.sectionHeaderText}>Upcoming Classes</Text>
+
+            <TouchableOpacity
+              activeOpacity={0.85}
+              onPress={() => navigation.navigate("Timetable", { screen: "TimeTableMain" })}
+              style={styles.seeAllBtn}
+            >
+              <Text style={styles.seeAllText}>See all</Text>
+              <Ionicons name="chevron-forward" size={14} color={COLORS.primary} />
+            </TouchableOpacity>
+          </View>
+
+          <Text style={styles.sectionSubText}>Tap a card to jump to that date</Text>
         </View>
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalScrollContainer}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.horizontalScrollContainer}
+        >
           {upcomingClasses.length === 0 && !loading ? (
             <Text style={styles.noUpcomingText}>No upcoming classes found.</Text>
           ) : (
             upcomingClasses.map((item) => (
               <TouchableOpacity
                 key={String(item.id)}
-                style={styles.upcomingCard}
+                style={styles.upcomingCard2}
+                activeOpacity={0.9}
                 onPress={async () => {
                   const dateToJump = item.date;
                   await AsyncStorage.setItem("jumpToDate", String(dateToJump || ""));
                   navigation.navigate("Timetable", { screen: "TimeTableMain" });
                 }}
               >
-                <View style={{ marginBottom: 8 }}>
-                  <Text style={styles.upcomingLabel}>Date</Text>
-                  <Text style={styles.upcomingValue}>{toText(formatDate(item.date), "-")}</Text>
+                <View style={styles.upTopRow}>
+                  <View style={styles.modulePill}>
+                    <Text style={styles.modulePillText}>{toText(item.module?.code, "MOD")}</Text>
+                  </View>
+
+                  <Ionicons name="arrow-forward" size={16} color="rgba(255,255,255,0.9)" />
                 </View>
 
-                <View style={{ marginBottom: 8 }}>
-                  <Text style={styles.upcomingLabel}>Time</Text>
-                  <Text style={styles.upcomingValue}>{toText(formatTime(item.start_time), "-")}</Text>
-                </View>
-
-                <View style={{ marginBottom: 12 }}>
-                  <Text style={styles.upcomingLabel}>Venue</Text>
-                  <Text style={styles.upcomingValue}>{toText(item.venue, "TBA")}</Text>
-                </View>
-
-                <Text style={styles.upcomingModule}>
-                  {toText(item.module?.code, "MOD")} — {toText(item.module?.name, "Class")}
+                <Text style={styles.upModuleName} numberOfLines={2}>
+                  {toText(item.module?.name, "Class")}
                 </Text>
+
+                <View style={styles.upMetaRow}>
+                  <Ionicons name="calendar-outline" size={14} color="rgba(255,255,255,0.8)" />
+                  <Text style={styles.upMetaText}>{toText(formatDate(item.date), "-")}</Text>
+                </View>
+
+                <View style={styles.upMetaRow}>
+                  <Ionicons name="time-outline" size={14} color="rgba(255,255,255,0.8)" />
+                  <Text style={styles.upMetaText}>{toText(formatTime(item.start_time), "-")}</Text>
+                </View>
+
+                <View style={styles.upMetaRow}>
+                  <Ionicons name="location-outline" size={14} color="rgba(255,255,255,0.8)" />
+                  <Text style={styles.upMetaText} numberOfLines={1}>
+                    {toText(item.venue, "TBA")}
+                  </Text>
+                </View>
               </TouchableOpacity>
             ))
           )}
@@ -544,7 +561,7 @@ const styles = StyleSheet.create({
   attendanceCard: {
     marginHorizontal: 20,
     marginTop: 12,
-    marginBottom: 22,
+    marginBottom: 14,
     backgroundColor: COLORS.card,
     borderRadius: 20,
     paddingVertical: 26,
@@ -559,18 +576,44 @@ const styles = StyleSheet.create({
 
   attendanceLabel: { fontSize: 16, fontWeight: "700", color: COLORS.textDark, marginBottom: 4 },
   attendanceSubtitle: { fontSize: 14, color: COLORS.textMuted, marginBottom: 20 },
-  attendanceCircle: {
-    width: 95,
-    height: 95,
-    borderRadius: 48,
-    backgroundColor: "#E3EDFF",
+
+  attendanceCircle2: {
+    width: 110,
+    height: 110,
+    borderRadius: 55,
+    backgroundColor: "#EAF2FF",
     alignItems: "center",
     justifyContent: "center",
+    borderWidth: 2,
+    borderColor: "#CFE0FF",
   },
   attendancePercentage: { fontSize: 30, fontWeight: "800", color: COLORS.primary },
+  attendanceMiniText: {
+    marginTop: 2,
+    fontSize: 11,
+    fontWeight: "700",
+    color: COLORS.textMuted,
+  },
 
-  sectionHeaderRow: { paddingHorizontal: 20, marginBottom: 8 },
+  sectionHeaderRow: { paddingHorizontal: 20, marginBottom: 8, marginTop: 6 },
   sectionHeaderText: { fontSize: 16, fontWeight: "700", color: COLORS.textDark },
+
+  sectionHeaderRow2: { paddingHorizontal: 20, marginBottom: 10, marginTop: 6 },
+  sectionTitleRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  sectionSubText: { marginTop: 4, color: COLORS.textMuted, fontSize: 12, fontWeight: "600" },
+
+  seeAllBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#E7F0FF",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  seeAllText: { color: COLORS.primary, fontWeight: "800", fontSize: 12 },
 
   todayCard: {
     backgroundColor: "#8C99FF",
@@ -593,7 +636,9 @@ const styles = StyleSheet.create({
   cardDetail: { fontSize: 14, fontWeight: "600", color: "#1E1B4B" },
   cardSubtitle: { marginTop: 10, fontSize: 13, fontWeight: "600", color: COLORS.primary },
 
-  horizontalScrollContainer: { paddingHorizontal: 20, paddingTop: 6 },
+  horizontalScrollContainer: { paddingHorizontal: 20, paddingTop: 6, paddingBottom: 2 },
+
+  // old upcoming styles kept (safe)
   upcomingCard: {
     backgroundColor: "#3A7AFE",
     borderRadius: 18,
@@ -613,6 +658,32 @@ const styles = StyleSheet.create({
   },
   upcomingValue: { fontSize: 14, fontWeight: "700", color: "#FFFFFF", marginBottom: 6 },
   upcomingModule: { marginTop: 6, fontSize: 14, fontWeight: "800", color: "#FFFFFF" },
+
+  // ✅ new modern upcoming card
+  upcomingCard2: {
+    backgroundColor: COLORS.primary,
+    borderRadius: 20,
+    padding: 14,
+    width: 190,
+    marginRight: 12,
+    shadowColor: COLORS.primary,
+    shadowOpacity: 0.18,
+    shadowOffset: { width: 0, height: 6 },
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  upTopRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  modulePill: {
+    backgroundColor: "rgba(255,255,255,0.18)",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+  },
+  modulePillText: { color: "#fff", fontWeight: "900", fontSize: 12 },
+  upModuleName: { marginTop: 10, fontSize: 16, fontWeight: "900", color: "#fff", lineHeight: 20 },
+  upMetaRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 10 },
+  upMetaText: { flex: 1, color: "rgba(255,255,255,0.92)", fontWeight: "700", fontSize: 13 },
+
   noUpcomingText: { marginLeft: 20, color: COLORS.textMuted, fontSize: 13 },
 
   emptyStateContainer: {
