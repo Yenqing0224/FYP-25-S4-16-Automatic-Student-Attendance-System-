@@ -44,8 +44,7 @@ class CustomUserAdmin(UserAdmin):
                 'address_unit',
                 'address_postal',
                 'address_country',
-                'image_url',
-                'face_embedding_512'
+                'image_path'
             ),
         }),
         ('System Role', {
