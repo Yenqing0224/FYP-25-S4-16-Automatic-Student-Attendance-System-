@@ -39,7 +39,12 @@ class AdminUserSerializer(serializers.ModelSerializer):
         instance.save()
 
         if image_path:
-            url = upload_to_supabase(image_path, "secure-records", "users", dynamic_id=instance.id)
+            url = upload_to_supabase(
+                image_path, 
+                "profile-picture", 
+                "", 
+                dynamic_id=instance.id
+            )
             if url:
                 instance.image_path = url
                 instance.save()
@@ -57,7 +62,12 @@ class AdminUserSerializer(serializers.ModelSerializer):
                 except Exception as e:
                     print(f"Error deleting old profile image: {e}")
 
-            url = upload_to_supabase(image_path, "secure-records", "users", dynamic_id=instance.id)
+            url = upload_to_supabase(
+                image_path, 
+                "profile-picture", 
+                "", 
+                dynamic_id=instance.id
+            )
             if url:
                 instance.image_path = url
 
