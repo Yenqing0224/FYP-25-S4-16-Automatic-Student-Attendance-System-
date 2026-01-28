@@ -50,7 +50,7 @@ export default function LecturerClassDetailScreen({ route, navigation }) {
   const [busy, setBusy] = useState(false);
 
   const moduleText = toText(cls?.module, "MOD");
-  const titleText = toText(cls?.title, "Class");
+  const titleText = toText(cls?.title ?? cls?.name, "Class");
   const venueText = toText(cls?.venue, "TBA");
   const timeText = toText(cls?.time, "-");
   const dateText = toText(cls?.date, "-");
@@ -60,8 +60,16 @@ export default function LecturerClassDetailScreen({ route, navigation }) {
   // ✅ Option A: once rescheduled, cannot reschedule again
   const status = String(toText(cls?.status, "active")).toLowerCase();
   const statusLabelLower = String(toText(cls?.statusLabel, "")).toLowerCase();
+
   const isCancelled = status === "cancelled" || statusLabelLower === "cancelled";
-  const isRescheduled = status === "rescheduled" || statusLabelLower === "rescheduled";
+
+  const isRescheduled =
+    status === "rescheduled" ||
+    statusLabelLower === "rescheduled" ||
+    String(titleText).includes("(Rescheduled)");
+
+  const isReplacementClass = String(titleText).includes("(Rescheduled)");
+
 
   const isUpcoming = useMemo(() => {
     const t = new Date(toText(cls?.startISO, "")).getTime();
@@ -69,16 +77,18 @@ export default function LecturerClassDetailScreen({ route, navigation }) {
   }, [cls?.startISO]);
 
   const goReschedule = () => {
-    if (!cls?.id) return Alert.alert("Missing", "No session id found.");
+    const sessionId = cls?.id ?? cls?._id ?? cls?.session_id;
+    if (!sessionId) return Alert.alert("Missing", "No session id found.");
 
-    // ✅ Block reschedule if already rescheduled (Option A)
-    if (isRescheduled) {
-      Alert.alert("Not allowed", "This class was already rescheduled and cannot be rescheduled again.");
+    // ✅ Block reschedule if already rescheduled OR replacement class
+    if (isRescheduled || isReplacementClass) {
+      Alert.alert("Not allowed", "This class cannot be rescheduled again.");
       return;
     }
 
-    navigation.navigate("LecturerReschedule", { cls });
+    navigation.navigate("LecturerReschedule", { cls: { ...cls, id: String(sessionId) } });
   };
+
 
   return (
     <SafeAreaView style={styles.container}>
@@ -95,16 +105,25 @@ export default function LecturerClassDetailScreen({ route, navigation }) {
       <ScrollView contentContainerStyle={styles.content}>
         {/* ✅ RESCHEDULED / CANCELLED pill */}
         {isRescheduled && !isCancelled && (
-          <View
-            style={[
-              styles.statusPill,
-              { backgroundColor: moduleColor + "22", borderColor: moduleColor + "55" },
-            ]}
-          >
-            <Ionicons name="swap-horizontal-outline" size={16} color={moduleColor} />
-            <Text style={[styles.statusPillText, { color: moduleColor }]}>RESCHEDULED</Text>
+          <View style={{ marginBottom: 12 }}>
+            <View
+              style={[
+                styles.statusPill,
+                { backgroundColor: moduleColor + "22", borderColor: moduleColor + "55" },
+              ]}
+            >
+              <Ionicons name="swap-horizontal-outline" size={16} color={moduleColor} />
+              <Text style={[styles.statusPillText, { color: moduleColor }]}>
+                RESCHEDULED
+              </Text>
+            </View>
+
+            <Text style={styles.rescheduledHint}>
+              This class has been rescheduled and cannot be changed again.
+            </Text>
           </View>
         )}
+
 
         {isCancelled && (
           <View style={styles.cancelPill}>
@@ -138,7 +157,7 @@ export default function LecturerClassDetailScreen({ route, navigation }) {
           </View>
         </View>
 
-        {isUpcoming && !isCancelled && (
+        {isUpcoming && !isCancelled && !isRescheduled && (
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Actions</Text>
 
@@ -253,4 +272,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 16,
   },
+  rescheduledHint: {
+  marginTop: 6,
+  marginLeft: 6,
+  color: COLORS.textMuted,
+  fontSize: 12,
+  fontWeight: "600",
+},
+
 });

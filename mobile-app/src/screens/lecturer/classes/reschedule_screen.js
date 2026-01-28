@@ -1,5 +1,5 @@
 // src/screens/lecturer/classes/reschedule_screen.js
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -34,12 +34,26 @@ const RESCHEDULE_HISTORY_KEY = "lecturerRescheduleHistory_v1";
 const toText = (v, fallback = "") => {
   if (v == null) return fallback;
   if (typeof v === "string" || typeof v === "number" || typeof v === "boolean") return String(v);
-  if (typeof v === "object") return String(v.name ?? v.code ?? v.title ?? v.id ?? fallback);
+  if (typeof v === "object") return String(v.name ?? v.code ?? v.title ?? v.id ?? v._id ?? fallback);
   return fallback;
 };
 
 export default function LecturerRescheduleScreen({ route, navigation }) {
   const cls = route?.params?.cls;
+
+  const sessionId = useMemo(() => {
+    const raw = cls?.id ?? cls?._id ?? cls?.session_id;
+    return raw != null ? String(raw) : "";
+  }, [cls]);
+
+  const titleOrName = useMemo(() => {
+    return String(cls?.title ?? cls?.name ?? "");
+  }, [cls]);
+
+  const isReplacementClass = useMemo(() => {
+    // ✅ backend rejects rescheduling if "(Rescheduled)" in name
+    return titleOrName.includes("(Rescheduled)");
+  }, [titleOrName]);
 
   const [loadingOptions, setLoadingOptions] = useState(true);
   const [options, setOptions] = useState([]);
@@ -55,29 +69,50 @@ export default function LecturerRescheduleScreen({ route, navigation }) {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    const loadOptions = async () => {
-      if (!cls?.id) return;
+    // ✅ If cls missing, exit safely
+    if (!sessionId) {
+      setLoadingOptions(false);
+      Alert.alert("Error", "No class session selected.");
+      navigation.goBack();
+      return;
+    }
 
+    // ✅ Block replacement class reschedule to avoid 400
+    if (isReplacementClass) {
+      setLoadingOptions(false);
+      Alert.alert("Not allowed", "This is a replacement class and cannot be rescheduled again.", [
+        { text: "OK", onPress: () => navigation.goBack() },
+      ]);
+      return;
+    }
+
+    const loadOptions = async () => {
       setLoadingOptions(true);
       try {
-        const res = await api.post("/get-reschedule-options/", { session_id: cls.id });
+        const res = await api.post("/get-reschedule-options/", { session_id: sessionId });
         const rawOptions = Array.isArray(res?.data?.options) ? res.data.options : [];
         setOptions(rawOptions);
         processCalendarMarkers(rawOptions);
       } catch (e) {
         console.error("Fetch options error:", e);
-        Alert.alert("Error", "Could not fetch reschedule options.");
+        const msg =
+          e?.response?.data?.message ||
+          e?.response?.data?.detail ||
+          "Could not fetch reschedule options.";
+        Alert.alert("Error", msg);
       } finally {
         setLoadingOptions(false);
       }
     };
+
     loadOptions();
-  }, [cls?.id]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionId, isReplacementClass]);
 
   const processCalendarMarkers = (list) => {
     const markers = {};
     list.forEach((opt) => {
-      if (opt.date) {
+      if (opt?.date) {
         markers[opt.date] = {
           marked: true,
           dotColor: COLORS.success,
@@ -91,9 +126,9 @@ export default function LecturerRescheduleScreen({ route, navigation }) {
 
   const onDayPress = (day) => {
     const dStr = day?.dateString;
-    const availableOptions = (options || []).filter((o) => o.date === dStr);
+    const availableOptions = (options || []).filter((o) => o?.date === dStr);
 
-    if (availableOptions.length === 0) {
+    if (!dStr || availableOptions.length === 0) {
       Alert.alert("Unavailable", "No suggested slots available for this date.");
       return;
     }
@@ -106,17 +141,20 @@ export default function LecturerRescheduleScreen({ route, navigation }) {
   };
 
   const pickSlot = (s) => {
-    setDate(s.date);
-    setStartTime(s.start_time ? s.start_time.slice(0, 5) : "");
-    setEndTime(s.end_time ? s.end_time.slice(0, 5) : "");
-    if (s.venue) setVenue(s.venue);
+    setDate(s?.date ?? "");
+    setStartTime(s?.start_time ? String(s.start_time).slice(0, 5) : "");
+    setEndTime(s?.end_time ? String(s.end_time).slice(0, 5) : "");
+
+    // backend options currently do not include venue; keep existing venue
+    if (s?.venue) setVenue(s.venue);
   };
 
-  const saveOverride = async (sessionId, overrideObj) => {
+  const saveOverride = async (sid, overrideObj) => {
     try {
       const raw = await AsyncStorage.getItem(RESCHEDULE_OVERRIDES_KEY);
       const obj = raw ? JSON.parse(raw) : {};
-      const next = { ...(obj && typeof obj === "object" ? obj : {}), [String(sessionId)]: overrideObj };
+      const safeObj = obj && typeof obj === "object" ? obj : {};
+      const next = { ...safeObj, [String(sid)]: overrideObj };
       await AsyncStorage.setItem(RESCHEDULE_OVERRIDES_KEY, JSON.stringify(next));
     } catch (e) {
       console.log("saveOverride error:", e);
@@ -146,7 +184,7 @@ export default function LecturerRescheduleScreen({ route, navigation }) {
       const endPayload = endTime.length === 5 ? `${endTime}:00` : endTime;
 
       const payload = {
-        session_id: String(cls.id),
+        session_id: sessionId,
         date,
         start_time: startPayload,
         end_time: endPayload,
@@ -157,26 +195,32 @@ export default function LecturerRescheduleScreen({ route, navigation }) {
       // ✅ AFTER snapshot (what UI should show)
       const afterSnapshot = {
         ...cls,
-        id: String(cls.id),
+        id: sessionId,
         startISO: `${payload.date}T${payload.start_time}`,
         endISO: `${payload.date}T${payload.end_time}`,
         venue: venue,
         status: "rescheduled",
       };
 
-      // ✅ store override (only important fields; time/date derived in Sessions screen)
-      await saveOverride(cls.id, {
+      // ✅ store override (only important fields)
+      await saveOverride(sessionId, {
         startISO: afterSnapshot.startISO,
         endISO: afterSnapshot.endISO,
         venue: afterSnapshot.venue,
+
+        // ✅ store before snapshot too
+        beforeStartISO: cls?.startISO,
+        beforeEndISO: cls?.endISO,
+        beforeVenue: cls?.venue,
       });
 
-      // ✅ store history (Before + After for Rescheduled tab)
+
+      // ✅ store history
       await saveHistory({
-        key: `${cls.id}-${Date.now()}`,
-        session_id: String(cls.id),
+        key: `${sessionId}-${Date.now()}`,
+        session_id: sessionId,
         module: cls?.module,
-        title: cls?.title,
+        title: cls?.title ?? cls?.name,
         statusLabel: "Rescheduled",
 
         beforeStartISO: cls?.startISO,
@@ -187,7 +231,6 @@ export default function LecturerRescheduleScreen({ route, navigation }) {
         afterEndISO: afterSnapshot.endISO,
         afterVenue: afterSnapshot.venue,
 
-        // for opening detail page
         afterSnapshot,
       });
 
@@ -195,7 +238,6 @@ export default function LecturerRescheduleScreen({ route, navigation }) {
         {
           text: "OK",
           onPress: () => {
-            // ✅ go Sessions + open Rescheduled tab + force refresh
             navigation.navigate("LecturerSessionsMain", {
               tab: "Rescheduled",
               refreshKey: String(Date.now()),
@@ -204,7 +246,11 @@ export default function LecturerRescheduleScreen({ route, navigation }) {
         },
       ]);
     } catch (e) {
-      Alert.alert("Error", e?.response?.data?.message || "Failed to reschedule.");
+      const msg =
+        e?.response?.data?.message ||
+        e?.response?.data?.detail ||
+        "Failed to reschedule.";
+      Alert.alert("Error", msg);
     } finally {
       setSubmitting(false);
     }
@@ -223,7 +269,7 @@ export default function LecturerRescheduleScreen({ route, navigation }) {
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.card}>
           <Text style={styles.module}>{toText(cls?.module, "MOD")}</Text>
-          <Text style={styles.title}>{toText(cls?.title, "Class")}</Text>
+          <Text style={styles.title}>{toText(cls?.title ?? cls?.name, "Class")}</Text>
           <Text style={styles.sub}>
             Original: {toText(cls?.date, "-")} • {toText(cls?.time, "-")}
           </Text>
@@ -271,18 +317,20 @@ export default function LecturerRescheduleScreen({ route, navigation }) {
             <Text style={styles.cardTitle}>2. Select Time Slot</Text>
             <View style={styles.slotContainer}>
               {daySlots.map((s, idx) => {
-                const isSelected = s.start_time?.startsWith(startTime);
+                const isSelected = String(s?.start_time ?? "").startsWith(startTime);
                 return (
                   <TouchableOpacity
-                    key={idx}
+                    key={String(idx)}
                     style={[styles.slotChip, isSelected && styles.slotChipSelected]}
                     onPress={() => pickSlot(s)}
                   >
                     <Text style={[styles.slotChipText, isSelected && { color: "#fff" }]}>
-                      {s.start_time?.slice(0, 5)}
+                      {String(s?.start_time ?? "").slice(0, 5)}
                     </Text>
-                    {s.attendance_percentage > 80 && (
-                      <Text style={[styles.highAttend, isSelected && { color: "#fff" }]}>High Attendance</Text>
+                    {Number(s?.attendance_percentage ?? 0) > 80 && (
+                      <Text style={[styles.highAttend, isSelected && { color: "#fff" }]}>
+                        High Attendance
+                      </Text>
                     )}
                   </TouchableOpacity>
                 );
@@ -310,10 +358,13 @@ export default function LecturerRescheduleScreen({ route, navigation }) {
                 keyboardType="numeric"
               />
             </View>
+
             <View style={{ flex: 1 }}>
               <Text style={styles.label}>End Time (Auto)</Text>
               <View style={styles.readOnlyInput}>
-                <Text style={{ fontWeight: "800", color: COLORS.textMuted }}>{endTime || "--:--"}</Text>
+                <Text style={{ fontWeight: "800", color: COLORS.textMuted }}>
+                  {endTime || "--:--"}
+                </Text>
               </View>
             </View>
           </View>
@@ -323,7 +374,11 @@ export default function LecturerRescheduleScreen({ route, navigation }) {
             onPress={submit}
             disabled={submitting || !date}
           >
-            {submitting ? <ActivityIndicator color="#fff" /> : <Ionicons name="checkmark-circle" size={18} color="#fff" />}
+            {submitting ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Ionicons name="checkmark-circle" size={18} color="#fff" />
+            )}
             <Text style={styles.primaryBtnText}>Confirm Reschedule</Text>
           </TouchableOpacity>
         </View>

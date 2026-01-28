@@ -27,7 +27,37 @@ const RescheduledTab = ({ COLORS, navigation, list = [] }) => {
     });
   };
 
-  const safeKey = (r, idx) => String(r?.key ?? r?.session_id ?? `${idx}`);
+  const safeKey = (r, idx) => String(r?.key ?? r?.session_id ?? r?.id ?? `${idx}`);
+
+  // ✅ Build a safe cls object even if afterSnapshot is missing/incomplete
+  const buildClsFromRecord = (r) => {
+    const sessionId = String(r?.session_id ?? r?.id ?? r?.afterSnapshot?.id ?? r?.afterSnapshot?._id ?? "");
+    const module = r?.module ?? r?.afterSnapshot?.module;
+    const title = r?.title ?? r?.afterSnapshot?.title ?? r?.afterSnapshot?.name;
+
+    const cls = {
+      ...(r?.afterSnapshot || {}),
+      id: sessionId,
+      module,
+      title,
+      name: title,
+      status: "rescheduled",
+      statusLabel: "Rescheduled",
+      startISO: r?.afterStartISO ?? r?.afterSnapshot?.startISO,
+      endISO: r?.afterEndISO ?? r?.afterSnapshot?.endISO,
+      venue: r?.afterVenue ?? r?.afterSnapshot?.venue,
+    };
+
+    // optional pretty fields (helps detail screen)
+    if (cls.startISO && typeof cls.startISO === "string" && cls.startISO.includes("T")) {
+      cls.date = cls.startISO.slice(0, 10);
+      const st = cls.startISO.slice(11, 16);
+      const et = cls.endISO ? String(cls.endISO).slice(11, 16) : "";
+      cls.time = st && et ? `${st} – ${et}` : cls.time;
+    }
+
+    return cls;
+  };
 
   return (
     <ScrollView contentContainerStyle={styles.content}>
@@ -35,7 +65,7 @@ const RescheduledTab = ({ COLORS, navigation, list = [] }) => {
         <View style={styles.emptyBox}>
           <Ionicons name="swap-horizontal-outline" size={28} color={COLORS.primary} />
           <Text style={styles.emptyTitle}>No rescheduled history</Text>
-          <Text style={styles.emptySub}>Only classes you rescheduled will appear here.</Text>
+          <Text style={styles.emptySub}>Rescheduled classes will appear here even after logout/refresh.</Text>
         </View>
       ) : (
         list.map((r, idx) => {
@@ -45,12 +75,7 @@ const RescheduledTab = ({ COLORS, navigation, list = [] }) => {
             <TouchableOpacity
               key={safeKey(r, idx)}
               activeOpacity={0.9}
-              onPress={() =>
-                navigation.navigate("LecturerClassDetail", {
-                  // pass the updated class
-                  cls: r?.afterSnapshot ?? null,
-                })
-              }
+              onPress={() => navigation.navigate("LecturerClassDetail", { cls: buildClsFromRecord(r) })}
               style={styles.sessionCard}
             >
               <View style={styles.topRow}>
@@ -59,7 +84,6 @@ const RescheduledTab = ({ COLORS, navigation, list = [] }) => {
                   <Text style={styles.sessionTitle}>{toText(r?.title, "Class")}</Text>
                 </View>
 
-                {/* ✅ STATUS PILL */}
                 <View style={[styles.statusPill, { backgroundColor: COLORS.soft }]}>
                   <Text style={[styles.statusText, { color: COLORS.primary }]}>{statusLabel}</Text>
                 </View>

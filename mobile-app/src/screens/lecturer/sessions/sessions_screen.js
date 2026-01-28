@@ -152,7 +152,7 @@ const LecturerSessionsScreen = ({ navigation, route }) => {
           const arr = JSON.parse(raw);
           if (Array.isArray(arr)) setSavedReminderIds(new Set(arr));
         }
-      } catch {}
+      } catch { }
     })();
   }, []);
 
@@ -234,9 +234,19 @@ const LecturerSessionsScreen = ({ navigation, route }) => {
 
       const mergedOne = {
         ...c,
-        ...o,
+
+        // apply only AFTER fields
+        startISO: o.startISO,
+        endISO: o.endISO,
+        venue: o.venue,
+
         id: String(c.id),
         status: "rescheduled",
+
+        // keep BEFORE snapshot
+        beforeStartISO: o.beforeStartISO,
+        beforeEndISO: o.beforeEndISO,
+        beforeVenue: o.beforeVenue,
       };
 
       return deriveFieldsFromISO(mergedOne);
@@ -245,6 +255,59 @@ const LecturerSessionsScreen = ({ navigation, route }) => {
     const byId = dedupeByIdPreferRescheduled(merged);
     return dedupePreferRescheduledBySignature(byId);
   }, [fullTimetable, overrides]);
+  const rescheduledTabList = useMemo(() => {
+    const map = new Map();
+
+    // 1) existing history
+    (rescheduleHistory || []).forEach((r) => {
+      const sid = String(r?.session_id ?? "");
+      if (!sid) return;
+      map.set(sid, r);
+    });
+
+    // 2) derive from overrides (if history missing)
+    (mergedTimetable || [])
+      .filter((c) => String(c?.status ?? "").toLowerCase() === "rescheduled")
+      .forEach((c) => {
+        const sid = String(c?.id ?? c?._id ?? "");
+        if (!sid) return;
+
+        if (map.has(sid)) return; // already have full history
+
+        // create a minimal history record so it shows in Rescheduled tab
+        const o = overrides?.[sid];
+
+        map.set(sid, {
+          key: `derived-${sid}`,
+          session_id: sid,
+          module: c?.module,
+          title: c?.title ?? c?.name,
+          statusLabel: "Rescheduled",
+
+          // ✅ pull BEFORE from override if exists
+          beforeStartISO: o?.beforeStartISO || "",
+          beforeEndISO: o?.beforeEndISO || "",
+          beforeVenue: o?.beforeVenue || "",
+
+          afterStartISO: c?.startISO,
+          afterEndISO: c?.endISO,
+          afterVenue: c?.venue,
+
+        },
+        );
+      });
+
+    // show newest first by time if possible
+    const arr = Array.from(map.values());
+    arr.sort((a, b) => {
+      const ta = new Date(a?.afterStartISO || a?.afterSnapshot?.startISO || 0).getTime();
+      const tb = new Date(b?.afterStartISO || b?.afterSnapshot?.startISO || 0).getTime();
+      return tb - ta;
+    });
+    return arr;
+  }, [rescheduleHistory, mergedTimetable]);
+
+
 
   const upcoming = useMemo(() => {
     const now = Date.now();
@@ -408,9 +471,10 @@ const LecturerSessionsScreen = ({ navigation, route }) => {
         <RescheduledTab
           COLORS={COLORS}
           navigation={navigation}
-          list={rescheduleHistory}
+          list={rescheduledTabList}
         />
       )}
+
 
       {activeTab === "Calendar" && (
         <CalendarTab

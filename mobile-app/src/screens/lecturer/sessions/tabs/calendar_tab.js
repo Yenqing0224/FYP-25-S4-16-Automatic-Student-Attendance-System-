@@ -3,8 +3,9 @@ import React, { useMemo, useRef } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { CalendarList } from "react-native-calendars";
+import { Alert } from "react-native";
 
-/* ✅ NEW: module color palette + mapper */
+/* ✅ module color palette + mapper */
 const MODULE_COLORS = [
   "#6D5EF5",
   "#10B981",
@@ -140,7 +141,10 @@ const CalendarTab = ({
 
       <View style={styles.content}>
         <View style={styles.detailsHeader}>
-          <SafeText style={styles.detailsTitle} value={selectedDateText ? `Classes on ${selectedDateText}` : "Pick a date"} />
+          <SafeText
+            style={styles.detailsTitle}
+            value={selectedDateText ? `Classes on ${selectedDateText}` : "Pick a date"}
+          />
         </View>
 
         {selectedDateText && daySessions.length === 0 && (
@@ -153,22 +157,48 @@ const CalendarTab = ({
 
         {daySessions.map((s, idx) => {
           const moduleText = toText(s?.module, "-");
-          const titleText = toText(s?.title, "Session");
+          const titleText = toText(s?.title ?? s?.name, "Session");
           const timeText = toText(s?.time, "-");
           const venueText = toText(s?.venue, "-");
           const dateText = formatDate(s?.date);
 
           const moduleColor = getModuleColor(moduleText);
-          const status = String(toText(s?.status, "active")).toLowerCase();
-          const isRescheduled = status === "rescheduled";
 
+          const status = String(toText(s?.status, "active")).toLowerCase();
+
+          // ✅ IMPORTANT FIX:
+          // Show rescheduled pill even after refresh if backend returns replacement name "(Rescheduled)"
+          const isRescheduled =
+            status === "rescheduled" ||
+            String(titleText).includes("(Rescheduled)");
 
           return (
             <TouchableOpacity
               key={safeKey(s, idx)}
               activeOpacity={0.9}
-              style={[styles.sessionCard, { borderColor: moduleColor + "55", backgroundColor: moduleColor + "10" }]}
-              onPress={() => navigation.navigate("LecturerClassDetail", { cls: s })}
+              style={[
+                styles.sessionCard,
+                { borderColor: moduleColor + "55", backgroundColor: moduleColor + "10" },
+              ]}
+              onPress={() => {
+                const status = String(s?.status ?? "").toLowerCase();
+                const title = String(s?.title ?? s?.name ?? "");
+
+                const isRescheduled =
+                  status === "rescheduled" ||
+                  title.includes("(Rescheduled)");
+
+                if (isRescheduled) {
+                  Alert.alert(
+                    "Rescheduled",
+                    "This class has already been rescheduled and cannot be changed again."
+                  );
+                  return;
+                }
+
+                navigation.navigate("LecturerClassDetail", { cls: s });
+              }}
+
             >
               <View style={{ flexDirection: "row" }}>
                 <View style={[styles.moduleBar, { backgroundColor: moduleColor }]} />
@@ -176,19 +206,33 @@ const CalendarTab = ({
                 <View style={{ flex: 1 }}>
                   <SafeText style={[styles.module, { color: moduleColor }]} value={moduleText} />
 
-                  <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: 10,
+                    }}
+                  >
                     <View style={{ flex: 1 }}>
                       <SafeText style={styles.sessionTitle} value={titleText} numberOfLines={1} />
                     </View>
 
                     {isRescheduled && (
-                      <View style={[styles.statusPill, { backgroundColor: moduleColor + "22", borderColor: moduleColor + "55" }]}>
+                      <View
+                        style={[
+                          styles.statusPill,
+                          {
+                            backgroundColor: moduleColor + "22",
+                            borderColor: moduleColor + "55",
+                          },
+                        ]}
+                      >
                         <Ionicons name="swap-horizontal-outline" size={14} color={moduleColor} />
                         <Text style={[styles.statusText, { color: moduleColor }]}>Rescheduled</Text>
                       </View>
                     )}
                   </View>
-
 
                   <View style={styles.metaRow}>
                     <Ionicons name="calendar-outline" size={16} color={COLORS.textMuted} />
@@ -206,14 +250,17 @@ const CalendarTab = ({
                   </View>
 
                   <View style={styles.actionsRow}>
-                    <View style={[styles.primaryBtn, { backgroundColor:  COLORS.primary}]}>
+                    <View style={[styles.primaryBtn, { backgroundColor: COLORS.primary }]}>
                       <Ionicons name="information-circle-outline" size={16} color="#fff" />
                       <Text style={styles.primaryBtnText}>Details</Text>
                     </View>
 
                     <TouchableOpacity
-                      style={[styles.secondaryBtn, isAdded?.(s) && styles.secondaryBtnDisabled, { backgroundColor: COLORS.soft }]}
-
+                      style={[
+                        styles.secondaryBtn,
+                        isAdded?.(s) && styles.secondaryBtnDisabled,
+                        { backgroundColor: COLORS.soft },
+                      ]}
                       disabled={!!isAdded?.(s) || !!isSavingThis?.(s)}
                       onPress={() => addReminderToCalendar?.(s)}
                     >
@@ -271,6 +318,7 @@ const styles = StyleSheet.create({
 
   tapHintRow: { marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: "#E5E7EB", flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   tapHintText: { flex: 1, marginLeft: 8, color: "#6B7280", fontWeight: "700" },
+
   statusPill: {
     flexDirection: "row",
     alignItems: "center",
@@ -280,11 +328,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     borderWidth: 1,
   },
-  statusText: {
-    fontWeight: "900",
-    fontSize: 12,
-  },
-
+  statusText: { fontWeight: "900", fontSize: 12 },
 });
 
 export default CalendarTab;
