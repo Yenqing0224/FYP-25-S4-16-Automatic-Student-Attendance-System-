@@ -362,7 +362,8 @@ class AcademicService:
             end_time=new_end,
             venue=available_venue,
             status='upcoming'
-        )
+        ),
+            'duration': 0
 
         students = session.module.students.all()
         notifications = []
@@ -386,7 +387,7 @@ class AcademicService:
         }
 
 
-    def mark_attendance(self, student_id, venue, time_stamp, flag):
+    def mark_attendance(self, student_id, venue, entry_time_stamp, exit_time_stamp):
         try:
             student = Student.objects.get(student_id=student_id)
         except Student.DoesNotExist:
@@ -394,9 +395,9 @@ class AcademicService:
             
         active_session = ClassSession.objects.filter(
             module__students=student,          
-            date=time_stamp.date(),             
-            start_time__lte=(time_stamp + timedelta(minutes=30)).time(),
-            end_time__gte=time_stamp.time(),
+            date=entry_time_stamp.date(),             
+            start_time__lte=(entry_time_stamp + timedelta(minutes=30)).time(),
+            end_time__gte=entry_time_stamp.time(),
             venue=venue
         ).first()
 
@@ -409,18 +410,18 @@ class AcademicService:
         attendance, created = AttendanceRecord.objects.get_or_create(
             session=active_session,
             student=student,
-            defaults={'status': 'absent'}
+            defaults={'status': 'absent',
+                'duration': 0}
         )
-
 
         if attendance.entry_time is None:
             naive_start_dt = datetime.combine(active_session.date, active_session.start_time)
             official_start_dt = timezone.make_aware(naive_start_dt)
-            if time_stamp < official_start_dt:
+            if entry_time_stamp < official_start_dt:
                 attendance.entry_time = official_start_dt
             else:
-                attendance.entry_time = time_stamp
-            if AcademicLogic.is_valid_attendance_window(time_stamp, active_session):
+                attendance.entry_time = entry_time_stamp
+            if AcademicLogic.is_valid_attendance_window(entry_time_stamp, active_session):
                 attendance.status = 'present'
 
                 Notification.objects.create(
@@ -434,18 +435,15 @@ class AcademicService:
                     title="Attendance Alert",
                     description=f"Your attendance for {active_session.name} was recorded but marked as ABSENT/LATE due to timing."
                 )
-            current_entry_time = attendance.entry_time
             attendance.save()
         else:
-            if not flag:
-                attendance.exit_time = time_stamp
-                attendance.duration = attendance.exit_time() - current_entry_time
-                attendance.save()
-            if flag:
-                current_entry_time = time_stamp
+            attendance.exit_time = exit_time_stamp
+            time_diff = exit_time_stamp - entry_time_stamp
+            attendance.duration += int(time_diff.total_seconds())
+            attendance.save()
 
         return {
-            "status": "success",
+            "status": "success",    
             "student": student.user.username,
             "session": active_session.name,
             "entry": timezone.localtime(attendance.entry_time).isoformat() if attendance.entry_time else None,

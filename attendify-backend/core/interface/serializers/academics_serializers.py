@@ -52,9 +52,8 @@ class AttendanceRecordSerializer(serializers.ModelSerializer):
 class FaceRecognitionSerializer(serializers.Serializer):
     student_id = serializers.CharField(max_length=50)
     venue = serializers.CharField(max_length=50)
-    time_stamp = serializers.DateTimeField()
-    flag = serializers.BooleanField()
-
+    entry_time_stamp = serializers.DateTimeField()
+    exit_time_stamp = serializers.DateTimeField
 
 class TimeTableSerializer(serializers.ModelSerializer):
     module = serializers.SerializerMethodField()

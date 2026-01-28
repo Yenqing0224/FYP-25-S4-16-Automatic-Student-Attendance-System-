@@ -157,7 +157,7 @@ class AttendanceRecord(models.Model):
     recorded_at = models.DateTimeField(auto_now_add=True)
     status = models.CharField(max_length=20, choices=ATTENDANCE_STATUS, default='absent')
     remarks = models.CharField(max_length=200, blank=True, null=True)
-    duration = models.IntegerField(null=True, blank=True)
+    duration = models.IntegerField(default=0, null=True, blank=True)
 
     class Meta:
         unique_together = ('session', 'student')
