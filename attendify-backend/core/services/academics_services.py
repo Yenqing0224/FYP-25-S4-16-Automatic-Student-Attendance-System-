@@ -228,7 +228,7 @@ class AcademicService:
         if session.status != 'upcoming':
             raise ValidationError(f"Only 'Upcoming' classes can be rescheduled.")
 
-        if "(Rescheduled)" in session.name:
+        if "(rescheduled)" in session.name.lower():
             raise ValidationError("This class is already a replacement class and cannot be rescheduled again.")
         
         try:
