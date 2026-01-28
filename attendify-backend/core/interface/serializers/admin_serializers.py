@@ -30,7 +30,7 @@ class AdminUserSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         password = validated_data.pop('password', None)
-        image_path = validated_data.pop('upload_image', None)
+        image_file = validated_data.pop('upload_image', None)
         instance = self.Meta.model(**validated_data)
         
         if password is not None:
@@ -38,9 +38,9 @@ class AdminUserSerializer(serializers.ModelSerializer):
             
         instance.save()
 
-        if image_path:
+        if image_file:
             url = upload_to_supabase(
-                image_path, 
+                image_file, 
                 "profile-picture", 
                 "", 
                 dynamic_id=instance.id
@@ -52,18 +52,18 @@ class AdminUserSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         password = validated_data.pop('password', None)
-        image_path = validated_data.pop('upload_image', None)
+        image_file = validated_data.pop('upload_image', None)
         
-        if image_path:
+        if image_file:
             if instance.image_path:
                 try:
                     storage = SupabaseStorageService()
-                    storage.delete_file("secure-records", instance.image_path)
+                    storage.delete_file("profile-picture", instance.image_path)
                 except Exception as e:
                     print(f"Error deleting old profile image: {e}")
 
             url = upload_to_supabase(
-                image_path, 
+                image_file, 
                 "profile-picture", 
                 "", 
                 dynamic_id=instance.id
