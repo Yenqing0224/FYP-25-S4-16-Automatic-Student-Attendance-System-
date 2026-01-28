@@ -1,10 +1,9 @@
-// src/screens/lecturer/sessions/tabs/upcoming_tab.js
 import React from "react";
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from "react-native";
 import { Swipeable } from "react-native-gesture-handler";
 import { Ionicons } from "@expo/vector-icons";
 
-/* ✅ NEW: module color palette + mapper */
+/* Module Color Palette */
 const MODULE_COLORS = [
   "#6D5EF5",
   "#10B981",
@@ -38,18 +37,12 @@ const UpcomingTab = ({
     if (v == null) return fallback;
     if (typeof v === "string" || typeof v === "number") return String(v);
     if (typeof v === "object") {
-      if (v.name != null) return String(v.name);
-      if (v.title != null) return String(v.title);
-      if (v.label != null) return String(v.label);
-      if (v.code != null) return String(v.code);
-      if (v.id != null) return String(v.id);
-      if (v._id != null) return String(v._id);
-      return fallback;
+      // Fallback safe extraction
+      return String(v.code ?? v.name ?? v.title ?? fallback);
     }
     return fallback;
   };
 
-  /** ✅ KEY FIX: make it unique even if id duplicates happen temporarily */
   const safeKey = (s, idx) => {
     const id = String(s?.id ?? s?._id ?? idx);
     const start = String(s?.startISO ?? "");
@@ -81,10 +74,8 @@ const UpcomingTab = ({
   };
 
   const goReschedule = (cls) => {
-    // ✅ Option A: once rescheduled, cannot reschedule again
     const status = String(toText(cls?.status, "active")).toLowerCase();
-    const statusLabelLower = String(toText(cls?.statusLabel, "")).toLowerCase();
-    const isRescheduled = status === "rescheduled" || statusLabelLower === "rescheduled";
+    const isRescheduled = status === "rescheduled";
 
     if (isRescheduled) {
       Alert.alert("Not allowed", "This class was already rescheduled and cannot be rescheduled again.");
@@ -110,16 +101,16 @@ const UpcomingTab = ({
         </View>
       ) : (
         list.map((s, idx) => {
-          const moduleText = toText(s?.module, "-");
+          // ✅ FIX: Rely on 's.title' which now contains the Module Name (set in sessions_screen.js)
+          const moduleText = toText(s?.module, "MOD");
           const titleText = toText(s?.title, "Session");
+          
           const timeText = toText(s?.time, "-");
           const venueText = toText(s?.venue, "-");
           const dateText = formatDate(s?.date);
 
           const status = String(toText(s?.status, "active")).toLowerCase();
-          const statusLabelLower = String(toText(s?.statusLabel, "")).toLowerCase();
-          const isRescheduled = status === "rescheduled" || statusLabelLower === "rescheduled";
-
+          const isRescheduled = status === "rescheduled";
           const statusLabel = isRescheduled ? "Rescheduled" : "Upcoming";
 
           const moduleColor = getModuleColor(moduleText);
@@ -136,7 +127,10 @@ const UpcomingTab = ({
                 <View style={{ flex: 1 }}>
                   <View style={styles.sessionTop}>
                     <View style={{ flex: 1 }}>
+                      {/* Top Label: Module Code (CSCI 128) */}
                       <Text style={[styles.module, { color: moduleColor }]}>{moduleText}</Text>
+                      
+                      {/* Main Title: Module Name (Intro to Programming) */}
                       <Text style={styles.sessionTitle}>{titleText}</Text>
                     </View>
 
@@ -188,7 +182,6 @@ const UpcomingTab = ({
                       </Text>
                     </TouchableOpacity>
 
-                    {/* ✅ Option A: disable Move button if rescheduled */}
                     <TouchableOpacity
                       style={[
                         styles.secondaryBtnSmall,

@@ -1,4 +1,3 @@
-// src/screens/lecturer/sessions/sessions_screen.js
 import React, { useMemo, useState, useCallback, useEffect } from "react";
 import {
   View,
@@ -12,7 +11,6 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as Calendar from "expo-calendar";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect } from "@react-navigation/native";
 
 import UpcomingTab from "./tabs/upcoming_tab";
@@ -31,11 +29,7 @@ const COLORS = {
   soft: "#ECE9FF",
 };
 
-const REMINDER_KEY = "lecturerReminderIds_v1";
-const RESCHEDULE_HISTORY_KEY = "lecturerRescheduleHistory_v1";
-const RESCHEDULE_OVERRIDES_KEY = "lecturerRescheduleOverrides_v1";
-
-/** ✅ Always derive date + time from ISO so fields never mismatch */
+/** ✅ Helper to standardise API data */
 const deriveFieldsFromISO = (c) => {
   const startISO = String(c?.startISO ?? "");
   const endISO = String(c?.endISO ?? "");
@@ -54,87 +48,14 @@ const deriveFieldsFromISO = (c) => {
   };
 };
 
-/** ✅ Dedup same id; keep rescheduled if exists; else best venue */
-const dedupeByIdPreferRescheduled = (arr = []) => {
-  const map = new Map();
-
-  for (const item of arr) {
-    const id = String(item?.id ?? item?._id ?? "");
-    if (!id) continue;
-
-    const existing = map.get(id);
-    if (!existing) {
-      map.set(id, item);
-      continue;
-    }
-
-    const a = String(existing?.status ?? "").toLowerCase();
-    const b = String(item?.status ?? "").toLowerCase();
-
-    // Prefer rescheduled over active
-    if (a !== "rescheduled" && b === "rescheduled") {
-      map.set(id, item);
-      continue;
-    }
-    if (a === "rescheduled" && b !== "rescheduled") {
-      continue;
-    }
-
-    // If both same status, prefer better venue (not empty, not TBA)
-    const exVenue = String(existing?.venue ?? "").trim();
-    const itVenue = String(item?.venue ?? "").trim();
-    const exScore = exVenue && exVenue !== "TBA" ? 1 : 0;
-    const itScore = itVenue && itVenue !== "TBA" ? 1 : 0;
-
-    if (itScore > exScore) map.set(id, item);
-  }
-
-  return Array.from(map.values());
-};
-
-/** ✅ Dedupe “Upcoming + Rescheduled duplicate” by signature; prefer rescheduled */
-const dedupePreferRescheduledBySignature = (arr = []) => {
-  const map = new Map();
-
-  const sig = (x) => {
-    const module = String(x?.module ?? "");
-    const title = String(x?.title ?? "");
-    const start = String(x?.startISO ?? "").slice(0, 16); // yyyy-mm-ddThh:mm
-    return `${module}|${title}|${start}`;
-  };
-
-  for (const item of arr) {
-    const key = sig(item);
-    if (!key) continue;
-
-    const existing = map.get(key);
-    if (!existing) {
-      map.set(key, item);
-      continue;
-    }
-
-    const a = String(existing?.status ?? "").toLowerCase();
-    const b = String(item?.status ?? "").toLowerCase();
-
-    if (a !== "rescheduled" && b === "rescheduled") map.set(key, item);
-  }
-
-  return Array.from(map.values());
-};
-
 const LecturerSessionsScreen = ({ navigation, route }) => {
   const [activeTab, setActiveTab] = useState("Upcoming");
   const [selectedDate, setSelectedDate] = useState(null);
 
-  const [fullTimetable, setFullTimetable] = useState([]);
+  const [timetable, setTimetable] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const [savedReminderIds, setSavedReminderIds] = useState(new Set());
-  const [savingId, setSavingId] = useState(null);
-
-  const [rescheduleHistory, setRescheduleHistory] = useState([]);
-  const [overrides, setOverrides] = useState({});
-
+  // Initialize Date default
   useEffect(() => {
     if (!selectedDate) {
       const sgTime = new Date().toLocaleDateString("en-CA", {
@@ -144,18 +65,7 @@ const LecturerSessionsScreen = ({ navigation, route }) => {
     }
   }, [selectedDate]);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const raw = await AsyncStorage.getItem(REMINDER_KEY);
-        if (raw) {
-          const arr = JSON.parse(raw);
-          if (Array.isArray(arr)) setSavedReminderIds(new Set(arr));
-        }
-      } catch { }
-    })();
-  }, []);
-
+  // ✅ Fetch Real Data Only
   const fetchTimetable = async () => {
     setLoading(true);
     try {
@@ -165,8 +75,17 @@ const LecturerSessionsScreen = ({ navigation, route }) => {
       const formatted = rawData.map((c) => {
         const base = {
           id: String(c.id),
-          module: c.module?.code ?? c.module?.name ?? c.module ?? "MOD",
-          title: c.module?.name ?? c.title ?? "Class",
+          
+          // 1. Module Code (e.g. "CSCI 128") -> For the small colored label
+          module: c.module?.code ?? "MOD",
+          
+          // 2. Module Name (e.g. "Intro to Programming") -> For the Main Title
+          // ✅ FIX: This matches HomeScreen logic now.
+          title: c.module?.name ?? c.module?.code ?? "Class",
+
+          // 3. Session Name (e.g. "Lecture 18") -> For Logic / Subtitles
+          name: c.name ?? "Session", 
+
           venue: c.venue ?? "TBA",
           startISO: `${c.date}T${c.start_time}`,
           endISO: `${c.date}T${c.end_time}`,
@@ -175,32 +94,12 @@ const LecturerSessionsScreen = ({ navigation, route }) => {
         return deriveFieldsFromISO(base);
       });
 
-      setFullTimetable(formatted);
+      setTimetable(formatted);
     } catch (err) {
       console.error("Timetable Fetch Error:", err);
       Alert.alert("Error", "Could not load timetable.");
     } finally {
       setLoading(false);
-    }
-  };
-
-  const loadHistory = async () => {
-    try {
-      const raw = await AsyncStorage.getItem(RESCHEDULE_HISTORY_KEY);
-      const arr = raw ? JSON.parse(raw) : [];
-      setRescheduleHistory(Array.isArray(arr) ? arr : []);
-    } catch {
-      setRescheduleHistory([]);
-    }
-  };
-
-  const loadOverrides = async () => {
-    try {
-      const raw = await AsyncStorage.getItem(RESCHEDULE_OVERRIDES_KEY);
-      const obj = raw ? JSON.parse(raw) : {};
-      setOverrides(obj && typeof obj === "object" ? obj : {});
-    } catch {
-      setOverrides({});
     }
   };
 
@@ -210,7 +109,6 @@ const LecturerSessionsScreen = ({ navigation, route }) => {
         setActiveTab(route.params.tab);
         navigation.setParams({ tab: null });
       }
-
       if (route.params?.targetDate) {
         setActiveTab("Calendar");
         const iso = route.params.targetDate;
@@ -218,187 +116,61 @@ const LecturerSessionsScreen = ({ navigation, route }) => {
         setSelectedDate(datePart);
         navigation.setParams({ targetDate: null });
       }
-
       fetchTimetable();
-      loadHistory();
-      loadOverrides();
-
       if (route.params?.refreshKey) navigation.setParams({ refreshKey: null });
     }, [route.params?.tab, route.params?.targetDate, route.params?.refreshKey])
   );
 
-  const mergedTimetable = useMemo(() => {
-    const merged = (fullTimetable || []).map((c) => {
-      const o = overrides?.[String(c.id)];
-      if (!o) return c;
-
-      const mergedOne = {
-        ...c,
-
-        // apply only AFTER fields
-        startISO: o.startISO,
-        endISO: o.endISO,
-        venue: o.venue,
-
-        id: String(c.id),
-        status: "rescheduled",
-
-        // keep BEFORE snapshot
-        beforeStartISO: o.beforeStartISO,
-        beforeEndISO: o.beforeEndISO,
-        beforeVenue: o.beforeVenue,
-      };
-
-      return deriveFieldsFromISO(mergedOne);
-    });
-
-    const byId = dedupeByIdPreferRescheduled(merged);
-    return dedupePreferRescheduledBySignature(byId);
-  }, [fullTimetable, overrides]);
-  const rescheduledTabList = useMemo(() => {
-    const map = new Map();
-
-    // 1) existing history
-    (rescheduleHistory || []).forEach((r) => {
-      const sid = String(r?.session_id ?? "");
-      if (!sid) return;
-      map.set(sid, r);
-    });
-
-    // 2) derive from overrides (if history missing)
-    (mergedTimetable || [])
-      .filter((c) => String(c?.status ?? "").toLowerCase() === "rescheduled")
-      .forEach((c) => {
-        const sid = String(c?.id ?? c?._id ?? "");
-        if (!sid) return;
-
-        if (map.has(sid)) return; // already have full history
-
-        // create a minimal history record so it shows in Rescheduled tab
-        const o = overrides?.[sid];
-
-        map.set(sid, {
-          key: `derived-${sid}`,
-          session_id: sid,
-          module: c?.module,
-          title: c?.title ?? c?.name,
-          statusLabel: "Rescheduled",
-
-          // ✅ pull BEFORE from override if exists
-          beforeStartISO: o?.beforeStartISO || "",
-          beforeEndISO: o?.beforeEndISO || "",
-          beforeVenue: o?.beforeVenue || "",
-
-          afterStartISO: c?.startISO,
-          afterEndISO: c?.endISO,
-          afterVenue: c?.venue,
-
-        },
-        );
-      });
-
-    // show newest first by time if possible
-    const arr = Array.from(map.values());
-    arr.sort((a, b) => {
-      const ta = new Date(a?.afterStartISO || a?.afterSnapshot?.startISO || 0).getTime();
-      const tb = new Date(b?.afterStartISO || b?.afterSnapshot?.startISO || 0).getTime();
-      return tb - ta;
-    });
-    return arr;
-  }, [rescheduleHistory, mergedTimetable]);
-
-
-
   const upcoming = useMemo(() => {
     const now = Date.now();
-    return mergedTimetable
+    return timetable
       .filter((c) => c.status !== "cancelled")
       .filter((c) => new Date(c.startISO).getTime() >= now)
       .sort((a, b) => new Date(a.startISO) - new Date(b.startISO));
-  }, [mergedTimetable]);
+  }, [timetable]);
 
   const past = useMemo(() => {
     const now = Date.now();
-    return mergedTimetable
+    return timetable
       .filter((c) => c.status !== "cancelled")
       .filter((c) => new Date(c.endISO).getTime() < now)
       .sort((a, b) => new Date(b.startISO) - new Date(a.startISO));
-  }, [mergedTimetable]);
-
-  // Reminder tracking
-  const reminderIdFor = (cls) => `${cls.module}|${cls.startISO}|${cls.venue}`;
-  const isAdded = (cls) => savedReminderIds.has(reminderIdFor(cls));
-  const isSavingThis = (cls) => savingId === reminderIdFor(cls);
-
-  const persistReminderIds = async (nextSet) => {
-    await AsyncStorage.setItem(
-      REMINDER_KEY,
-      JSON.stringify(Array.from(nextSet))
-    );
-  };
+  }, [timetable]);
 
   const addReminderToCalendar = async (cls) => {
-    const rid = reminderIdFor(cls);
-    if (savedReminderIds.has(rid)) return;
-
-    setSavingId(rid);
     try {
       const { status } = await Calendar.requestCalendarPermissionsAsync();
-      if (status !== "granted") return;
-
-      const calendars = await Calendar.getCalendarsAsync(
-        Calendar.EntityTypes.EVENT
-      );
-      const defaultCal =
-        calendars.find((c) => c.allowsModifications) || calendars[0];
-      if (!defaultCal) return;
+      if (status !== "granted") {
+        Alert.alert("Permission Error", "Calendar permission is required.");
+        return;
+      }
+      const calendars = await Calendar.getCalendarsAsync(Calendar.EntityTypes.EVENT);
+      const defaultCal = calendars.find((c) => c.allowsModifications) || calendars[0];
+      
+      if (!defaultCal) {
+        Alert.alert("Error", "No writable calendar found on device.");
+        return;
+      }
 
       await Calendar.createEventAsync(defaultCal.id, {
-        title: `${cls.module} - ${cls.title}`,
+        title: `${cls.module} - ${cls.name}`,
         startDate: new Date(cls.startISO),
         endDate: new Date(cls.endISO),
         location: cls.venue,
-        notes: "Created from Attendify (Lecturer).",
+        notes: "Created from Attendify.",
         timeZone: "Asia/Singapore",
       });
-
-      const next = new Set(savedReminderIds);
-      next.add(rid);
-      setSavedReminderIds(next);
-      await persistReminderIds(next);
+      
+      Alert.alert("Success", "Added to your calendar!");
     } catch (e) {
       console.error(e);
-      Alert.alert("Error", "Could not add reminder.");
-    } finally {
-      setSavingId(null);
+      Alert.alert("Error", "Could not add to calendar.");
     }
-  };
-
-  const removeReminderTracking = async (cls) => {
-    const rid = reminderIdFor(cls);
-    Alert.alert("Remove reminder?", "This removes it from Attendify tracking.", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Remove",
-        style: "destructive",
-        onPress: async () => {
-          const next = new Set(savedReminderIds);
-          next.delete(rid);
-          setSavedReminderIds(next);
-          await persistReminderIds(next);
-        },
-      },
-    ]);
   };
 
   if (loading) {
     return (
-      <SafeAreaView
-        style={[
-          styles.container,
-          { justifyContent: "center", alignItems: "center" },
-        ]}
-      >
+      <SafeAreaView style={[styles.container, styles.centered]}>
         <ActivityIndicator size="large" color={COLORS.primary} />
       </SafeAreaView>
     );
@@ -415,7 +187,7 @@ const LecturerSessionsScreen = ({ navigation, route }) => {
         <View style={styles.headerLeft}>
           <Text style={styles.headerTitle}>Sessions</Text>
           <Text style={styles.headerSubText}>
-            Manage upcoming, past & rescheduled classes
+            Real-time schedule
           </Text>
         </View>
 
@@ -450,10 +222,7 @@ const LecturerSessionsScreen = ({ navigation, route }) => {
           COLORS={COLORS}
           navigation={navigation}
           list={upcoming}
-          isAdded={isAdded}
-          isSavingThis={isSavingThis}
           addReminderToCalendar={addReminderToCalendar}
-          removeReminderTracking={removeReminderTracking}
         />
       )}
 
@@ -462,8 +231,6 @@ const LecturerSessionsScreen = ({ navigation, route }) => {
           COLORS={COLORS}
           navigation={navigation}
           list={past}
-          isAdded={isAdded}
-          removeReminderTracking={removeReminderTracking}
         />
       )}
 
@@ -471,20 +238,17 @@ const LecturerSessionsScreen = ({ navigation, route }) => {
         <RescheduledTab
           COLORS={COLORS}
           navigation={navigation}
-          list={rescheduledTabList}
+          sessions={timetable} 
         />
       )}
-
 
       {activeTab === "Calendar" && (
         <CalendarTab
           COLORS={COLORS}
           navigation={navigation}
-          sessions={mergedTimetable}
+          sessions={timetable}
           selectedDate={selectedDate}
           setSelectedDate={setSelectedDate}
-          isAdded={isAdded}
-          isSavingThis={isSavingThis}
           addReminderToCalendar={addReminderToCalendar}
         />
       )}
@@ -503,6 +267,7 @@ const LecturerSessionsScreen = ({ navigation, route }) => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
+  centered: { justifyContent: "center", alignItems: "center" },
 
   // HEADER
   header: {
@@ -531,7 +296,7 @@ const styles = StyleSheet.create({
   },
   badgeText: { fontWeight: "900", color: COLORS.primary, fontSize: 12 },
 
-  // TABS (SEGMENTED)
+  // TABS
   tabBar: {
     marginTop: 12,
     marginHorizontal: 16,

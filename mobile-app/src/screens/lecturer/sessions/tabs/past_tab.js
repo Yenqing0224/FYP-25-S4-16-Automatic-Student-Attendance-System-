@@ -1,61 +1,22 @@
-
-//  src/screens/lecturer/sessions/tabs/past_tab.js
-
-
 import React from "react";
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from "react-native";
-import { Swipeable } from "react-native-gesture-handler";
 import { Ionicons } from "@expo/vector-icons";
 
-const PastTab = ({ COLORS, navigation, list = [], isAdded, removeReminderTracking }) => {
+const PastTab = ({ COLORS, navigation, list = [] }) => {
+  
   const toText = (v, fallback = "-") => {
     if (v == null) return fallback;
     if (typeof v === "string" || typeof v === "number") return String(v);
-    if (typeof v === "object") {
-      if (v.name != null) return String(v.name);
-      if (v.title != null) return String(v.title);
-      if (v.label != null) return String(v.label);
-      if (v.code != null) return String(v.code);
-      if (v.id != null) return String(v.id);
-      if (v._id != null) return String(v._id);
-      return fallback;
-    }
+    if (typeof v === "object") return String(v.code ?? v.name ?? v.title ?? fallback);
     return fallback;
   };
-
-  const safeKey = (s, idx) => {
-    const raw = s?.id ?? s?._id;
-    if (typeof raw === "string" || typeof raw === "number") return String(raw);
-    if (raw && typeof raw === "object") {
-      if (raw.id != null) return String(raw.id);
-      if (raw._id != null) return String(raw._id);
-      if (raw.name != null) return String(raw.name);
-    }
-    return `past-${toText(s?.module, "m")}-${toText(s?.startISO, idx)}-${idx}`;
-  };
-
-  const renderRightActions = (cls) => (
-    <TouchableOpacity style={styles.swipeDelete} onPress={() => removeReminderTracking?.(cls)}>
-      <Ionicons name="trash-outline" size={18} color="#fff" />
-      <Text style={styles.swipeDeleteText}>Remove</Text>
-    </TouchableOpacity>
-  );
 
   const formatDate = (dateVal) => {
     const dateStr = toText(dateVal, "");
     if (!dateStr) return "-";
-    if (dateStr.includes("-") && dateStr.length >= 10) {
-      const [y, m, d] = dateStr.slice(0, 10).split("-");
-      const dt = new Date(Number(y), Number(m) - 1, Number(d));
-      if (!isNaN(dt.getTime())) {
-        return dt.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
-      }
-    }
     const dt = new Date(dateStr);
-    if (!isNaN(dt.getTime())) {
-      return dt.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
-    }
-    return "-";
+    if (isNaN(dt.getTime())) return "-";
+    return dt.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
   };
 
   return (
@@ -68,21 +29,27 @@ const PastTab = ({ COLORS, navigation, list = [], isAdded, removeReminderTrackin
         </View>
       ) : (
         list.map((s, idx) => {
-          const moduleText = toText(s?.module, "-");
-          const titleText = toText(s?.title, "Session");
+          // ✅ FIX: Use 'module' for Code and 'title' for Module Name (from SessionsScreen)
+          const moduleText = toText(s?.module, "MOD"); 
+          const titleText = toText(s?.title, "Session"); 
+          
           const timeText = toText(s?.time, "-");
           const venueText = toText(s?.venue, "-");
           const dateText = formatDate(s?.date);
+          const key = s?.id ? String(s.id) : `past-${idx}`;
 
-          const card = (
+          return (
             <TouchableOpacity
+              key={key}
               activeOpacity={0.9}
               onPress={() => navigation.navigate("LecturerClassDetail", { cls: s })}
               style={styles.sessionCard}
             >
               <View style={styles.sessionTop}>
                 <View style={{ flex: 1 }}>
+                  {/* Label: CSCI 128 */}
                   <Text style={[styles.module, { color: COLORS.primary }]}>{moduleText}</Text>
+                  {/* Title: Intro to Programming */}
                   <Text style={styles.sessionTitle}>{titleText}</Text>
                 </View>
                 <View style={styles.statusPill}>
@@ -94,12 +61,10 @@ const PastTab = ({ COLORS, navigation, list = [], isAdded, removeReminderTrackin
                 <Ionicons name="calendar-outline" size={16} color={COLORS.textMuted} />
                 <Text style={styles.metaText}>{dateText}</Text>
               </View>
-
               <View style={styles.metaRow}>
                 <Ionicons name="time-outline" size={16} color={COLORS.textMuted} />
                 <Text style={styles.metaText}>{timeText}</Text>
               </View>
-
               <View style={styles.metaRow}>
                 <Ionicons name="location-outline" size={16} color={COLORS.textMuted} />
                 <Text style={styles.metaText}>{venueText}</Text>
@@ -116,30 +81,12 @@ const PastTab = ({ COLORS, navigation, list = [], isAdded, removeReminderTrackin
                 </View>
               </View>
 
-              {isAdded?.(s) && (
-                <View style={styles.swipeHintRow}>
-                  <Ionicons name="arrow-back-outline" size={14} color={COLORS.textMuted} />
-                  <Text style={styles.swipeHintText}>Swipe left to remove</Text>
-                </View>
-              )}
-
               <View style={styles.tapHintRow}>
                 <Ionicons name="hand-left-outline" size={14} color={COLORS.textMuted} />
                 <Text style={styles.tapHintText}>Tap card for details</Text>
                 <Ionicons name="chevron-forward" size={16} color={COLORS.primary} />
               </View>
             </TouchableOpacity>
-          );
-
-          return (
-            <Swipeable
-              key={safeKey(s, idx)}
-              enabled={!!isAdded?.(s)}
-              renderRightActions={() => renderRightActions(s)}
-              overshootRight={false}
-            >
-              {card}
-            </Swipeable>
           );
         })
       )}
@@ -163,15 +110,11 @@ const styles = StyleSheet.create({
   primaryBtnText: { color: "#fff", fontWeight: "900" },
   secondaryBtn: { flex: 1, backgroundColor: "#ECE9FF", paddingVertical: 12, borderRadius: 14, flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 8 },
   secondaryBtnText: { fontWeight: "900" },
-  swipeDelete: { width: 110, marginBottom: 12, borderRadius: 18, backgroundColor: "#DC2626", alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 6 },
-  swipeDeleteText: { color: "#fff", fontWeight: "900" },
   emptyBox: { marginTop: 30, backgroundColor: "#fff", borderRadius: 18, borderWidth: 1, borderColor: "#E5E7EB", padding: 18, alignItems: "center", gap: 6 },
   emptyTitle: { fontWeight: "900", color: "#111827", marginTop: 4 },
   emptySub: { color: "#6B7280", fontWeight: "700", textAlign: "center" },
   tapHintRow: { marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: "#E5E7EB", flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   tapHintText: { flex: 1, marginLeft: 8, color: "#6B7280", fontWeight: "700" },
-  swipeHintRow: { marginTop: 10, flexDirection: "row", alignItems: "center", gap: 6 },
-  swipeHintText: { color: "#6B7280", fontWeight: "700", fontSize: 12 },
 });
 
 export default PastTab;

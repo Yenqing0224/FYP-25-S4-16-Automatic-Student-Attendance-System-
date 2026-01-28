@@ -1,11 +1,10 @@
 // src/screens/lecturer/sessions/tabs/calendar_tab.js
 import React, { useMemo, useRef } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { CalendarList } from "react-native-calendars";
-import { Alert } from "react-native";
 
-/* ✅ module color palette + mapper */
+/* Module Color Palette */
 const MODULE_COLORS = [
   "#6D5EF5",
   "#10B981",
@@ -32,28 +31,16 @@ const CalendarTab = ({
   sessions = [],
   selectedDate,
   setSelectedDate,
-  isAdded,
-  isSavingThis,
   addReminderToCalendar,
 }) => {
   const dayListRef = useRef(null);
 
+  // --- Helper Functions ---
   const toText = (v, fallback = "-") => {
     if (v == null) return fallback;
-    if (typeof v === "string" || typeof v === "number" || typeof v === "boolean") return String(v);
-    if (Array.isArray(v)) return v.map((x) => toText(x, "")).filter(Boolean).join(", ") || fallback;
+    if (typeof v === "string" || typeof v === "number") return String(v);
     if (typeof v === "object") {
-      if (v.name != null) return String(v.name);
-      if (v.code != null) return String(v.code);
-      if (v.title != null) return String(v.title);
-      if (v.label != null) return String(v.label);
-      if (v.id != null) return String(v.id);
-      if (v._id != null) return String(v._id);
-      try {
-        return JSON.stringify(v);
-      } catch {
-        return fallback;
-      }
+      return String(v.code ?? v.name ?? v.title ?? fallback);
     }
     return fallback;
   };
@@ -67,7 +54,6 @@ const CalendarTab = ({
   const safeKey = (s, idx) => {
     const raw = s?.id ?? s?._id;
     if (typeof raw === "string" || typeof raw === "number") return String(raw);
-    if (raw && typeof raw === "object") return String(raw.id ?? raw._id ?? raw.name ?? idx);
     return `cal-${toText(s?.module, "m")}-${toText(s?.startISO, idx)}-${idx}`;
   };
 
@@ -95,6 +81,7 @@ const CalendarTab = ({
 
   const selectedDateText = typeof selectedDate === "string" ? selectedDate : toText(selectedDate, "");
 
+  // --- Logic ---
   const markedDates = useMemo(() => {
     const marks = {};
     (sessions || []).forEach((c) => {
@@ -113,6 +100,7 @@ const CalendarTab = ({
 
   const scrollToDetails = () => dayListRef.current?.scrollTo({ y: 260, animated: true });
 
+  // --- Render ---
   return (
     <ScrollView ref={dayListRef} style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 24 }}>
       <CalendarList
@@ -156,18 +144,17 @@ const CalendarTab = ({
         )}
 
         {daySessions.map((s, idx) => {
-          const moduleText = toText(s?.module, "-");
+          // Data Mapping
+          const moduleText = toText(s?.module, "MOD");
           const titleText = toText(s?.title ?? s?.name, "Session");
+          
           const timeText = toText(s?.time, "-");
           const venueText = toText(s?.venue, "-");
           const dateText = formatDate(s?.date);
 
           const moduleColor = getModuleColor(moduleText);
-
           const status = String(toText(s?.status, "active")).toLowerCase();
-
-          // ✅ IMPORTANT FIX:
-          // Show rescheduled pill even after refresh if backend returns replacement name "(Rescheduled)"
+          
           const isRescheduled =
             status === "rescheduled" ||
             String(titleText).includes("(Rescheduled)");
@@ -180,30 +167,15 @@ const CalendarTab = ({
                 styles.sessionCard,
                 { borderColor: moduleColor + "55", backgroundColor: moduleColor + "10" },
               ]}
-              onPress={() => {
-                const status = String(s?.status ?? "").toLowerCase();
-                const title = String(s?.title ?? s?.name ?? "");
-
-                const isRescheduled =
-                  status === "rescheduled" ||
-                  title.includes("(Rescheduled)");
-
-                if (isRescheduled) {
-                  Alert.alert(
-                    "Rescheduled",
-                    "This class has already been rescheduled and cannot be changed again."
-                  );
-                  return;
-                }
-
-                navigation.navigate("LecturerClassDetail", { cls: s });
-              }}
-
+              // ✅ FIX: Allow navigation even if rescheduled.
+              // The Detail Screen will handle the "locked" logic.
+              onPress={() => navigation.navigate("LecturerClassDetail", { cls: s })}
             >
               <View style={{ flexDirection: "row" }}>
                 <View style={[styles.moduleBar, { backgroundColor: moduleColor }]} />
 
                 <View style={{ flex: 1 }}>
+                  {/* Top Label: CSCI 128 */}
                   <SafeText style={[styles.module, { color: moduleColor }]} value={moduleText} />
 
                   <View
@@ -215,6 +187,7 @@ const CalendarTab = ({
                     }}
                   >
                     <View style={{ flex: 1 }}>
+                      {/* Main Title: Intro to Programming */}
                       <SafeText style={styles.sessionTitle} value={titleText} numberOfLines={1} />
                     </View>
 
@@ -250,27 +223,29 @@ const CalendarTab = ({
                   </View>
 
                   <View style={styles.actionsRow}>
+                    {/* Details Button */}
                     <View style={[styles.primaryBtn, { backgroundColor: COLORS.primary }]}>
                       <Ionicons name="information-circle-outline" size={16} color="#fff" />
                       <Text style={styles.primaryBtnText}>Details</Text>
                     </View>
 
+                    {/* Reminder Button */}
                     <TouchableOpacity
                       style={[
                         styles.secondaryBtn,
-                        isAdded?.(s) && styles.secondaryBtnDisabled,
                         { backgroundColor: COLORS.soft },
+                        isRescheduled && { opacity: 0.5 }, // Dim button if rescheduled
                       ]}
-                      disabled={!!isAdded?.(s) || !!isSavingThis?.(s)}
+                      disabled={isRescheduled} // Disable reminder for rescheduled classes
                       onPress={() => addReminderToCalendar?.(s)}
                     >
                       <Ionicons
-                        name={isAdded?.(s) ? "checkmark-circle-outline" : "bookmark-outline"}
+                        name="calendar-outline"
                         size={16}
                         color={COLORS.primary}
                       />
                       <Text style={[styles.secondaryBtnText, { color: COLORS.primary }]}>
-                        {isSavingThis?.(s) ? "Adding..." : isAdded?.(s) ? "Added" : "Add reminder"}
+                        Add Reminder
                       </Text>
                     </TouchableOpacity>
                   </View>
@@ -309,7 +284,6 @@ const styles = StyleSheet.create({
   primaryBtnText: { color: "#fff", fontWeight: "900" },
 
   secondaryBtn: { flex: 1, paddingVertical: 12, borderRadius: 14, flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 8 },
-  secondaryBtnDisabled: { opacity: 0.65 },
   secondaryBtnText: { fontWeight: "900" },
 
   emptyBox: { marginTop: 12, backgroundColor: "#fff", borderRadius: 18, borderWidth: 1, borderColor: "#E5E7EB", padding: 18, alignItems: "center", gap: 6 },
