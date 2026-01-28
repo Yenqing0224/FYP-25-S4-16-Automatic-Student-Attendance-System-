@@ -437,10 +437,12 @@ class AcademicService:
         else:
             if entry_time_stamp > exit_time_stamp:
                 attendance.exit_time = None
+                attendance.save()
             else:
                 attendance.exit_time = exit_time_stamp
                 time_diff = exit_time_stamp - entry_time_stamp
-                attendance.duration += int(time_diff.total_seconds())
+                current_duration = attendance.duration if attendance.duration is not None else 0
+                attendance.duration = current_duration + int(time_diff.total_seconds())
                 attendance.save()
 
         return {
