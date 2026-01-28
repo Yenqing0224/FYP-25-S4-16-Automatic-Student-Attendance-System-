@@ -1,3 +1,4 @@
+//src/screens/student/newsevent/newsevent_screen.js
 import React, { useState, useEffect } from 'react';
 import {
   View,

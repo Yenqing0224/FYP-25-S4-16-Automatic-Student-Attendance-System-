@@ -15,6 +15,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import * as DocumentPicker from "expo-document-picker";
 import api from "../../../api/api_client";
+import { Ionicons } from "@expo/vector-icons";
+
 
 const COLORS = {
   primary: "#3A7AFE",
@@ -171,10 +173,10 @@ const ApplyLeaveScreen = ({ navigation }) => {
   const confirmStartDate = (dateParam) => {
     const finalDate = dateParam || tempStartDate;
     // Basic check: Start date cannot be in the past
-    const today = new Date(); today.setHours(0,0,0,0);
+    const today = new Date(); today.setHours(0, 0, 0, 0);
     if (finalDate < today) {
-       alert("Start date cannot be earlier than today.");
-       return;
+      alert("Start date cannot be earlier than today.");
+      return;
     }
     setStartDateObj(finalDate);
     setStartDate(formatDate(finalDate));
@@ -243,11 +245,13 @@ const ApplyLeaveScreen = ({ navigation }) => {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.backArrow}>{"<"}</Text>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerIconBox}>
+          <Ionicons name="chevron-back" size={24} color={COLORS.primary} />
         </TouchableOpacity>
+
         <Text style={styles.headerTitle}>Apply Leave</Text>
-        <View style={{ width: 20 }} />
+
+        <View style={styles.headerIconBox} />
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -431,16 +435,24 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   header: {
     backgroundColor: COLORS.background,
-    paddingVertical: 15,
+    paddingVertical: 14,
     paddingHorizontal: 20,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: COLORS.border,
+
+    shadowColor: "#000",
+    shadowOpacity: 0.04,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    elevation: 2,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E6E6E6",
   },
-  backArrow: { fontSize: 24, color: COLORS.textDark, fontWeight: "300" },
-  headerTitle: { fontSize: 18, fontWeight: "700", color: COLORS.textDark },
+  headerIconBox: { width: 32, alignItems: "flex-start" },
+  headerTitle: { fontSize: 20, fontWeight: "700", color: COLORS.textDark },
+
+
   scrollContent: { paddingHorizontal: 20, paddingVertical: 24 },
   formCard: {
     backgroundColor: COLORS.card,
@@ -500,7 +512,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary,
   },
   addFileText: { fontSize: 12, fontWeight: "700", color: "#FFFFFF" },
-  
+
   // Submit button centered content for Spinner
   submitButton: {
     marginTop: 8,
