@@ -157,11 +157,12 @@ def mark_attendance(request):
             return Response(serializer.errors, status=400)
 
         student_id = serializer.validated_data['student_id']
+        venue = serializer.validated_data['venue']
         time_stamp = serializer.validated_data['time_stamp']
         flag = serializer.validated_data['flag']
 
 
-        result = service.mark_attendance(student_id, time_stamp, flag)
+        result = service.mark_attendance(student_id, venue, time_stamp, flag)
         
         return Response(result, status=200)
 
