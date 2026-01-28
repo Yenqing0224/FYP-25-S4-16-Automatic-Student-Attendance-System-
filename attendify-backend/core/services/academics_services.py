@@ -363,7 +363,6 @@ class AcademicService:
             venue=available_venue,
             status='upcoming'
         ),
-            'duration': 0
 
         students = session.module.students.all()
         notifications = []
@@ -410,7 +409,8 @@ class AcademicService:
         attendance, created = AttendanceRecord.objects.get_or_create(
             session=active_session,
             student=student,
-            defaults={'status': 'absent'})
+            defaults={'status': 'absent',
+                      'duration': 0})
 
         if attendance.entry_time is None:
             naive_start_dt = datetime.combine(active_session.date, active_session.start_time)
