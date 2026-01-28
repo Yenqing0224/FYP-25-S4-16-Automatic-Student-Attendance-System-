@@ -53,7 +53,7 @@ class FaceRecognitionSerializer(serializers.Serializer):
     student_id = serializers.CharField(max_length=50)
     venue = serializers.CharField(max_length=50)
     entry_time_stamp = serializers.DateTimeField()
-    exit_time_stamp = serializers.DateTimeField
+    exit_time_stamp = serializers.DateTimeField()
 
 class TimeTableSerializer(serializers.ModelSerializer):
     module = serializers.SerializerMethodField()

@@ -398,7 +398,7 @@ class AcademicService:
             date=entry_time_stamp.date(),             
             start_time__lte=(entry_time_stamp + timedelta(minutes=30)).time(),
             end_time__gte=entry_time_stamp.time(),
-            venue=venue
+            venue__name=venue
         ).first()
 
         if not active_session:
