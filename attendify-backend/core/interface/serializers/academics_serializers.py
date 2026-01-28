@@ -64,7 +64,8 @@ class TimeTableSerializer(serializers.ModelSerializer):
         model = ClassSession
         fields = [
             'id', 
-            'type', 
+            'type',
+            'name',
             'date', 
             'start_time', 
             'end_time', 
