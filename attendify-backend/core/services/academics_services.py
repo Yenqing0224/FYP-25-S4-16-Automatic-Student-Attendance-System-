@@ -435,10 +435,13 @@ class AcademicService:
                 )
             attendance.save()
         else:
-            attendance.exit_time = exit_time_stamp
-            time_diff = exit_time_stamp - entry_time_stamp
-            attendance.duration += int(time_diff.total_seconds())
-            attendance.save()
+            if entry_time_stamp > exit_time_stamp:
+                attendance.exit_time = None
+            else:
+                attendance.exit_time = exit_time_stamp
+                time_diff = exit_time_stamp - entry_time_stamp
+                attendance.duration += int(time_diff.total_seconds())
+                attendance.save()
 
         return {
             "status": "success",    
