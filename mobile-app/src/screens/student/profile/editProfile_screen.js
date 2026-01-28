@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import api from "../../../api/api_client"; // 👈 Ensure this path matches your folder structure
+import { Ionicons } from "@expo/vector-icons";
 
 const COLORS = {
   primary: "#3A7AFE",
@@ -162,12 +163,15 @@ const EditProfileScreen = ({ navigation }) => {
 
       {/* HEADER */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.backArrow}>{"<"}</Text>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerIconBox}>
+          <Ionicons name="chevron-back" size={24} color={COLORS.primary} />
         </TouchableOpacity>
+
         <Text style={styles.headerTitle}>Edit Profile</Text>
-        <View style={{ width: 20 }} />
+
+        <View style={styles.headerIconBox} />
       </View>
+
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* AVATAR CARD */}
@@ -317,16 +321,29 @@ const styles = StyleSheet.create({
 
   header: {
     backgroundColor: COLORS.background,
-    paddingVertical: 15,
+    paddingVertical: 14,
     paddingHorizontal: 20,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: COLORS.borderSoft,
+    shadowColor: "#000",
+    shadowOpacity: 0.04,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    elevation: 2,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E6E6E6",
   },
-  backArrow: { fontSize: 24, color: COLORS.textDark, fontWeight: "300" },
-  headerTitle: { fontSize: 18, fontWeight: "700", color: COLORS.textDark },
+  headerIconBox: {
+    width: 32,
+    alignItems: "flex-start",
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: COLORS.textDark,
+  },
+
 
   scrollContent: {
     padding: 20,

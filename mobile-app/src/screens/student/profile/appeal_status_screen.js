@@ -11,8 +11,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
-// ❌ Removed AsyncStorage
-// ❌ Removed axios
+import { Ionicons } from "@expo/vector-icons";
 import api from "../../../api/api_client"; // 👈 1. Use Helper Client
 
 const COLORS = {
@@ -38,7 +37,7 @@ const getStatusStyle = (status) => {
 
     case "pending":
     default:
-      return { 
+      return {
         bg: "#F7F4EC",       // ⬅️ VERY SOFT CREAM (barely yellow)
         text: "#8B6B2C",     // muted gold-brown text
         stripe: "#E6D892"    // soft pastel gold stripe
@@ -62,7 +61,7 @@ const AppealStatusScreen = ({ navigation }) => {
     try {
       // 👈 2. Secure Fetch (No user_id param needed)
       // The token automatically tells the backend which student's appeals to fetch.
-      const response = await api.get('/appeals/'); 
+      const response = await api.get('/appeals/');
       setAppeals(response.data);
     } catch (error) {
       console.error("Fetch Appeals Error:", error);
@@ -91,15 +90,15 @@ const AppealStatusScreen = ({ navigation }) => {
   const formatTime = (timeString) => {
     if (!timeString) return "";
     // If it's a full ISO string, extract time; if "HH:mm:ss", slice it
-    return timeString.slice(0, 5); 
+    return timeString.slice(0, 5);
   };
 
   const filteredAppeals =
     selectedFilter === "All"
       ? appeals
       : appeals.filter(
-          (item) => item.status.toLowerCase() === selectedFilter.toLowerCase()
-        );
+        (item) => item.status.toLowerCase() === selectedFilter.toLowerCase()
+      );
 
   return (
     <SafeAreaView style={styles.container}>
@@ -107,12 +106,15 @@ const AppealStatusScreen = ({ navigation }) => {
 
       {/* HEADER */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.backArrow}>{"<"}</Text>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerIconBox}>
+          <Ionicons name="chevron-back" size={24} color={COLORS.primary} />
         </TouchableOpacity>
+
         <Text style={styles.headerTitle}>Appeals Status</Text>
-        <View style={{ width: 24 }} />
+
+        <View style={styles.headerIconBox} />
       </View>
+
 
       {/* FILTER CHIPS */}
       <View style={styles.filterContainer}>
@@ -219,7 +221,7 @@ const AppealStatusScreen = ({ navigation }) => {
                         {formatDate(item.session?.date)}
                       </Text>
                     </Text>
-                    
+
                     <Text style={styles.label}>
                       Class Time:{" "}
                       <Text style={styles.value}>
@@ -266,15 +268,18 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: COLORS.borderSoft,
+
+    shadowColor: "#000",
+    shadowOpacity: 0.04,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    elevation: 2,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E6E6E6",
   },
-  backArrow: { fontSize: 24, color: COLORS.textDark, fontWeight: "300" },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: COLORS.textDark,
-  },
+  headerIconBox: { width: 32, alignItems: "flex-start" },
+  headerTitle: { fontSize: 20, fontWeight: "700", color: COLORS.textDark },
+
 
   // FILTERS
   filterContainer: {

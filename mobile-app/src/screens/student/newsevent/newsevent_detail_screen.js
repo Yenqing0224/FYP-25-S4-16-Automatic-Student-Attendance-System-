@@ -10,6 +10,7 @@ import {
   Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
 
 const COLORS = {
   primary: "#3A7AFE",
@@ -20,7 +21,6 @@ const COLORS = {
   chipBg: "#E7F0FF",
 };
 
-// ✅ Local helper (no shared import)
 const toText = (v, fallback = "-") => {
   if (v == null) return fallback;
   if (typeof v === "string" || typeof v === "number" || typeof v === "boolean") return String(v);
@@ -56,21 +56,22 @@ const NewsEventDetailScreen = ({ route, navigation }) => {
       <SafeAreaView edges={["top"]} style={styles.topSafeArea} />
 
       <View style={styles.contentContainer}>
-        <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
+        <StatusBar barStyle="dark-content" backgroundColor="#F0F2FA" />
 
-        {/* Header */}
+      
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Text style={styles.backArrow}>{"<"}</Text>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerIconBox}>
+            <Ionicons name="chevron-back" size={24} color={COLORS.primary} />
           </TouchableOpacity>
+
           <Text style={styles.headerTitle}>News & Events</Text>
-          <View style={{ width: 20 }} />
+
+      
+          <View style={styles.headerIconBox} />
         </View>
 
         <ScrollView contentContainerStyle={styles.scrollContent}>
-          {/* Card */}
           <View style={styles.card}>
-            {/* Image */}
             {item.image_url ? (
               <View style={styles.heroWrapper}>
                 <Image source={{ uri: item.image_url }} style={styles.heroImage} resizeMode="cover" />
@@ -79,7 +80,6 @@ const NewsEventDetailScreen = ({ route, navigation }) => {
               <View style={[styles.heroWrapper, styles.imagePlaceholder]} />
             )}
 
-            {/* Type + Date */}
             <View style={styles.metaRow}>
               <View style={styles.typeChip}>
                 <Text style={styles.typeChipText}>{typeLabel}</Text>
@@ -87,19 +87,14 @@ const NewsEventDetailScreen = ({ route, navigation }) => {
               <Text style={styles.dateText}>{getFormattedDate()}</Text>
             </View>
 
-            {/* Title */}
             <Text style={styles.title}>{title}</Text>
 
-            {/* Subtitle */}
             {!!subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
 
-            {/* Separator */}
             <View style={styles.divider} />
 
-            {/* Body */}
             <Text style={styles.bodyText}>{body}</Text>
 
-            {/* Extra Details */}
             {(!!venue || !!organizer) && (
               <View style={styles.extraDetails}>
                 {!!venue && (
@@ -123,8 +118,9 @@ const NewsEventDetailScreen = ({ route, navigation }) => {
 
 const styles = StyleSheet.create({
   mainContainer: { flex: 1, backgroundColor: COLORS.background },
-  topSafeArea: { flex: 0, backgroundColor: COLORS.background },
+  topSafeArea: { flex: 0, backgroundColor: "#F0F2FA" },
   contentContainer: { flex: 1, backgroundColor: COLORS.background },
+
 
   header: {
     backgroundColor: COLORS.background,
@@ -133,9 +129,24 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+
+    shadowColor: "#000",
+    shadowOpacity: 0.04,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    elevation: 2,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E6E6E6",
   },
-  backArrow: { fontSize: 24, color: COLORS.textDark, fontWeight: "300" },
-  headerTitle: { fontSize: 18, fontWeight: "700", color: COLORS.textDark },
+  headerIconBox: {
+    width: 32,
+    alignItems: "flex-start",
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: COLORS.textDark,
+  },
 
   scrollContent: { paddingHorizontal: 20, paddingBottom: 24 },
 

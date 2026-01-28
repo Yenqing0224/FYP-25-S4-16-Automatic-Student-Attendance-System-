@@ -11,7 +11,8 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
-import api from "../../../api/api_client"; 
+import api from "../../../api/api_client";
+import { Ionicons } from "@expo/vector-icons";
 
 const FILTERS = ["All", "Pending", "Approved", "Rejected"];
 
@@ -29,9 +30,9 @@ const getStatusStyle = (status) => {
   const normalized = status ? status.toLowerCase() : "";
   switch (normalized) {
     case "approved":
-      return { bg: "#E8F8EE", text: "#15803D", stripe: "#4ADE80" }; 
+      return { bg: "#E8F8EE", text: "#15803D", stripe: "#4ADE80" };
     case "rejected":
-      return { bg: "#F9E5E5", text: "#B91C1C", stripe: "#F87171" }; 
+      return { bg: "#F9E5E5", text: "#B91C1C", stripe: "#F87171" };
     case "pending":
     default:
       return {
@@ -88,10 +89,10 @@ const LeaveStatusScreen = ({ navigation }) => {
     selectedFilter === "All"
       ? leaves
       : leaves.filter(
-          (item) =>
-            item.status &&
-            item.status.toLowerCase() === selectedFilter.toLowerCase()
-        );
+        (item) =>
+          item.status &&
+          item.status.toLowerCase() === selectedFilter.toLowerCase()
+      );
 
   return (
     <SafeAreaView style={styles.container}>
@@ -99,11 +100,11 @@ const LeaveStatusScreen = ({ navigation }) => {
 
       {/* HEADER */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.backArrow}>{"<"}</Text>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerIconBox}>
+          <Ionicons name="chevron-back" size={24} color={COLORS.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Leaves Status</Text>
-        <View style={{ width: 24 }} />
+        <Text style={styles.headerTitle}>Leave Status</Text>
+        <View style={styles.headerIconBox} />
       </View>
 
       {/* FILTER CHIPS */}
@@ -198,8 +199,8 @@ const LeaveStatusScreen = ({ navigation }) => {
                         {item.start_date === item.end_date
                           ? formatDate(item.start_date)
                           : `${formatDate(item.start_date)} - ${formatDate(
-                              item.end_date
-                            )}`}
+                            item.end_date
+                          )}`}
                       </Text>
                     </Text>
 
@@ -249,15 +250,24 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: COLORS.borderSoft,
+    shadowColor: "#000",
+    shadowOpacity: 0.04,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    elevation: 2,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E6E6E6",
   },
-  backArrow: { fontSize: 24, color: COLORS.textDark, fontWeight: "300" },
+  headerIconBox: {
+    width: 32,
+    alignItems: "flex-start",
+  },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: "700",
     color: COLORS.textDark,
   },
+
   filterContainer: {
     flexDirection: "row",
     paddingHorizontal: 16,

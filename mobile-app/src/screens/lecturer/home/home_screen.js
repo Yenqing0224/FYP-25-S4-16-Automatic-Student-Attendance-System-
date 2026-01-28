@@ -93,7 +93,7 @@ export default function LecturerHomeScreen({ navigation, route }) {
       id: String(a.id),
       title: toText(a.title, "Untitled"),
       // ✅ JSON uses 'description', your UI uses 'desc'
-      desc: toText(a.description || a.desc || a.body, ""), 
+      desc: toText(a.description || a.desc || a.body, ""),
       created_at: createdAt,
       date: toText(a.dateLabel, createdAt ? formatDateLabel(createdAt) : "Recent"),
     };
@@ -170,7 +170,7 @@ export default function LecturerHomeScreen({ navigation, route }) {
         // Handle nested objects safely based on your JSON
         const moduleCode = toText(nc.module?.code || nc.module, "Module");
         const moduleName = toText(nc.module?.name || nc.title, "Class");
-        
+
         setNextClass({
           id: String(nc.id),
           module: moduleCode,
@@ -192,7 +192,7 @@ export default function LecturerHomeScreen({ navigation, route }) {
       // 3. Announcements (Directly from Dashboard API)
       const rawAnnouncements = Array.isArray(data.announcements) ? data.announcements : [];
       const formatted = rawAnnouncements.map(normalizeAnnouncement);
-      
+
       // Sort: Newest first
       formatted.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
@@ -264,9 +264,21 @@ export default function LecturerHomeScreen({ navigation, route }) {
             </View>
           </View>
 
-          <TouchableOpacity style={styles.iconBtn} onPress={goToSessionsTab}>
-            <Ionicons name="calendar-outline" size={22} color={COLORS.primary} />
-          </TouchableOpacity>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+            <TouchableOpacity style={styles.iconBtn} onPress={goToSessionsTab}>
+              <Ionicons name="calendar-outline" size={22} color={COLORS.primary} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.avatar}
+              activeOpacity={0.85}
+              onPress={() => navigation.navigate("LecturerProfile")}
+            >
+              <Ionicons name="person" size={18} color="#fff" />
+            </TouchableOpacity>
+
+          </View>
+
         </View>
 
         {/* SUMMARY */}
@@ -297,11 +309,11 @@ export default function LecturerHomeScreen({ navigation, route }) {
             <>
               <Text style={styles.module}>{toText(nextClass.module, "Module")}</Text>
               <Text style={styles.title}>{toText(nextClass.title, "Class")}</Text>
-              
+
               {/* Optional: Show status if rescheduled */}
               {nextClass.status === 'rescheduled' && (
-                <View style={[styles.pill, {backgroundColor: '#FEE2E2', marginTop: 4, alignSelf: 'flex-start'}]}>
-                     <Text style={[styles.pillText, {color: '#DC2626'}]}>Rescheduled</Text>
+                <View style={[styles.pill, { backgroundColor: '#FEE2E2', marginTop: 4, alignSelf: 'flex-start' }]}>
+                  <Text style={[styles.pillText, { color: '#DC2626' }]}>Rescheduled</Text>
                 </View>
               )}
 
@@ -342,6 +354,7 @@ export default function LecturerHomeScreen({ navigation, route }) {
             <Text style={{ marginTop: 10, color: COLORS.textMuted }}>No upcoming classes.</Text>
           )}
         </View>
+        <View style={{ height: 6 }} />
 
         {/* ANNOUNCEMENTS */}
         <View style={styles.card}>
@@ -414,9 +427,7 @@ export default function LecturerHomeScreen({ navigation, route }) {
                     style={{ paddingVertical: 12 }}
                     onPress={async () => {
                       if (!isRead) await markAnnouncementRead(a.id);
-                      // If you have a detail screen for announcements:
-                      // navigation.navigate("LecturerAnnouncementDetail", { announcement: a });
-                      // For now just toggle read
+
                     }}
                   >
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
@@ -424,7 +435,7 @@ export default function LecturerHomeScreen({ navigation, route }) {
                         style={{
                           fontWeight: "900",
                           color: COLORS.textDark,
-                          fontSize: 15,
+                          fontSize: 16,
                           flex: 1,
                           opacity: isRead ? 0.65 : 1,
                         }}
@@ -452,7 +463,7 @@ export default function LecturerHomeScreen({ navigation, route }) {
                         color: COLORS.textMuted,
                         fontWeight: "700",
                         lineHeight: 18,
-                        fontSize: 13,
+                        fontSize: 14,
                         opacity: isRead ? 0.7 : 1,
                       }}
                       numberOfLines={2}
@@ -527,30 +538,52 @@ const styles = StyleSheet.create({
   summaryCard: {
     flex: 1,
     backgroundColor: COLORS.card,
-    borderRadius: 16,
-    padding: 14,
+    borderRadius: 18,
+    padding: 16,
+
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 2,
+
     borderWidth: 1,
     borderColor: COLORS.border,
   },
-  summaryValue: { fontSize: 20, fontWeight: "900", color: COLORS.textDark },
-  summaryLabel: { marginTop: 4, color: COLORS.textMuted, fontWeight: "600" },
+
+  summaryValue: { fontSize: 22, fontWeight: "900", color: COLORS.primary },
+  summaryLabel: { marginTop: 6, color: COLORS.textMuted, fontWeight: "700" },
+
 
   card: {
     marginTop: 14,
     backgroundColor: COLORS.card,
     borderRadius: 18,
     padding: 16,
+
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3,
+
     borderWidth: 1,
     borderColor: COLORS.border,
   },
+
   cardTopRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   cardTitle: { fontSize: 16, fontWeight: "800", color: COLORS.textDark },
 
   pill: { backgroundColor: COLORS.soft, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 },
   pillText: { color: COLORS.primary, fontWeight: "800", fontSize: 12 },
 
-  module: { marginTop: 10, fontWeight: "900", color: COLORS.primary },
-  title: { marginTop: 2, fontSize: 16, fontWeight: "800", color: COLORS.textDark },
+  module: { marginTop: 10, fontWeight: "900", color: COLORS.primary, fontSize: 13 },
+  title: {
+    marginTop: 2,
+    fontSize: 18,
+    fontWeight: "900",
+    color: COLORS.textDark
+  },
 
   metaRow: { flexDirection: "row", alignItems: "center", marginTop: 8, gap: 8 },
   metaText: { color: COLORS.textMuted, fontWeight: "600" },
@@ -559,13 +592,20 @@ const styles = StyleSheet.create({
   primaryBtn: {
     flex: 1,
     backgroundColor: COLORS.primary,
-    paddingVertical: 12,
-    borderRadius: 14,
+    paddingVertical: 13,
+    borderRadius: 16,
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
     gap: 8,
+
+    shadowColor: COLORS.primary,
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
   },
+
   primaryBtnText: { color: "#fff", fontWeight: "800" },
   secondaryBtn: {
     flex: 1,
@@ -616,5 +656,14 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#D1D5DB",
   },
+  avatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: COLORS.primary,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
   readPillText: { fontSize: 10, fontWeight: "900", color: "#374151", letterSpacing: 0.6 },
 });

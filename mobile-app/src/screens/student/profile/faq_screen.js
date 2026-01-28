@@ -180,12 +180,15 @@ export default function FAQScreen({ navigation }) {
 
       {/* HEADER */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.backArrow}>{"<"}</Text>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerIconBox}>
+          <Ionicons name="chevron-back" size={24} color={COLORS.primary} />
         </TouchableOpacity>
+
         <Text style={styles.headerTitle}>Help & FAQ</Text>
-        <View style={{ width: 26 }} />
+
+        <View style={styles.headerIconBox} />
       </View>
+
 
       {/* SMALL SUBHEADER */}
       <View style={styles.subHeader}>
@@ -273,15 +276,24 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: COLORS.borderSoft,
+    shadowColor: "#000",
+    shadowOpacity: 0.04,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    elevation: 2,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E6E6E6",
   },
-  backArrow: { fontSize: 24, color: COLORS.textDark, fontWeight: "300" },
+  headerIconBox: {
+    width: 32,
+    alignItems: "flex-start",
+  },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: "700",
     color: COLORS.textDark,
   },
+
 
   subHeader: {
     paddingHorizontal: 20,

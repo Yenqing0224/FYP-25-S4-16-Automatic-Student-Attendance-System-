@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import api from "../../../api/api_client";
+import { Ionicons } from '@expo/vector-icons';
 
 const COLORS = {
   primary: "#3A7AFE",
@@ -31,12 +32,18 @@ const AppealDetailScreen = ({ navigation, route }) => {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Text style={styles.backArrow}>{"<"}</Text>
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            style={styles.headerIconBox}
+          >
+            <Ionicons name="chevron-back" size={24} color="#3A7AFE" />
           </TouchableOpacity>
+
           <Text style={styles.headerTitle}>Appeal Details</Text>
-          <View style={{ width: 20 }} />
+
+          <View style={styles.headerIconBox} />
         </View>
+
         <View style={styles.errorBox}>
           <Text style={styles.errorText}>No record data found.</Text>
         </View>
@@ -107,16 +114,22 @@ const AppealDetailScreen = ({ navigation, route }) => {
 
       {/* HEADER */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.backArrow}>{"<"}</Text>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.headerIconBox}
+        >
+          <Ionicons name="chevron-back" size={24} color={COLORS.primary} />
         </TouchableOpacity>
+
         <Text style={styles.headerTitle}>Appeal Details</Text>
-        <View style={{ width: 20 }} />
+
+        <View style={styles.headerIconBox} />
       </View>
+
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.card}>
-          
+
           {/* 1. REASON + STATUS */}
           <View style={styles.row}>
             <View style={{ flex: 1 }}>
@@ -130,8 +143,8 @@ const AppealDetailScreen = ({ navigation, route }) => {
                 appeal.status.toLowerCase() === "approved"
                   ? styles.approved
                   : appeal.status.toLowerCase() === "rejected"
-                  ? styles.rejected
-                  : styles.pending,
+                    ? styles.rejected
+                    : styles.pending,
               ]}
             >
               <Text style={styles.statusText}>
@@ -208,7 +221,7 @@ const AppealDetailScreen = ({ navigation, route }) => {
               <Text style={styles.value}>No file attached</Text>
             )}
           </View>
-          
+
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -219,20 +232,27 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   header: {
     backgroundColor: COLORS.background,
-    paddingVertical: 15,
+    paddingVertical: 14,
     paddingHorizontal: 20,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: COLORS.border,
+
+    shadowColor: "#000",
+    shadowOpacity: 0.04,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    elevation: 2,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E6E6E6",
   },
-  backArrow: { fontSize: 24, color: COLORS.textDark, fontWeight: "300" },
-  headerTitle: { fontSize: 18, fontWeight: "700", color: COLORS.textDark },
+  headerIconBox: { width: 32, alignItems: "flex-start" },
+  headerTitle: { fontSize: 20, fontWeight: "700", color: COLORS.textDark },
+
   scrollContent: { padding: 20, paddingBottom: 30 },
   errorBox: { flex: 1, alignItems: "center", justifyContent: "center" },
   errorText: { color: COLORS.textMuted },
-  
+
   card: {
     backgroundColor: COLORS.card,
     borderRadius: 18,

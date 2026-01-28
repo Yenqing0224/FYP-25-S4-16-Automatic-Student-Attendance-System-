@@ -1,5 +1,4 @@
-//src/screens/student/timetable/class_detail_screen.js
-// src/screens/student/class_detail/class_detail_screen.js
+// src/screens/student/timetable/class_detail_screen.js
 
 import React, { useState, useCallback } from "react";
 import {
@@ -12,11 +11,10 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
+import { Ionicons } from "@expo/vector-icons";
 import api from "../../../api/api_client";
 
-/* =======================
-   SAFE TEXT HELPER
-   ======================= */
+
 const toText = (v, fallback = "-") => {
   if (v == null) return fallback;
   if (typeof v === "string" || typeof v === "number" || typeof v === "boolean") return String(v);
@@ -25,15 +23,22 @@ const toText = (v, fallback = "-") => {
   return fallback;
 };
 
+const COLORS = {
+  primary: "#3A7AFE",
+  background: "#F5F7FB",
+  card: "#FFFFFF",
+  textDark: "#111827",
+  textMuted: "#6B7280",
+  borderSoft: "#E5E7EB",
+};
+
 const ClassDetailScreen = ({ route, navigation }) => {
   const { session_id } = route.params;
 
   const [classData, setClassData] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  /* =======================
-     FETCH + AUTO REFRESH
-     ======================= */
+
   useFocusEffect(
     useCallback(() => {
       let isActive = true;
@@ -47,6 +52,7 @@ const ClassDetailScreen = ({ route, navigation }) => {
           }
         } catch (err) {
           console.error("Fetch Details Error:", err);
+          if (isActive) setLoading(false);
         }
       };
 
@@ -60,16 +66,15 @@ const ClassDetailScreen = ({ route, navigation }) => {
     }, [session_id])
   );
 
-  /* =======================
-     FORMATTERS
-     ======================= */
   const formatTimeStr = (timeString) => {
     if (!timeString) return "-";
     const d = new Date(timeString);
     if (!isNaN(d.getTime())) {
-      return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true }).toLowerCase();
+      return d
+        .toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })
+        .toLowerCase();
     }
-    return timeString.slice(0, 5);
+    return String(timeString).slice(0, 5);
   };
 
   const formatDateStr = (dateString) => {
@@ -78,22 +83,18 @@ const ClassDetailScreen = ({ route, navigation }) => {
     return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
   };
 
-  /* =======================
-     LOADING
-     ======================= */
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#3A7AFE" />
+        <ActivityIndicator size="large" color={COLORS.primary} />
       </View>
     );
   }
 
   if (!classData) return null;
 
-  /* =======================
-     NORMALIZED FIELDS
-     ======================= */
+
   const moduleCode = toText(classData.module?.code, "CODE");
   const moduleName = toText(classData.module?.name, "Module");
   const venue = toText(classData.venue, "TBA");
@@ -105,22 +106,23 @@ const ClassDetailScreen = ({ route, navigation }) => {
       <SafeAreaView edges={["top"]} style={styles.safeArea}>
         <StatusBar barStyle="dark-content" backgroundColor="#F0F2FA" />
 
-        {/* HEADER */}
+        {/*  HEADER (same as Timetable) */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Text style={styles.backArrow}>{"<"}</Text>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerIconBox}>
+            <Ionicons name="chevron-back" size={24} color={COLORS.primary} />
           </TouchableOpacity>
+
           <Text style={styles.headerTitle}>Class Details</Text>
-          <View style={{ width: 20 }} />
+
+          {/* placeholder to keep title centered */}
+          <View style={styles.headerIconBox} />
         </View>
 
         <View style={styles.content}>
           <View style={styles.blueCard}>
-            {/* MODULE */}
             <Text style={styles.moduleCode}>{moduleCode}</Text>
             <Text style={styles.moduleName}>{moduleName}</Text>
 
-            {/* DATE / TIME / VENUE */}
             <View style={styles.infoBlock}>
               <Text style={styles.dateText}>{formatDateStr(classData.date)}</Text>
               <Text style={styles.timeText}>
@@ -129,7 +131,6 @@ const ClassDetailScreen = ({ route, navigation }) => {
               <Text style={styles.venueText}>{venue}</Text>
             </View>
 
-            {/* ENTRY / EXIT */}
             <View style={styles.attendanceRow}>
               <View style={styles.attendanceCol}>
                 <Text style={styles.attendanceLabel}>Entry</Text>
@@ -145,7 +146,6 @@ const ClassDetailScreen = ({ route, navigation }) => {
             </View>
           </View>
 
-          {/* APPEAL BUTTON */}
           {attendanceStatus === "absent" && status === "completed" && (
             <TouchableOpacity
               style={styles.appealButton}
@@ -164,24 +164,38 @@ const ClassDetailScreen = ({ route, navigation }) => {
   );
 };
 
-/* =======================
-   STYLES (UNCHANGED)
-   ======================= */
+
 const styles = StyleSheet.create({
   mainContainer: { flex: 1, backgroundColor: "#F5F7FB" },
   safeArea: { flex: 1 },
   loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
 
+
   header: {
-    backgroundColor: "#F0F2FA",
-    paddingVertical: 15,
+    backgroundColor: COLORS.background,
+    paddingVertical: 14,
     paddingHorizontal: 20,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+
+    shadowColor: "#000",
+    shadowOpacity: 0.04,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    elevation: 2,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E6E6E6",
   },
-  backArrow: { fontSize: 24, color: "#4B5563", fontWeight: "300" },
-  headerTitle: { fontSize: 18, fontWeight: "700", color: "#111827" },
+  headerIconBox: {
+    width: 32,
+    alignItems: "flex-start",
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: COLORS.textDark,
+  },
 
   content: { padding: 20, alignItems: "center", paddingTop: 40 },
 

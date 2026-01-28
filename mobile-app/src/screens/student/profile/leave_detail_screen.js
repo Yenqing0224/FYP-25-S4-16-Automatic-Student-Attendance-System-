@@ -13,6 +13,8 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import api from "../../../api/api_client"; // 👈 2. Import API Client
+import { Ionicons } from "@expo/vector-icons";
+
 
 const COLORS = {
   background: "#F5F7FB",
@@ -124,12 +126,15 @@ const LeaveDetailScreen = ({ navigation, route }) => {
 
       {/* HEADER */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.backArrow}>{"<"}</Text>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerIconBox}>
+          <Ionicons name="chevron-back" size={24} color={COLORS.primary} />
         </TouchableOpacity>
+
         <Text style={styles.headerTitle}>Leave Details</Text>
-        <View style={{ width: 20 }} />
+
+        <View style={styles.headerIconBox} />
       </View>
+
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* MAIN CARD */}
@@ -158,8 +163,8 @@ const LeaveDetailScreen = ({ navigation, route }) => {
               {leave.start_date === leave.end_date
                 ? formatDate(leave.start_date)
                 : `${formatDate(leave.start_date)} - ${formatDate(
-                    leave.end_date
-                  )}`}
+                  leave.end_date
+                )}`}
             </Text>
           </View>
 
@@ -190,13 +195,13 @@ const LeaveDetailScreen = ({ navigation, route }) => {
             {(leave.document_path || leave.document) ? (
               <View>
                 <Text style={styles.fileName}>Document uploaded</Text>
-                
-                <TouchableOpacity 
-                  style={styles.fileButton} 
+
+                <TouchableOpacity
+                  style={styles.fileButton}
                   onPress={handleOpenFile}
                   disabled={opening}
                 >
-                   {opening ? (
+                  {opening ? (
                     <ActivityIndicator size="small" color="#FFFFFF" />
                   ) : (
                     <Text style={styles.fileButtonText}>View Document</Text>
@@ -223,15 +228,24 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: COLORS.borderSoft,
+    shadowColor: "#000",
+    shadowOpacity: 0.04,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    elevation: 2,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E6E6E6",
   },
-  backArrow: { fontSize: 24, color: COLORS.textDark, fontWeight: "300" },
+  headerIconBox: {
+    width: 32,
+    alignItems: "flex-start",
+  },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: "700",
     color: COLORS.textDark,
   },
+
   scrollContent: {
     paddingHorizontal: 16,
     paddingTop: 16,
@@ -305,7 +319,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     fontStyle: "italic",
   },
-  
+
   // Updated File Button
   fileButton: {
     paddingVertical: 10,
