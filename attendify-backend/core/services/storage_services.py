@@ -30,7 +30,7 @@ class SupabaseStorageService:
             )
 
             # Return the correct value
-            if bucket == ["public-assets", "profile-picture"]:
+            if bucket in ["public-assets", "profile-picture"]:
                 # Public: Return full URL
                 return self.client.storage.from_(bucket).get_public_url(file_path)
             else:
