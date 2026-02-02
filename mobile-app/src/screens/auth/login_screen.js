@@ -55,7 +55,11 @@ const LoginScreen = ({ navigation }) => {
       if (user.role_type === "lecturer") {
         navigation.reset({ index: 0, routes: [{ name: "LecturerTabs" }] });
       } else {
-        navigation.reset({ index: 0, routes: [{ name: "StudentTabs" }] });
+        if (user.registration === false) {
+          navigation.reset({ index: 0, routes: [{ name: "FaceRegistrationIntro" }] });
+        } else {
+          navigation.reset({ index: 0, routes: [{ name: "StudentTabs" }] });
+        }
       }
     } catch (error) {
       const errorMessage =
@@ -320,8 +324,8 @@ const styles = StyleSheet.create({
     fontWeight: "900",
   },
   logoIcon: {
-  width: 22,
-  height: 22,
-},
+    width: 22,
+    height: 22,
+  },
 
 });

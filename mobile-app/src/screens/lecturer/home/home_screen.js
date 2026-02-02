@@ -153,6 +153,7 @@ export default function LecturerHomeScreen({ navigation, route }) {
   };
 
   const fetchDashboardData = async () => {
+    let isSessionExpired = false;
     try {
       if (!refreshing) setLoading(true);
 
@@ -199,10 +200,15 @@ export default function LecturerHomeScreen({ navigation, route }) {
       setAnnouncements(formatted);
 
     } catch (error) {
-      console.error("Dashboard fetch error:", error);
+      if (error.response && error.response.status === 401) {
+        isSessionExpired = true;
+        return;
+      }
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (!isSessionExpired) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
   };
 

@@ -18,6 +18,7 @@
     "@react-navigation/native-stack": "^7.8.2",
     "axios": "^1.13.2",
     "expo": "~54.0.25",
+    "expo-build-properties": "~1.0.10",
     "expo-calendar": "~15.0.8",
     "expo-clipboard": "~8.0.8",
     "expo-constants": "~18.0.13",
@@ -30,8 +31,15 @@
     "react-native": "0.81.5",
     "react-native-calendars": "^1.1313.0",
     "react-native-gesture-handler": "~2.28.0",
+    "react-native-reanimated": "~4.1.1",
     "react-native-safe-area-context": "~5.6.0",
-    "react-native-screens": "~4.16.0"
+    "react-native-screens": "~4.16.0",
+    "react-native-vision-camera": "^4.7.3",
+    "react-native-vision-camera-face-detector": "^1.10.1",
+    "react-native-worklets-core": "^1.6.2"
   },
-  "private": true
+  "private": true,
+  "devDependencies": {
+    "babel-preset-expo": "^54.0.10"
+  }
 }

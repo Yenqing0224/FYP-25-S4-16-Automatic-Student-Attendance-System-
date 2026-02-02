@@ -13,7 +13,11 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.attendifys416.attendify",
+      "infoPlist": {
+        "NSCameraUsageDescription": "We need access to your camera to register your face for attendance."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -21,7 +25,10 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.attendifys416.attendify"
+      "package": "com.attendifys416.attendify",
+      "permissions": [
+        "android.permission.CAMERA"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -30,6 +37,32 @@
       "eas": {
         "projectId": "36891bd4-d2e8-4fd1-a203-49ce8cd7422e"
       }
-    }
+    },
+    "plugins": [
+      [
+        "react-native-vision-camera",
+        {
+          "cameraPermissionText": "We need access to your camera to register your face for attendance.",
+          "enableMicrophonePermission": false
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "minSdkVersion": 26,
+            "kotlinVersion": "2.0.21",
+            "packagingOptions": {
+              "pickFirst": [
+                "lib/x86/libjsc.so",
+                "lib/x86_64/libjsc.so",
+                "lib/armeabi-v7a/libjsc.so",
+                "lib/arm64-v8a/libjsc.so"
+              ]
+            }
+          }
+        }
+      ]
+    ]
   }
 }

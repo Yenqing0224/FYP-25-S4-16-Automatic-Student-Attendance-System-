@@ -5,6 +5,8 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import SplashScreen from "../screens/splash/splash_screen";
 import LoginScreen from "../screens/auth/login_screen";
 import WelcomeScreen from "../screens/student/onboarding/welcome_screen";
+import FaceRegistrationIntroScreen from "../screens/auth/face_registration_intro_screen";
+import FaceRegistrationScreen from "../screens/auth/face_registration_screen";
 import ForgotPasswordScreen from "../screens/auth/forgotPassword_screen";
 import VerifyOtpScreen from "../screens/auth/verifyOtp_screen";
 import ResetPasswordScreen from "../screens/auth/resetPassword_screen";
@@ -23,6 +25,8 @@ export default function RootNavigator() {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Splash" component={SplashScreen} />
       <Stack.Screen name="Welcome" component={WelcomeScreen} />
+      <Stack.Screen name="FaceRegistrationIntro" component={FaceRegistrationIntroScreen} />
+      <Stack.Screen name="FaceRegistration" component={FaceRegistrationScreen} />
 
       {/* Auth */}
       <Stack.Screen name="Login" component={LoginScreen} />
