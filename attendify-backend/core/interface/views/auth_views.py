@@ -2,6 +2,8 @@ from rest_framework.decorators import api_view, permission_classes
 from django.core.exceptions import ValidationError
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
+from django.core.cache import cache
+import datetime
 # Import Services
 from core.services.auth_services import AuthService
 # Import Serializers
@@ -133,3 +135,19 @@ def reset_password(request):
     except Exception as e:
         print(f"Reset Password Error: {str(e)}")
         return Response({"error": "Server error processing request"}, status=500)
+    
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def keep_redis_alive(request):
+    try:
+        current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        cache.set("system_heartbeat", f"alive_at_{current_time}", timeout=30)
+        return Response({
+            "status": "alive", 
+            "redis": "write_success", 
+            "timestamp": current_time
+        }, status=200)
+    except Exception as e:
+        return Response({"status": "error", "detail": str(e)}, status=500)
+    

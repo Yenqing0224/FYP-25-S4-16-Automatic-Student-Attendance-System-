@@ -15,7 +15,7 @@ urlpatterns = [
     path('request-otp/', auth_views.request_otp, name='request-otp'),
     path('verify-otp/', auth_views.verify_otp, name='verify-otp'),
     path('reset-password/', auth_views.reset_password, name='reset-password'),
-
+    path('keep-redis-alive/', auth_views.keep_redis_alive, name='keep-redis-alive'),
 
     # Users
     path('profile/', users_views.get_profile, name='profile'),
