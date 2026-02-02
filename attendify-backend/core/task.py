@@ -1,7 +1,9 @@
 from core.services.academics_services import AcademicService
 from core.services.communication_services import CommunicationService
+from django.db import close_old_connections
 
 def task_auto_create_attendance():
+    close_old_connections()
     service = AcademicService()
     try:
         message = service.auto_create_attendance()
@@ -12,6 +14,7 @@ def task_auto_create_attendance():
 
 
 def task_update_class_status():
+    close_old_connections()
     service = AcademicService()
     try:
         message = service.auto_update_class_status()
@@ -22,6 +25,7 @@ def task_update_class_status():
 
 
 def task_auto_send_reminder():
+    close_old_connections()
     service = CommunicationService()
     try:
         message = service.auto_send_reminder()
@@ -32,6 +36,7 @@ def task_auto_send_reminder():
 
 
 def task_update_event_status():
+    close_old_connections()
     service = CommunicationService()
     try:
         message = service.auto_update_event_status()
