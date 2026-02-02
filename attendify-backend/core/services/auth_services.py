@@ -33,7 +33,16 @@ class AuthService:
 
         token, _ = Token.objects.get_or_create(user=user)
 
-        return user, token
+        result = {
+            "user": user,
+            "token": token
+        }
+
+        if user.role_type == 'student':
+            if hasattr(user, 'student_profile'):
+                result['registration'] = user.student_profile.registration
+
+        return result
     
 
     def logout_user(self, user):

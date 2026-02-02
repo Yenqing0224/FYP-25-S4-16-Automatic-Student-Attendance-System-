@@ -14,13 +14,18 @@ def login_view(request):
     service = AuthService()
 
     try:
-        user, token  = service.login_user(request.data)
-        serializer = UserSerializer(user)
+        result  = service.login_user(request.data)
+        user = result.pop('user')
+        token = result.pop('token')
+
+        user_data = UserSerializer(user).data
+        
+        user_data.update(result)
 
         return Response({
             "message": "Login successful",
             "token": token.key,
-            "user": serializer.data
+            "user": user_data
         }, status=200)
 
     except ValueError as e:
