@@ -119,7 +119,7 @@ uni_list, uni_detail = create_crud_views(PartnerUni, AdminPartnerUniSerializer)
 semesters_list, semesters_detail = create_crud_views(Semester, AdminSemesterSerializer)
 modules_list, modules_detail = create_crud_views(Module, AdminModuleSerializer)
 sessions_list, sessions_detail = create_crud_views(ClassSession, AdminClassSessionSerializer)
-classroom_list, classroom_detail = create_crud_views(ClassRoom, AdminClassRoomSerializer)
+classrooms_list, classrooms_detail = create_crud_views(ClassRoom, AdminClassRoomSerializer)
 records_list, records_detail = create_crud_views(AttendanceRecord, AdminAttendanceRecordSerializer)
 
 # Communication

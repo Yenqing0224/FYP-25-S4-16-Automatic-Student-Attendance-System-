@@ -70,6 +70,8 @@ urlpatterns = [
     path('admin/crud/modules/<int:pk>/', admin_views.modules_detail, name='crud-modules-detail'),
     path('admin/crud/sessions/', admin_views.sessions_list, name='crud-sessions-list'),
     path('admin/crud/sessions/<int:pk>/', admin_views.sessions_detail, name='crud-sessions-detail'),
+    path('admin/crud/classrooms/', admin_views.classrooms_list, name='crud-classrooms-list'),
+    path('admin/crud/classrooms/<int:pk>/', admin_views.classrooms_detail, name='crud-classrooms-detail'),
     path('admin/crud/attendance/', admin_views.records_list, name='crud-records-list'),
     path('admin/crud/attendance/<int:pk>/', admin_views.records_detail, name='crud-records-detail'),
 
