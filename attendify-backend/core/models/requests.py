@@ -1,4 +1,5 @@
 from django.db import models
+from core.models.academics import AttendanceRecord
 
 class LeaveRequest(models.Model):
     STATUS_CHOICES = [
@@ -51,6 +52,19 @@ class AttendanceAppeal(models.Model):
         indexes = [
             models.Index(fields=['student', '-created_at']),
         ]
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+
+        if self.status == 'approved':
+            record = AttendanceRecord.objects.filter(
+                student=self.student, 
+                session=self.session
+            ).first()
+
+            if record:
+                record.status = 'present'
+                record.save()
 
     def __str__(self):
         return f"Appeal: {self.student.user.username} - {self.session.name}"
