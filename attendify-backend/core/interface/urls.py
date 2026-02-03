@@ -29,6 +29,8 @@ urlpatterns = [
     path('get-reschedule-options/', academics_views.get_reschedule_options, name='get-reschedule-options'),
     path('reschedule-class/', academics_views.reschedule_class, name='reschedule-class'),
     path('mark-attendance/', academics_views.mark_attendance, name='mark-attendance'),
+    path('register-face/', academics_views.register_face, name='register-face'),
+
 
     # Communication
     path('newsevent/', communication_views.get_newsevent, name='newsevent'),

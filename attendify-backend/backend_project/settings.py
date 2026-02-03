@@ -119,6 +119,11 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = os.environ.get('BREVO_LOGIN_EMAIL')
 EMAIL_HOST_PASSWORD = os.environ.get('BREVO_SMTP_KEY')
 
+# CompreFace
+COMPREFACE_HOST = os.environ.get('COMPREFACE_HOST')
+COMPREFACE_PORT = os.environ.get('COMPREFACE_PORT')
+COMPREFACE_API_KEY = os.environ.get('COMPREFACE_API_KEY')
+COMPREFACE_ADD_FACE_URL = f"{COMPREFACE_HOST}:{COMPREFACE_PORT}/api/v1/recognition/faces"
 
 # Password validation
 # https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators

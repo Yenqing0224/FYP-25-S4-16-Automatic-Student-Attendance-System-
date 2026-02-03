@@ -1,6 +1,7 @@
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework import status
 from core.models import Student, ClassSession, Lecturer
 from core.services.academics_services import AcademicService
@@ -170,3 +171,17 @@ def mark_attendance(request):
     except Exception as e:
         print(f"❌ Unexpected Error: {e}")
         return Response({"error": str(e)}, status=400)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@parser_classes([MultiPartParser, FormParser])
+def register_face(request):
+    service = AcademicService()
+    
+    try:
+        result = service.register_face(request.user, request.data, request.FILES)
+        return Response(result, status=201)
+
+    except Exception as e:
+        return Response({"status": "error", "message": str(e)}, status=400)

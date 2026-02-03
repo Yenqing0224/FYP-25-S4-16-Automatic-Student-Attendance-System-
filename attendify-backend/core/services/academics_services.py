@@ -2,6 +2,9 @@ from core.models import Student, ClassSession, Semester, AttendanceRecord, Lectu
 from django.utils import timezone
 from datetime import timedelta, datetime, time
 from django.db.models import Q, Prefetch
+from django.conf import settings
+import os
+import requests
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from core.logic.academics_logics import AcademicLogic
 
@@ -461,3 +464,57 @@ class AcademicService:
             "exit": timezone.localtime(attendance.exit_time).isoformat() if attendance.exit_time else None
         }
     
+
+    def register_face(self, user, data, files):
+        try:
+            student = Student.objects.get(user=user)
+        except Student.DoesNotExist:
+            raise PermissionDenied("User is not a student.")
+
+        if 'file' not in files:
+            raise ValidationError("No image file provided.")
+        
+        uploaded_file = files['file']
+        pose = data.get('pose', 'unknown').lower()
+        AcademicLogic.verify_head_pose(uploaded_file, pose)
+
+        _, ext = os.path.splitext(uploaded_file.name)
+        if not ext: ext = '.jpg'
+        new_filename = f"{pose}{ext}"
+
+        url = settings.COMPREFACE_ADD_FACE_URL
+        headers = {'x-api-key': settings.COMPREFACE_API_KEY}
+        
+        payload = {'subject': student.student_id}
+        
+        file_content = uploaded_file.read()
+        
+        files_payload = {'file': (new_filename, file_content, uploaded_file.content_type)}
+
+        try:
+            response = requests.post(
+                url, headers=headers, params=payload, files=files_payload, timeout=15
+            )
+            
+            if response.status_code in [200, 201]:
+                response_data = response.json()
+                
+                return {
+                    "status": "success",
+                    "message": f"Face ({pose}) registered successfully.",
+                    "student_id": student.student_id,
+                    "compreface_image_id": response_data.get('image_id')
+                }
+            else:
+                try:
+                    err_msg = response.json().get('message', response.text)
+                except:
+                    err_msg = response.text
+                
+                if "no face" in err_msg.lower():
+                     raise ValidationError(f"No face detected in the {pose} image.")
+                     
+                raise Exception(f"Face Service Error: {err_msg}")
+
+        except requests.exceptions.RequestException as e:
+            raise Exception(f"Failed to connect to Face Recognition Service: {str(e)}")
