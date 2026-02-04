@@ -69,8 +69,9 @@ class AcademicLogic:
 
         if image is None:
             raise ValidationError("Could not decode image file. Ensure it is a valid JPG/PNG.")
-
+        
         mp_face_mesh = mp.solutions.face_mesh
+
         with mp_face_mesh.FaceMesh(
             static_image_mode=True,
             max_num_faces=1,
@@ -112,7 +113,7 @@ class AcademicLogic:
             rmat, jac = cv2.Rodrigues(rot_vec)
             angles, _, _, _, _, _, _ = cv2.RQDecomp3x3(rmat)
 
-            yaw = angles[1] * 360
+            yaw = angles[1]
 
             THRESHOLD = 12.0
             
