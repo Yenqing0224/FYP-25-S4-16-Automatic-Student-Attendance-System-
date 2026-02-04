@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 import cv2
 import numpy as np
 import mediapipe as mp
+from mediapipe.python.solutions import face_mesh as mp_face_mesh
 from rest_framework.exceptions import ValidationError
 
 class AcademicLogic:
@@ -70,8 +71,6 @@ class AcademicLogic:
         if image is None:
             raise ValidationError("Could not decode image file. Ensure it is a valid JPG/PNG.")
         
-        mp_face_mesh = mp.solutions.face_mesh
-
         with mp_face_mesh.FaceMesh(
             static_image_mode=True,
             max_num_faces=1,
