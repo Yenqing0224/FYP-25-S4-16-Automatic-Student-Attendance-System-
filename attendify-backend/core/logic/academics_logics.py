@@ -2,7 +2,6 @@ from django.utils import timezone
 from datetime import datetime, timedelta
 import cv2
 import numpy as np
-import mediapipe as mp
 from rest_framework.exceptions import ValidationError
 
 class AcademicLogic:
@@ -61,71 +60,71 @@ class AcademicLogic:
 
     @staticmethod
     def verify_head_pose(uploaded_file, target_pose):
-        
+        # 1. Decode Image
         file_bytes = np.frombuffer(uploaded_file.read(), np.uint8)
         image = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
-
         uploaded_file.seek(0)
 
         if image is None:
-            raise ValidationError("Could not decode image file. Ensure it is a valid JPG/PNG.")
+            raise ValidationError("Could not decode image file.")
 
-        mp_face_mesh = mp.solutions.face_mesh
-        with mp_face_mesh.FaceMesh(
-            static_image_mode=True,
-            max_num_faces=1,
-            refine_landmarks=True,
-            min_detection_confidence=0.5
-        ) as face_mesh:
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
+        # 2. Load OpenCV Cascades (Ensure these XML files are in your project or environment)
+        # In Django, you might need to provide the full path to these .xml files
+        face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+        eye_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_eye.xml')
+        nose_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_mcs_nose.xml')
 
-            rgb_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-            results = face_mesh.process(rgb_image)
+        # 3. Detect Face
+        faces = face_cascade.detectMultiScale(gray, 1.3, 5)
+        if len(faces) == 0:
+            raise ValidationError(f"No face detected in the {target_pose} image. Please ensure good lighting.")
 
-            if not results.multi_face_landmarks:
-                raise ValidationError(f"No face detected in the {target_pose} image. Please retake.")
+        # Use the largest face
+        (x, y, w, h) = sorted(faces, key=lambda f: f[2]*f[3])[-1]
+        roi_gray = gray[y:y+h, x:x+w]
 
-            face_landmarks = results.multi_face_landmarks[0]
-            img_h, img_w, _ = image.shape
+        # 4. Detect Eyes and Nose within the face
+        eyes = eye_cascade.detectMultiScale(roi_gray, 1.1, 10)
+        noses = nose_cascade.detectMultiScale(roi_gray, 1.1, 10)
 
-            face_3d = []
-            face_2d = []
-            
-            key_landmarks = [1, 152, 263, 33, 287, 57]
-
-            for idx in key_landmarks:
-                lm = face_landmarks.landmark[idx]
-                x, y = int(lm.x * img_w), int(lm.y * img_h)
-                face_2d.append([x, y])
-                face_3d.append([x, y, lm.z * 3000]) 
-
-            face_2d = np.array(face_2d, dtype=np.float64)
-            face_3d = np.array(face_3d, dtype=np.float64)
-
-            focal_length = 1 * img_w
-            cam_matrix = np.array([[focal_length, 0, img_h / 2],
-                                   [0, focal_length, img_w / 2],
-                                   [0, 0, 1]])
-            dist_matrix = np.zeros((4, 1), dtype=np.float64)
-
-            success, rot_vec, trans_vec = cv2.solvePnP(face_3d, face_2d, cam_matrix, dist_matrix)
-            rmat, jac = cv2.Rodrigues(rot_vec)
-            angles, _, _, _, _, _, _ = cv2.RQDecomp3x3(rmat)
-
-            yaw = angles[1] * 360
-
-            THRESHOLD = 12.0
-            
+        # We need at least 2 eyes and 1 nose to calculate symmetry
+        if len(eyes) < 2 or len(noses) < 1:
+            # If we can't find features, we can't verify the angle accurately
+            # In 'center' pose, we should definitely find them.
             if target_pose == "center":
-                if abs(yaw) > THRESHOLD:
-                    raise ValidationError(f"Image not centered (Yaw: {yaw:.1f}°). Please look straight at the camera.")
-            
-            elif target_pose == "left":
-                if yaw < THRESHOLD: 
-                    raise ValidationError(f"You are not turning LEFT enough (Yaw: {yaw:.1f}°). Please turn your head more.")
+                raise ValidationError("Face detected, but eyes/nose not clear. Please look straight at the camera.")
+            return True # Fallback: Allow it if it's a side profile where eyes are hard to see
 
-            elif target_pose == "right":
-                if yaw > -THRESHOLD:
-                    raise ValidationError(f"You are not turning RIGHT enough (Yaw: {yaw:.1f}°). Please turn your head more.")
+        # 5. Calculate Symmetry Ratio
+        # Sort eyes: left to right
+        eyes = sorted(eyes, key=lambda e: e[0])
+        left_eye_x = eyes[0][0] + (eyes[0][2] // 2)
+        right_eye_x = eyes[-1][0] + (eyes[-1][2] // 2)
+        nose_x = noses[0][0] + (noses[0][2] // 2)
 
-            return True
+        # total_width is distance between eyes
+        total_width = right_eye_x - left_eye_x
+        if total_width <= 0: return True
+
+        # nose_pos is where the nose sits between eyes (0.5 is center)
+        nose_ratio = (nose_x - left_eye_x) / total_width
+
+        # 6. Verify Target Pose
+        # Note: If image is mirrored by frontend, LEFT/RIGHT logic might flip
+        if target_pose == "center":
+            if nose_ratio < 0.35 or nose_ratio > 0.65:
+                raise ValidationError("Please look straight at the camera for the center pose.")
+        
+        elif target_pose == "left":
+            # Nose moves towards the right eye (higher ratio) when turning left
+            if nose_ratio < 0.60:
+                raise ValidationError("You are not turning LEFT enough. Please turn your head more.")
+                
+        elif target_pose == "right":
+            # Nose moves towards the left eye (lower ratio) when turning right
+            if nose_ratio > 0.40:
+                raise ValidationError("You are not turning RIGHT enough. Please turn your head more.")
+
+        return True
