@@ -82,6 +82,8 @@ class AdminUserSerializer(serializers.ModelSerializer):
     
 class AdminStudentSerializer(serializers.ModelSerializer):
     user_details = AdminUserSerializer(source='user', read_only=True)
+    attendance_rate = serializers.FloatField(read_only=True)
+
     class Meta:
         model = Student
         fields = '__all__'
@@ -212,7 +214,7 @@ class AdminAnnouncementSerializer(serializers.ModelSerializer):
 
 # Requests
 class AdminLeaveRequestSerializer(serializers.ModelSerializer):
-    student_name = serializers.CharField(source='student.user.username', read_only=True)
+    user_details = AdminUserSerializer(source='user', read_only=True)
     class Meta:
         model = LeaveRequest
         fields = '__all__'
