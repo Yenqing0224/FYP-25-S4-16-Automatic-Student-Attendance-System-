@@ -1,10 +1,5 @@
 from django.utils import timezone
 from datetime import datetime, timedelta
-import cv2
-import os
-from django.conf import settings
-import numpy as np
-from rest_framework.exceptions import ValidationError
 
 class AcademicLogic:
 
