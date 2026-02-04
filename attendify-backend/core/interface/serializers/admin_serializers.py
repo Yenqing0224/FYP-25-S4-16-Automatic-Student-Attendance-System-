@@ -214,7 +214,7 @@ class AdminAnnouncementSerializer(serializers.ModelSerializer):
 
 # Requests
 class AdminLeaveRequestSerializer(serializers.ModelSerializer):
-    user_details = AdminUserSerializer(source='user', read_only=True)
+    name = serializers.CharField(source='user.username', read_only=True)
     class Meta:
         model = LeaveRequest
         fields = '__all__'
