@@ -1,5 +1,4 @@
 import cv2
-import argparse
 import time
 from threading import Thread 
 from collections import deque
@@ -19,23 +18,14 @@ recog_interval = 0          # does reognition every x seconds
 absence_threshold = 5       # y seconds of not seen, will update leave time, RMB TO CHANGE 
 liveness_history_len = 5    # stores how many history??
 spoof_threshold = 0.2       # can only be detected as spoof x% of the time
-blink_threshold = 0.20
 
-def parseArguments():
-    parser = argparse.ArgumentParser()
-
-    # API currently uses a 1062dlanmarks
-    parser.add_argument("--api-key", help="CompreFace recognition service API key", type=str, default='17769fd0-cc56-4b6f-83fc-08e2fe636758')   # mobilenet-gpu
-    parser.add_argument("--host", help="CompreFace host", type=str, default='http://13.251.225.129')
-    #http://localhost
-    parser.add_argument("--port", help="CompreFace port", type=str, default='8000')
-
-    args = parser.parse_args()
-
-    return args
+def load_venue():
+    with open('venue.txt', 'r') as f:
+        venue = f.read().strip()
+    return venue
 
 class ThreadedCamera:
-    def __init__(self, api_key, host, port):
+    def __init__(self, venue):
         self.active = True
         self.results = []
         self.last_recog_time = datetime.now(timezone.utc)  # stores in datetime format
@@ -44,15 +34,21 @@ class ThreadedCamera:
         self.capture.set(cv2.CAP_PROP_BUFFERSIZE, 2)
         self.liveness_predictor = TSNPredictor()
 
-        compre_face: CompreFace = CompreFace(host, port, {
+        # API SETTINGS
+        self.api_key = '17769fd0-cc56-4b6f-83fc-08e2fe636758'
+        self.host = 'http://13.251.225.129'
+        self.port = '8000'
+        self.venue = venue
+
+        compre_face: CompreFace = CompreFace(self.host, self.port, {
             "limit": 0,
             "det_prob_threshold": 0.8,
             "prediction_count": 1,
-            "face_plugins": "age,gender", #landmarks2d106
+            "face_plugins": "age,gender",
             "status": False
         })
 
-        self.recognition: RecognitionService = compre_face.init_face_recognition(api_key)
+        self.recognition: RecognitionService = compre_face.init_face_recognition(self.api_key)
         self.FPS = 1/30
 
         # Start frame retrieval thread
@@ -60,21 +56,22 @@ class ThreadedCamera:
         self.thread.daemon = True
         self.thread.start()
 
-
-    def send_request(self, student_id, timestamp, duration):
+    def send_request(self, student_id, entry_timestamp, exit_timestamp):
         try:
-            duration_secs = int(duration) if duration else 0   # rounds down to int
             requests.post(
                 "https://attendify-ekg6.onrender.com/api/mark-attendance/",
                 json={
                     "student_id": student_id,
-                    "time_stamp": timestamp.isoformat() if timestamp else None,
-                    "duration": duration_secs
+                    "venue" : self.venue,
+                    "entry_time_stamp": entry_timestamp.isoformat() if entry_timestamp else None,
+                    "exit_time_stamp" : exit_timestamp.isoformat() if exit_timestamp else None
                 },
-                timeout=2
+                timeout = 2
             )
+            
         except requests.RequestException as e:
             print(f"Attendance API error: {student_id}: {e}")
+        print("SENT", 'EnTRY: ', entry_timestamp , 'EXIT: ', exit_timestamp)
 
 
     def show_frame(self):
@@ -149,7 +146,7 @@ class ThreadedCamera:
                                         cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 1)
 
             cv2.imshow('CompreFace demo', self.frame)
-            time.sleep(self.FPS)
+            #time.sleep(self.FPS)
 
             if cv2.waitKey(1) & 0xFF == 27:
                 self.capture.release()
@@ -173,7 +170,7 @@ class ThreadedCamera:
         # Updates the time the last recognition is done, to apply the throttling  
         self.last_recog_time = now
 
-        _, im_buf_arr = cv2.imencode(".jpg", self.frame)
+        _, im_buf_arr = cv2.imencode(".jpg", self.frame, [int(cv2.IMWRITE_JPEG_QUALITY), 75])
         byte_im = im_buf_arr.tobytes()
         data = self.recognition.recognize(byte_im)
         self.results = data.get('result')
@@ -212,7 +209,6 @@ class ThreadedCamera:
                     "liveness_history": deque(maxlen = liveness_history_len),   # 0 == live, 1 == spoof
                     "has_left" : False,     # used as a flag
                     "last_seen" : None,  # mainly used for student return to class
-                    "duration" : 0,
                     "curr_entry" : None     # Datetime for tracking duration stayed in class
                 }
 
@@ -242,19 +238,16 @@ class ThreadedCamera:
                     student_state["entry"] = now
                     student_state["curr_entry"] = now
                     student_state["present"] = True
-                    self.send_request(student_id, student_state["entry"], 0)    # Updates entry time in DB, duration is 0 as student just entered
+                    self.send_request(student_id, student_state["entry"], student_state["exit"])    # Updates entry time in DB
 
                 # Student re-entry, exit would have data
                 if student_state["has_left"]:
                     student_state["curr_entry"] = now
                     student_state["has_left"] = False
-                    self.send_request(student_id, None, student_state["duration"])  # duration is not computed
+                    self.send_request(student_id, student_state["curr_entry"], student_state["exit"])
                     # sets exit time back to '-'
-                
-                # exit updated on both (student entry, student re-entry). But not updated in DB
-                student_state["exit"] = now
+                student_state["exit"] = now   
 
-    
     # leavers: present = True, and left halfway
     # do not need to check for absent, there is no record anyway
     def check_leavers(self, now):
@@ -267,22 +260,16 @@ class ThreadedCamera:
             if exit_time and present and not has_left:
                 delta_seconds = (now - exit_time).total_seconds()
                 if delta_seconds > absence_threshold:
-                    # Sets exit time and calculate duration
-                    curr_entry = state.get("curr_entry")
-                    duration = state.get("duration")
-                    if curr_entry is not None:
-                        duration += (exit_time - curr_entry).total_seconds()
-
-                    state["duration"] = duration
-                    state["curr_entry"] = None      # resets curr_entry
-                    self.send_request(student_id, exit_time, duration)
+                    self.send_request(student_id, state.get("curr_entry"), exit_time)
                     state["liveness_history"].clear()
                     state["has_left"] = True    # set flag to True
 
 #=====================================================================
 if __name__ == '__main__':
-    args = parseArguments()
-    threaded_camera = ThreadedCamera(args.api_key, args.host, args.port)
+    #args = parseArguments()
+    #threaded_camera = ThreadedCamera(args.api_key, args.host, args.port)
+    venue = load_venue()
+    threaded_camera = ThreadedCamera(venue)
     while threaded_camera.is_active():
         threaded_camera.update()
-        time.sleep(0.2)     # limits main loop
+        time.sleep(0.1)     # limits main loop
