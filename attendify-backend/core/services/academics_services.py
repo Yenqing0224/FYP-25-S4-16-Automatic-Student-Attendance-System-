@@ -471,50 +471,55 @@ class AcademicService:
         except Student.DoesNotExist:
             raise PermissionDenied("User is not a student.")
 
-        if 'file' not in files:
-            raise ValidationError("No image file provided.")
+        required_poses = ['center', 'left', 'right']
+        missing_files = [pose for pose in required_poses if pose not in files]
         
-        uploaded_file = files['file']
-        pose = data.get('pose', 'unknown').lower()
-        AcademicLogic.verify_head_pose(uploaded_file, pose)
+        if missing_files:
+            raise ValidationError(f"Missing images for: {', '.join(missing_files)}")
 
-        _, ext = os.path.splitext(uploaded_file.name)
-        if not ext: ext = '.jpg'
-        new_filename = f"{pose}{ext}"
-
-        url = settings.COMPREFACE_ADD_FACE_URL
-        headers = {'x-api-key': settings.COMPREFACE_API_KEY}
+        uploaded_results = {}
         
-        payload = {'subject': student.student_id}
-        
-        file_content = uploaded_file.read()
-        
-        files_payload = {'file': (new_filename, file_content, uploaded_file.content_type)}
-
         try:
-            response = requests.post(
-                url, headers=headers, params=payload, files=files_payload, timeout=15
-            )
-            
-            if response.status_code in [200, 201]:
-                response_data = response.json()
+            url = settings.COMPREFACE_ADD_FACE_URL
+            headers = {'x-api-key': settings.COMPREFACE_API_KEY}
+            payload = {'subject': student.student_id}
+
+            for pose in required_poses:
+                image_file = files[pose]
                 
-                return {
-                    "status": "success",
-                    "message": f"Face ({pose}) registered successfully.",
-                    "student_id": student.student_id,
-                    "compreface_image_id": response_data.get('image_id')
-                }
-            else:
-                try:
-                    err_msg = response.json().get('message', response.text)
-                except:
-                    err_msg = response.text
+                _, ext = os.path.splitext(image_file.name)
+                if not ext: ext = '.jpg'
+                filename = f"{pose}{ext}"
+
+                image_file.seek(0)
+                file_content = image_file.read()
                 
-                if "no face" in err_msg.lower():
-                     raise ValidationError(f"No face detected in the {pose} image.")
-                     
-                raise Exception(f"Face Service Error: {err_msg}")
+                files_payload = {'file': (filename, file_content, image_file.content_type)}
+
+                response = requests.post(
+                    url, headers=headers, params=payload, files=files_payload, timeout=20
+                )
+
+                if response.status_code in [200, 201]:
+                    data = response.json()
+                    uploaded_results[pose] = data.get('image_id')
+                else:
+                    try:
+                        err_msg = response.json().get('message', response.text)
+                    except:
+                        err_msg = response.text
+                    
+                    raise Exception(f"Failed to register {pose} pose: {err_msg}")
+
+            student.registration = True
+            student.save()
+
+            return {
+                "status": "success",
+                "message": "All faces registered successfully.",
+                "student_id": student.student_id,
+                "image_ids": uploaded_results
+            }
 
         except requests.exceptions.RequestException as e:
-            raise Exception(f"Failed to connect to Face Recognition Service: {str(e)}")
+            raise Exception(f"Face Recognition Service unavailable: {str(e)}")
