@@ -1,6 +1,8 @@
 from django.utils import timezone
 from datetime import datetime, timedelta
 import cv2
+import os
+from django.conf import settings
 import numpy as np
 from rest_framework.exceptions import ValidationError
 
@@ -70,61 +72,59 @@ class AcademicLogic:
 
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
-        # 2. Load OpenCV Cascades (Ensure these XML files are in your project or environment)
-        # In Django, you might need to provide the full path to these .xml files
-        face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
-        eye_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_eye.xml')
-        nose_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_mcs_nose.xml')
+        # 2. Path Discovery (Bundled Files)
+        # These paths look for the 'opencv_data' folder you created in Step 1
+        face_path = os.path.join(settings.BASE_DIR, 'opencv_data', 'haarcascade_frontalface_default.xml')
+        nose_path = os.path.join(settings.BASE_DIR, 'opencv_data', 'haarcascade_mcs_nose.xml')
+
+        face_cascade = cv2.CascadeClassifier(face_path)
+        nose_cascade = cv2.CascadeClassifier(nose_path)
+
+        # Emergency check if files didn't deploy correctly
+        if face_cascade.empty() or nose_cascade.empty():
+            raise ValidationError("Server Error: Facial detection models missing.")
 
         # 3. Detect Face
         faces = face_cascade.detectMultiScale(gray, 1.3, 5)
         if len(faces) == 0:
-            raise ValidationError(f"No face detected in the {target_pose} image. Please ensure good lighting.")
+            raise ValidationError("No face detected. Please ensure good lighting.")
 
-        # Use the largest face
+        # Pick largest face
         (x, y, w, h) = sorted(faces, key=lambda f: f[2]*f[3])[-1]
         roi_gray = gray[y:y+h, x:x+w]
 
-        # 4. Detect Eyes and Nose within the face
-        eyes = eye_cascade.detectMultiScale(roi_gray, 1.1, 10)
+        # 4. Detect Nose within the face ROI
+        # We focus on the nose because it's the best anchor for "turning"
         noses = nose_cascade.detectMultiScale(roi_gray, 1.1, 10)
 
-        # We need at least 2 eyes and 1 nose to calculate symmetry
-        if len(eyes) < 2 or len(noses) < 1:
-            # If we can't find features, we can't verify the angle accurately
-            # In 'center' pose, we should definitely find them.
+        if len(noses) == 0:
+            # Fallback for side poses: if we see a face but no nose, 
+            # it might be turned too far for this specific cascade
             if target_pose == "center":
-                raise ValidationError("Face detected, but eyes/nose not clear. Please look straight at the camera.")
-            return True # Fallback: Allow it if it's a side profile where eyes are hard to see
+                raise ValidationError("Please look straight at the camera.")
+            return True 
 
-        # 5. Calculate Symmetry Ratio
-        # Sort eyes: left to right
-        eyes = sorted(eyes, key=lambda e: e[0])
-        left_eye_x = eyes[0][0] + (eyes[0][2] // 2)
-        right_eye_x = eyes[-1][0] + (eyes[-1][2] // 2)
+        # 5. Calculate Nose Symmetry
+        # Nose X-center relative to the Face Box width
         nose_x = noses[0][0] + (noses[0][2] // 2)
+        face_width = w
+        
+        # nose_ratio: 0.5 is perfectly centered
+        nose_ratio = nose_x / face_width
 
-        # total_width is distance between eyes
-        total_width = right_eye_x - left_eye_x
-        if total_width <= 0: return True
-
-        # nose_pos is where the nose sits between eyes (0.5 is center)
-        nose_ratio = (nose_x - left_eye_x) / total_width
-
-        # 6. Verify Target Pose
-        # Note: If image is mirrored by frontend, LEFT/RIGHT logic might flip
+        # 6. Pose Validation Logic
         if target_pose == "center":
-            if nose_ratio < 0.35 or nose_ratio > 0.65:
-                raise ValidationError("Please look straight at the camera for the center pose.")
+            if not (0.4 <= nose_ratio <= 0.6):
+                raise ValidationError("Please look straight at the camera.")
         
         elif target_pose == "left":
-            # Nose moves towards the right eye (higher ratio) when turning left
-            if nose_ratio < 0.60:
-                raise ValidationError("You are not turning LEFT enough. Please turn your head more.")
+            # In a non-mirrored image: turning left moves nose to the right side of the box
+            if nose_ratio < 0.62:
+                raise ValidationError("Turn your head further to the LEFT.")
                 
         elif target_pose == "right":
-            # Nose moves towards the left eye (lower ratio) when turning right
-            if nose_ratio > 0.40:
-                raise ValidationError("You are not turning RIGHT enough. Please turn your head more.")
+            # Turning right moves nose to the left side of the box
+            if nose_ratio > 0.38:
+                raise ValidationError("Turn your head further to the RIGHT.")
 
         return True
