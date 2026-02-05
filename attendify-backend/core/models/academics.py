@@ -32,7 +32,7 @@ class Module(models.Model):
 
     # Relationships
     semester = models.ForeignKey('Semester', on_delete=models.CASCADE, related_name='modules')
-    lecturer = models.ForeignKey('core.Lecturer', on_delete=    models.SET_NULL, null=True, blank=True, related_name='modules_taught')
+    lecturer = models.ForeignKey('core.Lecturer', on_delete=models.SET_NULL, null=True, blank=True, related_name='modules_taught')
     students = models.ManyToManyField('core.Student', blank=True, related_name='modules_enrolled')
 
     # Attributes
