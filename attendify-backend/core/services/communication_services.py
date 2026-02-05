@@ -57,7 +57,7 @@ class CommunicationService:
         is_joined = False
         if hasattr(user, 'student_profile'):
             student = user.student_profile
-            is_joined = event.students.filter(id=student.id).exists()
+            is_joined = event.students.filter(pk=student.pk).exists()
 
         return {
             "id": event.id,
