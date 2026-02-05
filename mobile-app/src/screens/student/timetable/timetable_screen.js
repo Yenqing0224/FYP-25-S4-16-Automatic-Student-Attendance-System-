@@ -28,6 +28,11 @@ const COLORS = {
   textDark: "#111827",
   textMuted: "#6B7280",
   borderSoft: "#E5E7EB",
+
+  // NewsEvents-style helper colors
+  border: "#E5E7EB",
+  chipBg: "rgba(58,122,254,0.12)",
+  shadow: "rgba(0,0,0,0.08)",
 };
 
 // ✅ render-safe helper (prevents {id,name} crash)
@@ -57,6 +62,10 @@ const TimetableScreen = ({ navigation }) => {
   // Reminder tracking
   const [savedReminderIds, setSavedReminderIds] = useState(new Set());
   const [savingId, setSavingId] = useState(null);
+
+  // Bulk add state
+  const [bulkSaving, setBulkSaving] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState({ done: 0, total: 0 });
 
   // --- Load reminder ids once ---
   useEffect(() => {
@@ -191,14 +200,11 @@ const TimetableScreen = ({ navigation }) => {
     return newMarked;
   };
 
-  // --- REMINDER LOGIC ---
+  // --- REMINDER IDS (tracking only, no per-card button) ---
   const reminderIdFor = (item) => {
     const code = toText(item?.module?.code, "MOD");
     return `${code}|${toText(item?.date, "")}|${toText(item?.start_time, "")}|${toText(item?.venue, "")}`;
   };
-
-  const isAdded = (item) => savedReminderIds.has(reminderIdFor(item));
-  const isSavingThis = (item) => savingId === reminderIdFor(item);
 
   const buildStartEndDates = (item) => {
     const date = toText(item?.date, "");
@@ -214,78 +220,86 @@ const TimetableScreen = ({ navigation }) => {
     return { start, end };
   };
 
-  const addReminderToCalendar = async (item) => {
-    const rid = reminderIdFor(item);
+  // --- BULK ADD ---
+  const getDefaultCalendarId = async () => {
+    const { status } = await ExpoCalendar.requestCalendarPermissionsAsync();
+    if (status !== "granted") return null;
 
-    if (savedReminderIds.has(rid)) {
-      Alert.alert("Already added", "This class reminder is already tracked.");
+    const calendars = await ExpoCalendar.getCalendarsAsync(ExpoCalendar.EntityTypes.EVENT);
+    const defaultCal = calendars.find((c) => c.allowsModifications) || calendars[0];
+    return defaultCal?.id || null;
+  };
+
+  const addAllToCalendar = async ({ onlyUpcoming = true } = {}) => {
+    if (bulkSaving) return;
+
+    const now = new Date();
+    const targets = (onlyUpcoming ? fullSchedule.filter((x) => getJsDate(x) > now) : fullSchedule).sort(
+      (a, b) => getJsDate(a) - getJsDate(b)
+    );
+
+    if (targets.length === 0) {
+      Alert.alert("Nothing to add", onlyUpcoming ? "No upcoming classes." : "No classes found.");
       return;
     }
 
-    setSavingId(rid);
+    setBulkSaving(true);
+    setBulkProgress({ done: 0, total: targets.length });
 
     try {
-      const { status } = await ExpoCalendar.requestCalendarPermissionsAsync();
-      if (status !== "granted") {
+      const calId = await getDefaultCalendarId();
+      if (!calId) {
         Alert.alert("Permission needed", "Please allow Calendar access to add reminders.");
         return;
       }
 
-      const calendars = await ExpoCalendar.getCalendarsAsync(ExpoCalendar.EntityTypes.EVENT);
-      const defaultCal = calendars.find((c) => c.allowsModifications) || calendars[0];
-
-      if (!defaultCal) {
-        Alert.alert("No calendar found", "Please enable a calendar on your device.");
-        return;
-      }
-
-      const { start, end } = buildStartEndDates(item);
-
-      const moduleCode = toText(item?.module?.code, "Module");
-      const moduleName = toText(item?.module?.name, "Class");
-
-      await ExpoCalendar.createEventAsync(defaultCal.id, {
-        title: `${moduleCode} - ${moduleName}`,
-        startDate: start,
-        endDate: end,
-        location: toText(item?.venue, ""),
-        notes: "Created from Attendify (Student).",
-        timeZone: "Asia/Singapore",
-      });
+      let added = 0;
+      let skipped = 0;
+      let failed = 0;
 
       const next = new Set(savedReminderIds);
-      next.add(rid);
+
+      for (let i = 0; i < targets.length; i++) {
+        const item = targets[i];
+        const rid = reminderIdFor(item);
+
+        if (next.has(rid)) {
+          skipped++;
+          setBulkProgress({ done: i + 1, total: targets.length });
+          continue;
+        }
+
+        try {
+          const { start, end } = buildStartEndDates(item);
+          const moduleCode = toText(item?.module?.code, "Module");
+          const moduleName = toText(item?.module?.name, "Class");
+
+          await ExpoCalendar.createEventAsync(calId, {
+            title: `${moduleCode} - ${moduleName}`,
+            startDate: start,
+            endDate: end,
+            location: toText(item?.venue, ""),
+            notes: "Created from Attendify (Student).",
+            timeZone: "Asia/Singapore",
+          });
+
+          next.add(rid);
+          added++;
+        } catch (e) {
+          failed++;
+        }
+
+        setBulkProgress({ done: i + 1, total: targets.length });
+      }
+
       setSavedReminderIds(next);
       await persistReminderIds(next);
 
-      Alert.alert("Done", "Reminder added to your calendar.");
-    } catch (e) {
-      console.error(e);
-      Alert.alert("Error", "Could not add reminder.");
+      Alert.alert("Done", `Added: ${added}\nSkipped: ${skipped}\nFailed: ${failed}`);
     } finally {
-      setSavingId(null);
+      setBulkSaving(false);
+      setBulkProgress({ done: 0, total: 0 });
     }
-  };
-
-  const removeReminderTracking = async (item) => {
-    const rid = reminderIdFor(item);
-    Alert.alert(
-      "Remove reminder?",
-      "This removes it from Attendify tracking. You can delete the calendar event in your Calendar app.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Remove",
-          style: "destructive",
-          onPress: async () => {
-            const next = new Set(savedReminderIds);
-            next.delete(rid);
-            setSavedReminderIds(next);
-            await persistReminderIds(next);
-          },
-        },
-      ]
-    );
   };
 
   // --- UI HELPERS ---
@@ -295,36 +309,7 @@ const TimetableScreen = ({ navigation }) => {
     setActiveTab("Selected");
   };
 
-  const renderReminderBtn = (item) => {
-    const added = isAdded(item);
-    const saving = isSavingThis(item);
-
-    return (
-      <TouchableOpacity
-        style={[
-          styles.reminderBtn,
-          added ? styles.reminderBtnAdded : styles.reminderBtnNormal,
-          (added || saving) && { opacity: 0.85 },
-        ]}
-        disabled={saving}
-        onPress={() => {
-          if (added) removeReminderTracking(item);
-          else addReminderToCalendar(item);
-        }}
-        activeOpacity={0.9}
-      >
-        <Ionicons
-          name={saving ? "time-outline" : added ? "checkmark-circle" : "add-circle"}
-          size={16}
-          color={added ? "#1A2B5F" : "#fff"}
-        />
-        <Text style={[styles.reminderBtnText, added && { color: "#1A2B5F" }]}>
-          {saving ? "Adding…" : added ? "Added" : "Add reminder"}
-        </Text>
-      </TouchableOpacity>
-    );
-  };
-
+  // ✅ KEEP CLASS CARD DETAILS (unchanged) — no reminder button inside cards
   const renderSelectedContent = () => {
     const classesForDay = fullSchedule.filter((item) => toText(item.date, "") === selectedDate);
 
@@ -370,8 +355,6 @@ const TimetableScreen = ({ navigation }) => {
                       {venue}
                     </Text>
                   </View>
-
-                  <View style={{ marginTop: 12 }}>{renderReminderBtn(item)}</View>
                 </View>
               </TouchableOpacity>
             );
@@ -386,12 +369,16 @@ const TimetableScreen = ({ navigation }) => {
     );
   };
 
-  // ✅ OPTION A: better "Upcoming" header row (count + Go to today chip)
+  // ✅ KEEP CLASS CARD DETAILS (unchanged) — add all button in header row
   const renderUpcomingContent = () => {
     const now = new Date();
     const upcoming = fullSchedule
       .filter((item) => getJsDate(item) > now)
       .sort((a, b) => getJsDate(a) - getJsDate(b));
+
+    // show "Added" state if everything upcoming already tracked
+    const allUpcomingAdded =
+      upcoming.length > 0 && upcoming.every((x) => savedReminderIds.has(reminderIdFor(x)));
 
     return (
       <View>
@@ -403,10 +390,32 @@ const TimetableScreen = ({ navigation }) => {
             </Text>
           </View>
 
-          <TouchableOpacity onPress={goToday} activeOpacity={0.9} style={styles.sectionChip}>
-            <Ionicons name="today-outline" size={14} color={COLORS.primary} />
-            <Text style={styles.sectionChipText}>Go to today</Text>
-          </TouchableOpacity>
+          <View style={{ flexDirection: "row", gap: 10, alignItems: "center" }}>
+            <TouchableOpacity onPress={goToday} activeOpacity={0.9} style={styles.sectionChip}>
+              <Ionicons name="today-outline" size={14} color={COLORS.primary} />
+              <Text style={styles.sectionChipText}>Go to today</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => addAllToCalendar({ onlyUpcoming: false })}
+              activeOpacity={0.9}
+              style={styles.sectionChip}
+              disabled={bulkSaving || allUpcomingAdded}
+            >
+              <Ionicons
+                name={bulkSaving ? "time-outline" : allUpcomingAdded ? "checkmark-circle-outline" : "calendar-outline"}
+                size={14}
+                color={COLORS.primary}
+              />
+              <Text style={styles.sectionChipText}>
+                {bulkSaving
+                  ? `Adding ${bulkProgress.done}/${bulkProgress.total}`
+                  : allUpcomingAdded
+                  ? "Added"
+                  : "Add all"}
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {upcoming.length === 0 ? (
@@ -459,8 +468,6 @@ const TimetableScreen = ({ navigation }) => {
                     </Text>
                   </View>
                 </View>
-
-                <View style={{ marginTop: 12 }}>{renderReminderBtn(item)}</View>
               </TouchableOpacity>
             );
           })
@@ -473,23 +480,26 @@ const TimetableScreen = ({ navigation }) => {
     <View style={styles.mainContainer}>
       <SafeAreaView edges={["top"]} style={styles.topSafeArea} />
       <View style={styles.contentContainer}>
-        <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+        <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
 
-        {/* HEADER */}
+        {/* ✅ HEADER = NewsEvents style */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerIconBox} activeOpacity={0.85}>
-            <Ionicons name="chevron-back" size={24} color={COLORS.primary} />
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.85}>
+            <Ionicons name="chevron-back" size={22} color={COLORS.primary} />
           </TouchableOpacity>
 
           <Text style={styles.headerTitle}>Timetable</Text>
 
-          <TouchableOpacity onPress={goToday} style={[styles.headerIconBox, { alignItems: "flex-end" }]} activeOpacity={0.85}>
-            <Ionicons name="today-outline" size={20} color={COLORS.primary} />
+          <TouchableOpacity onPress={goToday} style={styles.refreshBtn} activeOpacity={0.85}>
+            <Ionicons name="today-outline" size={18} color={COLORS.primary} />
           </TouchableOpacity>
         </View>
 
         {loading ? (
-          <ActivityIndicator size="large" color={COLORS.primary} style={{ marginTop: 50 }} />
+          <View style={styles.loadingBox}>
+            <ActivityIndicator size="large" color={COLORS.primary} />
+            <Text style={styles.loadingText}>Loading timetable...</Text>
+          </View>
         ) : (
           <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
             <View style={styles.calendarCard}>
@@ -514,25 +524,26 @@ const TimetableScreen = ({ navigation }) => {
               />
             </View>
 
-            <View style={styles.toggleContainer}>
-              <TouchableOpacity
-                style={[styles.toggleButton, activeTab === "Selected" ? styles.activeBtn : styles.inactiveBtn]}
-                onPress={() => setActiveTab("Selected")}
-                activeOpacity={0.9}
-              >
-                <Text style={activeTab === "Selected" ? styles.activeText : styles.inactiveText}>Selected</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.toggleButton, activeTab === "Upcoming" ? styles.activeBtn : styles.inactiveBtn]}
-                onPress={() => {
-                  setActiveTab("Upcoming");
-                  setSelectedDate(new Date().toISOString().split("T")[0]);
-                }}
-                activeOpacity={0.9}
-              >
-                <Text style={activeTab === "Upcoming" ? styles.activeText : styles.inactiveText}>Upcoming</Text>
-              </TouchableOpacity>
+            {/* ✅ Tabs = NewsEvents style */}
+            <View style={styles.tabContainer}>
+              {["Selected", "Upcoming"].map((tab) => {
+                const isActive = activeTab === tab;
+                return (
+                  <TouchableOpacity
+                    key={tab}
+                    style={[styles.tabButton, isActive && styles.activeTab]}
+                    onPress={() => {
+                      setActiveTab(tab);
+                      if (tab === "Upcoming") setSelectedDate(new Date().toISOString().split("T")[0]);
+                    }}
+                    activeOpacity={0.9}
+                  >
+                    <Text style={[styles.tabText, isActive ? styles.activeTabText : styles.inactiveTabText]}>
+                      {tab}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
 
             {activeTab === "Selected" ? renderSelectedContent() : renderUpcomingContent()}
@@ -545,27 +556,42 @@ const TimetableScreen = ({ navigation }) => {
 
 const styles = StyleSheet.create({
   mainContainer: { flex: 1, backgroundColor: COLORS.background },
-  topSafeArea: { flex: 0, backgroundColor: "#FFFFFF" },
+  topSafeArea: { flex: 0, backgroundColor: COLORS.background },
   contentContainer: { flex: 1, backgroundColor: COLORS.background },
   scrollContent: { paddingBottom: 28 },
 
+  // ✅ NewsEvents-style header
   header: {
-    backgroundColor: "#FFFFFF",
-    paddingVertical: 16,
-    paddingHorizontal: 20,
+    backgroundColor: COLORS.background,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     borderBottomWidth: 1,
-    borderBottomColor: "#E5E7EB",
-    shadowColor: "#000",
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 3,
+    borderBottomColor: "#EDEEF2",
   },
-  headerIconBox: { width: 32, alignItems: "flex-start" },
-  headerTitle: { fontSize: 22, fontWeight: "800", color: COLORS.textDark },
+  backBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 14,
+    backgroundColor: COLORS.chipBg,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  refreshBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 14,
+    backgroundColor: COLORS.chipBg,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  headerTitle: { fontSize: 18, fontWeight: "900", color: COLORS.textDark },
+
+  // Loading
+  loadingBox: { flex: 1, justifyContent: "center", alignItems: "center" },
+  loadingText: { marginTop: 10, color: COLORS.textMuted, fontWeight: "600" },
 
   calendarCard: {
     backgroundColor: "#FFFFFF",
@@ -580,28 +606,30 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
 
-  toggleContainer: {
+  // ✅ NewsEvents-style tabs
+  tabContainer: {
     flexDirection: "row",
-    backgroundColor: "#E5E7EB",
     marginHorizontal: 20,
-    marginTop: 18,
+    marginTop: 12,
+    backgroundColor: COLORS.card,
     borderRadius: 999,
-    padding: 3,
-    height: 46,
+    padding: 6,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
-  toggleButton: { flex: 1, alignItems: "center", justifyContent: "center", borderRadius: 999 },
-  activeBtn: {
-    backgroundColor: "#FFFFFF",
-    shadowColor: "#000",
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
+  tabButton: {
+    flex: 1,
+    height: 40,
+    borderRadius: 999,
+    justifyContent: "center",
+    alignItems: "center",
   },
-  inactiveBtn: { backgroundColor: "transparent" },
-  activeText: { fontWeight: "800", color: "#111827", fontSize: 14 },
-  inactiveText: { fontWeight: "700", color: "#9CA3AF", fontSize: 14 },
+  activeTab: { backgroundColor: COLORS.primary },
+  tabText: { fontSize: 14, fontWeight: "800" },
+  activeTabText: { color: "#fff" },
+  inactiveTabText: { color: COLORS.textMuted },
 
+  // --- Existing timetable styles (kept) ---
   sectionRow: {
     marginHorizontal: 20,
     marginTop: 20,
@@ -623,7 +651,6 @@ const styles = StyleSheet.create({
   },
   todayPillText: { color: "#fff", fontWeight: "800", fontSize: 12 },
 
-  // ✅ OPTION A styles
   sectionHeaderRow: {
     marginHorizontal: 20,
     marginTop: 18,
@@ -671,7 +698,12 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
 
-  cardSelected: { backgroundColor: "#F0F5FF", borderWidth: 1, borderColor: "#C7D2FE", flexDirection: "row" },
+  cardSelected: {
+    backgroundColor: "#F0F5FF",
+    borderWidth: 1,
+    borderColor: "#C7D2FE",
+    flexDirection: "row",
+  },
   cardUpcomingModern: { backgroundColor: "#FFFFFF", borderRadius: 18 },
 
   cardContent: { flex: 1 },
@@ -683,7 +715,12 @@ const styles = StyleSheet.create({
   eventTime: { fontSize: 13, fontWeight: "800", color: COLORS.primary },
   eventLoc: { flex: 1, fontSize: 13, fontWeight: "700", color: COLORS.textMuted },
 
-  cardHeaderRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 },
+  cardHeaderRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: 12,
+  },
   upTitle: { flex: 1, fontSize: 16, fontWeight: "900", color: "#1A2B5F", marginRight: 8 },
 
   chip: {
@@ -702,19 +739,6 @@ const styles = StyleSheet.create({
 
   emptyContainer: { alignItems: "center", padding: 26 },
   emptyText: { marginTop: 10, color: "#9CA3AF", fontSize: 14, fontWeight: "700" },
-
-  reminderBtn: {
-    alignSelf: "flex-start",
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 14,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  reminderBtnNormal: { backgroundColor: COLORS.primary },
-  reminderBtnAdded: { backgroundColor: "#E0E7FF" },
-  reminderBtnText: { fontWeight: "900", color: "#FFFFFF", fontSize: 13 },
 });
 
 export default TimetableScreen;
