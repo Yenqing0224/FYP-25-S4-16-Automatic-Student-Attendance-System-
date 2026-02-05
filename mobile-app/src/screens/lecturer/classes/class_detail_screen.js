@@ -1,4 +1,3 @@
-// src/screens/lecturer/classes/class_detail_screen.js
 import React, { useMemo, useState } from "react";
 import { 
   View, Text, StyleSheet, TouchableOpacity, StatusBar, 
@@ -8,6 +7,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import api from "../../../api/api_client"; 
 
+// Keep these here for logic
 const COLORS = {
   primary: "#6D5EF5",
   background: "#F6F5FF",
@@ -45,7 +45,6 @@ export default function LecturerClassDetailScreen({ route, navigation }) {
   const cls = route?.params?.cls;
   const [busy, setBusy] = useState(false);
 
-  // --- Data Mapping ---
   const moduleText = toText(cls?.module, "MOD");
   const titleText = toText(cls?.moduleName ?? cls?.title, "Class"); 
   const sessionName = toText(cls?.name, ""); 
@@ -56,65 +55,29 @@ export default function LecturerClassDetailScreen({ route, navigation }) {
 
   const moduleColor = getModuleColor(moduleText);
 
-  // --- Status Checks ---
   const status = String(toText(cls?.status, "active")).toLowerCase();
   const statusLabelLower = String(toText(cls?.statusLabel, "")).toLowerCase();
 
   const isCancelled = status === "cancelled" || statusLabelLower === "cancelled";
   
-  // Visual check used to HIDE the button
-  const isRescheduled =
-    status === "rescheduled" ||
-    statusLabelLower === "rescheduled" ||
-    String(sessionName).includes("(Rescheduled)") ||
-    String(titleText).includes("(Rescheduled)");
+  const isOriginalMoved = status === "rescheduled" || statusLabelLower === "rescheduled";
+  const isReplacement = String(sessionName).includes("(Rescheduled)") || String(titleText).includes("(Rescheduled)");
+  const isLocked = isOriginalMoved || isReplacement;
 
   const isUpcoming = useMemo(() => {
     const t = new Date(toText(cls?.startISO, "")).getTime();
     return !isNaN(t) && t > Date.now();
   }, [cls?.startISO]);
 
-  // ✅ VALIDATION LOGIC with ERROR CLEANING
   const goReschedule = async () => {
     const sessionId = cls?.id ?? cls?._id ?? cls?.session_id;
     if (!sessionId) return Alert.alert("Missing", "No session id found.");
-
     setBusy(true); 
-
     try {
-      // 1. Call Backend to check availability (POST)
-      await api.post('/get-reschedule-options/', { 
-        session_id: sessionId 
-      });
-
-      // 2. Success? Go to next screen
+      await api.post('/get-reschedule-options/', { session_id: sessionId });
       navigation.navigate("LecturerReschedule", { cls: { ...cls, id: String(sessionId) } });
-
     } catch (err) {
-      console.log("Reschedule Check Failed:", err.response?.data);
-
-      let msg = "This class cannot be rescheduled.";
-      const rawError = err.response?.data?.message || err.response?.data?.detail;
-
-      if (rawError) {
-        // ✅ CLEANER: Extract text from "[ErrorDetail(string='TEXT', code='...')]"
-        if (typeof rawError === "string" && rawError.includes("ErrorDetail")) {
-          // Regex to grab content between string=' and '
-          const match = rawError.match(/string=['"](.*?)['"]/);
-          if (match && match[1]) {
-            msg = match[1];
-          } else {
-            // Fallback cleanup if regex fails
-            msg = rawError.replace(/\[ErrorDetail\(string='/g, "").replace(/', code='invalid'\)\]/g, "");
-          }
-        } else {
-          // Standard string error
-          msg = String(rawError);
-        }
-      }
-
-      // 3. Show the clean message
-      Alert.alert("Not Allowed", msg);
+      Alert.alert("Not Allowed", "This class cannot be rescheduled.");
     } finally {
       setBusy(false);
     }
@@ -122,11 +85,11 @@ export default function LecturerClassDetailScreen({ route, navigation }) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
+      <StatusBar barStyle="dark-content" backgroundColor="#F6F5FF" />
 
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Ionicons name="chevron-back" size={26} color={COLORS.primary} />
+          <Ionicons name="chevron-back" size={26} color="#6D5EF5" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Class Details</Text>
         <View style={{ width: 30 }} />
@@ -134,28 +97,20 @@ export default function LecturerClassDetailScreen({ route, navigation }) {
 
       <ScrollView contentContainerStyle={styles.content}>
         
-        {/* RESCHEDULED PILL */}
-        {isRescheduled && !isCancelled && (
-          <View style={{ marginBottom: 12 }}>
-            <View style={[styles.statusPill, { backgroundColor: moduleColor + "22", borderColor: moduleColor + "55" }]}>
-              <Ionicons name="swap-horizontal-outline" size={16} color={moduleColor} />
-              <Text style={[styles.statusPillText, { color: moduleColor }]}>RESCHEDULED</Text>
-            </View>
-            <Text style={styles.rescheduledHint}>
-              This class has been rescheduled and cannot be changed again.
-            </Text>
+        {isOriginalMoved && !isCancelled && (
+          <View style={[styles.statusPill, { backgroundColor: moduleColor + "22", borderColor: moduleColor + "55" }]}>
+            <Ionicons name="swap-horizontal-outline" size={16} color={moduleColor} />
+            <Text style={[styles.statusPillText, { color: moduleColor }]}>RESCHEDULED</Text>
           </View>
         )}
 
-        {/* CANCELLED PILL */}
         {isCancelled && (
           <View style={styles.cancelPill}>
-            <Ionicons name="close-circle-outline" size={16} color={COLORS.danger} />
+            <Ionicons name="close-circle-outline" size={16} color="#DC2626" />
             <Text style={styles.cancelPillText}>CANCELLED</Text>
           </View>
         )}
 
-        {/* DETAILS CARD */}
         <View style={[styles.card, { borderColor: moduleColor + "55" }]}>
           <View style={{ flexDirection: "row" }}>
             <View style={[styles.moduleBar, { backgroundColor: moduleColor }]} />
@@ -181,19 +136,28 @@ export default function LecturerClassDetailScreen({ route, navigation }) {
           </View>
         </View>
 
-        {/* ACTIONS CARD */}
-        {/* ✅ BUTTON IS HIDDEN IF RESCHEDULED */}
-        {isUpcoming && !isCancelled && !isRescheduled && (
+        {!isCancelled && (
+          <>
+            {isOriginalMoved && (
+              <Text style={styles.rescheduledHint}>
+                This class has been rescheduled once. Rescheduling again is disabled.
+              </Text>
+            )}
+            
+            {isReplacement && (
+              <Text style={styles.rescheduledHint}>
+                This is a replacement class. Rescheduling again is disabled.
+              </Text>
+            )}
+          </>
+        )}
+
+        {isUpcoming && !isCancelled && !isLocked && (
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Actions</Text>
-
             <View style={styles.actionsRow}>
               <TouchableOpacity
-                style={[
-                  styles.primaryBtn,
-                  { backgroundColor: moduleColor },
-                  busy && { opacity: 0.65 },
-                ]}
+                style={[styles.primaryBtn, { backgroundColor: moduleColor }, busy && { opacity: 0.65 }]}
                 onPress={goReschedule}
                 disabled={busy} 
               >
@@ -202,9 +166,7 @@ export default function LecturerClassDetailScreen({ route, navigation }) {
                 ) : (
                   <>
                     <Ionicons name="calendar-outline" size={16} color="#fff" />
-                    <Text style={styles.primaryBtnText}>
-                      Reschedule
-                    </Text>
+                    <Text style={styles.primaryBtnText}>Reschedule</Text>
                   </>
                 )}
               </TouchableOpacity>
@@ -217,32 +179,26 @@ export default function LecturerClassDetailScreen({ route, navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
-  header: { paddingVertical: 14, paddingHorizontal: 20, flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderBottomWidth: 1, borderBottomColor: COLORS.border },
+  container: { flex: 1, backgroundColor: "#F6F5FF" },
+  header: { paddingVertical: 14, paddingHorizontal: 20, flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderBottomWidth: 1, borderBottomColor: "#E5E7EB" },
   backBtn: { width: 30 },
-  headerTitle: { fontSize: 20, fontWeight: "900", color: COLORS.textDark },
+  headerTitle: { fontSize: 20, fontWeight: "900", color: "#111827" },
   content: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 24 },
-  
   statusPill: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, alignSelf: "flex-start", marginBottom: 12, borderWidth: 1 },
   statusPillText: { fontWeight: "900", fontSize: 12 },
-  
   cancelPill: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "#FEE2E2", paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, alignSelf: "flex-start", marginBottom: 12, borderWidth: 1, borderColor: "#FCA5A5" },
-  cancelPillText: { color: COLORS.danger, fontWeight: "900", fontSize: 12 },
-  
-  card: { backgroundColor: COLORS.card, borderRadius: 18, padding: 16, borderWidth: 1, borderColor: COLORS.border, marginBottom: 12 },
+  cancelPillText: { color: "#DC2626", fontWeight: "900", fontSize: 12 },
+  card: { backgroundColor: "#FFFFFF", borderRadius: 18, padding: 16, borderWidth: 1, borderColor: "#E5E7EB", marginBottom: 12 },
   moduleBar: { width: 6, borderRadius: 6, marginRight: 12 },
   module: { fontWeight: "900" },
-  title: { marginTop: 4, fontSize: 18, fontWeight: "900", color: COLORS.textDark },
-  divider: { height: 1, backgroundColor: COLORS.border, marginVertical: 14 },
+  title: { marginTop: 4, fontSize: 18, fontWeight: "900", color: "#111827" },
+  divider: { height: 1, backgroundColor: "#E5E7EB", marginVertical: 14 },
   infoRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 10 },
-  label: { color: COLORS.textMuted, fontWeight: "800" },
-  value: { color: COLORS.textDark, fontWeight: "900", maxWidth: "55%", textAlign: "right" },
-  
-  cardTitle: { fontSize: 16, fontWeight: "900", color: COLORS.textDark },
+  label: { color: "#6B7280", fontWeight: "800" },
+  value: { color: "#111827", fontWeight: "900", maxWidth: "55%", textAlign: "right" },
+  cardTitle: { fontSize: 16, fontWeight: "900", color: "#111827" },
   actionsRow: { flexDirection: "row", gap: 10, marginTop: 12 },
-  
   primaryBtn: { flex: 1, paddingVertical: 12, borderRadius: 14, flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 8 },
   primaryBtnText: { color: "#fff", fontWeight: "900" },
-  
-  rescheduledHint: { marginTop: 6, marginLeft: 6, color: COLORS.textMuted, fontSize: 12, fontWeight: "600" },
+  rescheduledHint: { marginTop: 4, marginLeft: 6, color: "#6B7280", fontSize: 12, fontWeight: "600" },
 });
