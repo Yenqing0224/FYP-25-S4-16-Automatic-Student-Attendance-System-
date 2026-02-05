@@ -180,7 +180,7 @@ def register_face(request):
     service = AcademicService()
     
     try:
-        result = service.register_face(request.user, request.FILES)
+        result = service.register_face(request.user, request.data, request.FILES)
         return Response(result, status=201)
 
     except Exception as e:
