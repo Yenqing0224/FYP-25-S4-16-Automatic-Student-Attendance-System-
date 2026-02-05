@@ -45,6 +45,9 @@ class Event(models.Model):
         ('cancelled', 'Cancelled'),
     ]
 
+    # Relationships
+    students = models.ManyToManyField('core.Student', blank=True, related_name='events_students')
+
     # Attributes
     title = models.CharField(max_length=255)
     message = models.TextField(help_text="Short teaser or subtitle")
@@ -55,11 +58,24 @@ class Event(models.Model):
     image_url = models.CharField(max_length=500, blank=True, null=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='upcoming')
     created_at = models.DateTimeField(auto_now_add=True)
+    slot_limit = models.PositiveIntegerField(null=True, blank=True)
 
-    # Stats
-    total_student = models.IntegerField(default=0)
+    @property
+    def total_student(self):
+        return self.students.count()
+    
+    @property
+    def is_full(self):
+        if self.slot_limit is None:
+            return False
+        return self.total_student >= self.slot_limit
 
-
+    @property
+    def slots_remaining(self):
+        if self.slot_limit is None:
+            return None
+        return max(0, self.slot_limit - self.total_student)
+    
     class Meta:
         ordering = ['-event_date']
         indexes = [ models.Index(fields=['event_date', 'status']) ]

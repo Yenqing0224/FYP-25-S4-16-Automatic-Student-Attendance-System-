@@ -1,6 +1,7 @@
 from core.models import Notification, News, Event, ClassSession, AttendanceRecord
 from django.utils import timezone
 from datetime import datetime, timedelta
+from django.db.models import Count
 # Import Logic
 from core.logic.communication_logics import CommunicationLogic
 
@@ -21,6 +22,8 @@ class CommunicationService:
             event_date__lte=end_date
         ).exclude(
             status='cancelled'
+        ).annotate(
+            joined_count=Count('students')
         ).order_by('event_date')
 
         return news_object, events_object

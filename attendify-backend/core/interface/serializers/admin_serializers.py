@@ -176,6 +176,9 @@ class AdminNewsSerializer(serializers.ModelSerializer):
         return super().update(instance, validated_data)
 
 class AdminEventSerializer(serializers.ModelSerializer):
+    total_student = serializers.ReadOnlyField()
+    is_full = serializers.ReadOnlyField()
+    slots_remaining = serializers.ReadOnlyField()
     upload_image = serializers.ImageField(write_only=True, required=False)
     class Meta:
         model = Event
