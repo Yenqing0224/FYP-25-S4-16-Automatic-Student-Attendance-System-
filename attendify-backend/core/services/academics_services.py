@@ -4,6 +4,7 @@ from datetime import timedelta, datetime, time
 from django.db.models import Q, Prefetch
 from django.conf import settings
 import os
+import statistics
 import requests
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from core.logic.academics_logics import AcademicLogic
@@ -213,6 +214,8 @@ class AcademicService:
             )
 
             if session.status != new_status:
+                if new_status == 'completed':
+                    self.validate_attendance_duration(session)
                 session.status = new_status
                 session.save()
                 updated_count += 1
@@ -220,6 +223,31 @@ class AcademicService:
         return f"Updated status for {updated_count} sessions."
     
 
+    def validate_attendance_duration(self, session):
+        valid_records = session.attendance_records.filter(duration__gt=0)
+        duration_list = list(valid_records.values_list('duration', flat=True))
+        
+        if not duration_list:
+            return
+        
+        median_duration = statistics.median(duration_list)
+        threshold = median_duration * 0.5
+
+        short_duration_records = session.attendance_records.filter(
+            status='present',
+            duration__lt=threshold
+        )
+
+        count = short_duration_records.count()
+
+        if count > 0:
+            short_duration_records.update(
+                status='absent',
+                remarks=f"Auto-Absent: Duration < {threshold:.0f}m (Median: {median_duration:.0f}m)"
+            )
+            print(f"[Audit] Session {session.id}: Marked {count} students absent (Median Check).")
+
+            
     def get_reschedule_options(self, user, data):
         session_id = data.get('session_id')
 
