@@ -170,7 +170,8 @@ const LecturerSessionsScreen = ({ navigation, route }) => {
 
   if (loading) {
     return (
-      <SafeAreaView style={[styles.container, styles.centered]}>
+      <SafeAreaView style={[styles.container, styles.centered]} edges={["top"]}>
+
         <ActivityIndicator size="large" color={COLORS.primary} />
       </SafeAreaView>
     );
@@ -179,7 +180,8 @@ const LecturerSessionsScreen = ({ navigation, route }) => {
   const tabs = ["Upcoming", "Past", "Rescheduled", "Calendar"];
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={["top"]}>
+
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
 
       {/* HEADER */}

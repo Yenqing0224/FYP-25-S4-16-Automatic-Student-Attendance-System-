@@ -36,12 +36,9 @@ const toText = (v, fallback = "N/A") => {
   return fallback;
 };
 
-const LecturerProfileScreen = ({ navigation }) => {
+export default function LecturerProfileScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [lecturer, setLecturer] = useState(null);
-
-  // ❌ REMOVED: Mock 'teaching' state.
-  // We now use data directly from 'lecturer' state.
 
   const fetchProfile = async () => {
     try {
@@ -86,20 +83,22 @@ const LecturerProfileScreen = ({ navigation }) => {
   const goChangePassword = () => navigation.navigate("LecturerChangePassword");
   const goActiveClasses = () => navigation.navigate("LecturerActiveClasses");
 
-  // ✅ New Handler: Show details on tap
+  // ✅ Show module details on tap
   const handleModuleTap = (module) => {
     Alert.alert(
-      `${module.code} - ${module.name}`,
-      `Students: ${module.student_enrolled || 0}\nStatus: ${module.status?.toUpperCase()}`,
+      `${toText(module?.code, "MOD")} - ${toText(module?.name, "Module")}`,
+      `Students: ${Number(module?.student_enrolled ?? 0)}\nStatus: ${String(module?.status ?? "N/A").toUpperCase()}`,
       [{ text: "OK" }]
     );
   };
 
+  // ✅ Loading (use SafeAreaView and remove bottom inset too)
   if (loading) {
     return (
-      <View style={[styles.container, { justifyContent: "center", alignItems: "center" }]}>
+      <SafeAreaView style={[styles.container, styles.center]} edges={["top"]}>
+        <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
         <ActivityIndicator size="large" color={COLORS.primary} />
-      </View>
+      </SafeAreaView>
     );
   }
 
@@ -107,16 +106,19 @@ const LecturerProfileScreen = ({ navigation }) => {
     ? `${toText(lecturer.user.first_name, "")} ${toText(lecturer.user.last_name, "")}`.trim() || "Lecturer"
     : "Lecturer";
 
-  // ✅ Extract API Data (Safe Fallbacks)
-  const activeModulesCount = lecturer?.active_modules_count ?? 0;
-  const totalStudentsCount = lecturer?.total_students ?? 0;
-  const activeModulesList = lecturer?.active_modules ?? [];
+  const activeModulesCount = Number(lecturer?.active_modules_count ?? 0);
+  const totalStudentsCount = Number(lecturer?.total_students ?? 0);
+  const activeModulesList = Array.isArray(lecturer?.active_modules) ? lecturer.active_modules : [];
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={["top"]}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24 }}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        // ✅ remove bottom padding "bar"
+        contentContainerStyle={{ paddingBottom: 0 }}
+      >
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Profile</Text>
@@ -157,22 +159,19 @@ const LecturerProfileScreen = ({ navigation }) => {
           <Text style={styles.cardTitle}>Teaching Overview</Text>
 
           <View style={styles.kpiRow}>
-            {/* KPI 1: Active Modules (Clickable) */}
+            {/* KPI 1 */}
             <Pressable style={styles.kpiBox} onPress={goActiveClasses}>
               <View style={styles.kpiTopRow}>
-                {/* ✅ Connected to API Count */}
                 <Text style={styles.kpiNumber}>{activeModulesCount}</Text>
                 <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
               </View>
-              {/* ✅ Renamed Label */}
               <Text style={styles.kpiLabel}>Active Modules</Text>
               <Text style={styles.kpiHint}>Tap to view</Text>
             </Pressable>
 
-            {/* KPI 2: Total Students (Static) */}
+            {/* KPI 2 */}
             <View style={styles.kpiBox}>
               <View style={styles.kpiTopRow}>
-                {/* ✅ Connected to API Count */}
                 <Text style={styles.kpiNumber}>{totalStudentsCount}</Text>
               </View>
               <Text style={styles.kpiLabel}>Students</Text>
@@ -181,24 +180,23 @@ const LecturerProfileScreen = ({ navigation }) => {
 
           <View style={styles.divider} />
 
-          {/* ✅ Module List from API */}
+          {/* Modules */}
           {activeModulesList.length > 0 ? (
             activeModulesList.map((m, i) => (
               <TouchableOpacity
-                key={m.id || i}
+                key={String(m?.id ?? i)}
                 style={styles.moduleRow}
                 onPress={() => handleModuleTap(m)}
                 activeOpacity={0.7}
               >
                 <Ionicons name="book-outline" size={16} color={COLORS.primary} />
-                {/* ✅ Shows "Code - Name" */}
                 <Text style={styles.moduleText} numberOfLines={1}>
-                  {m.code} – {m.name}
+                  {toText(m?.code, "MOD")} – {toText(m?.name, "Module")}
                 </Text>
               </TouchableOpacity>
             ))
           ) : (
-             <Text style={{color: COLORS.textMuted, marginTop: 5}}>No active modules.</Text>
+            <Text style={{ color: COLORS.textMuted, marginTop: 5 }}>No active modules.</Text>
           )}
         </View>
 
@@ -220,10 +218,11 @@ const LecturerProfileScreen = ({ navigation }) => {
       </ScrollView>
     </SafeAreaView>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background, paddingHorizontal: 20 },
+  center: { justifyContent: "center", alignItems: "center" },
 
   header: { paddingTop: 14, paddingBottom: 10 },
   headerTitle: { fontSize: 22, fontWeight: "900", color: COLORS.textDark },
@@ -278,7 +277,12 @@ const styles = StyleSheet.create({
     backgroundColor: "#FAFAFF",
   },
 
-  kpiTopRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", height: 24 },
+  kpiTopRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    height: 24,
+  },
   kpiNumber: { fontSize: 20, fontWeight: "900", color: COLORS.textDark },
   kpiLabel: { marginTop: 4, color: COLORS.textMuted, fontWeight: "700", fontSize: 13 },
   kpiHint: { marginTop: 2, color: COLORS.primary, fontWeight: "700", fontSize: 11 },
@@ -306,5 +310,3 @@ const styles = StyleSheet.create({
   },
   logoutText: { color: "#fff", fontWeight: "900" },
 });
-
-export default LecturerProfileScreen;

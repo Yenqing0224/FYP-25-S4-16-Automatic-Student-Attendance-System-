@@ -217,7 +217,7 @@ export default function HomeScreen({ navigation }) {
 
   // ---------------- Render ----------------
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={["top"]}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
@@ -527,7 +527,7 @@ export default function HomeScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: COLORS.background },
-  scrollContent: { paddingBottom: 24 },
+  scrollContent: { paddingBottom: 0 },
   paddingContainer: { paddingHorizontal: 20 },
 
   headerContainer: {

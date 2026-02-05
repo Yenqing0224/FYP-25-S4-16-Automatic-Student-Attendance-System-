@@ -241,14 +241,16 @@ export default function LecturerHomeScreen({ navigation, route }) {
   // ---------- loading ----------
   if (loading && !refreshing) {
     return (
-      <SafeAreaView style={[styles.container, styles.center]}>
+      <SafeAreaView style={[styles.container, styles.center]} edges={["top"]}>
+
         <ActivityIndicator size="large" color={COLORS.primary} />
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={["top"]}>
+
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
 
       <ScrollView
@@ -516,7 +518,8 @@ export default function LecturerHomeScreen({ navigation, route }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
-  content: { paddingHorizontal: 20, paddingTop: 14, paddingBottom: 10 },
+  content: { paddingHorizontal: 20, paddingTop: 14, paddingBottom: 0 },
+
   center: { justifyContent: "center", alignItems: "center" },
 
   headerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
