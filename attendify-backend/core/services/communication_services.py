@@ -69,6 +69,63 @@ class CommunicationService:
         }
 
 
+    def join_event(self, user, data):
+        event_id = data.get('event_id')
+        
+        if not event_id:
+            raise ValidationError("Event ID is required.")
+
+        try:
+            event = Event.objects.get(id=event_id)
+        except Event.DoesNotExist:
+            raise ValidationError("Event not found.")
+
+        if not hasattr(user, 'student_profile'):
+            raise ValidationError("Only students can join events.")
+        
+        student = user.student_profile
+
+        if event.students.filter(pk=student.pk).exists():
+            raise ValidationError("You have already joined this event.")
+
+        if event.slots_remaining <= 0:
+            raise ValidationError("Event is full.")
+
+        event.students.add(student)
+        
+        return {
+            "status": "success", 
+            "message": "Successfully joined the event."
+        }
+
+
+    def quit_event(self, user, data):
+        event_id = data.get('event_id')
+        
+        if not event_id:
+            raise ValidationError("Event ID is required.")
+
+        try:
+            event = Event.objects.get(id=event_id)
+        except Event.DoesNotExist:
+            raise ValidationError("Event not found.")
+
+        if not hasattr(user, 'student_profile'):
+            raise ValidationError("Only students can perform this action.")
+        
+        student = user.student_profile
+
+        if not event.students.filter(pk=student.pk).exists():
+            raise ValidationError("You have not joined this event.")
+
+        event.students.remove(student)
+        
+        return {
+            "status": "success", 
+            "message": "Successfully cancelled participation."
+        }
+
+
     def auto_update_event_status(self):
         local_now = timezone.localtime(timezone.now())
         current_date = local_now.date()

@@ -35,6 +35,8 @@ urlpatterns = [
     # Communication
     path('newsevent/', communication_views.get_newsevent, name='newsevent'),
     path('check-event-status/', communication_views.check_event_status, name='check-event-status'),
+    path('join-event/', communication_views.join_event, name='join-event'),
+    path('quit-event/', communication_views.quit_event, name='quit-event'),
     path('notifications/', communication_views.get_notifications, name='notifications'),
     path('notifications/mark-read/', communication_views.mark_notifications_read, name='mark-read'),
 

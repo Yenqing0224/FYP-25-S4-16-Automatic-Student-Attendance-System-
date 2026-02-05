@@ -69,3 +69,26 @@ def check_event_status(request):
     except Exception as e:
         return Response({"error": str(e)}, status=400)
     
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def join_event(request):
+    service = CommunicationService()
+
+    try:
+        response = service.join_event(request.user, request.data)
+        return Response(response, status=200)
+    except Exception as e:
+        return Response({"error": str(e)}, status=400)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def quit_event(request):
+    service = CommunicationService()
+
+    try:
+        response = service.quit_event(request.user, request.data)
+        return Response(response, status=200)
+    except Exception as e:
+        return Response({"error": str(e)}, status=400)
