@@ -18,6 +18,7 @@ class EventSerializer(serializers.ModelSerializer):
     total_student = serializers.ReadOnlyField()
     is_full = serializers.ReadOnlyField()
     slots_remaining = serializers.ReadOnlyField()
+    
     class Meta:
         model = Event
         fields = '__all__'

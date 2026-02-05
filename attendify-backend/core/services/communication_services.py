@@ -2,6 +2,7 @@ from core.models import Notification, News, Event, ClassSession, AttendanceRecor
 from django.utils import timezone
 from datetime import datetime, timedelta
 from django.db.models import Count
+from rest_framework.exceptions import ValidationError
 # Import Logic
 from core.logic.communication_logics import CommunicationLogic
 
@@ -41,6 +42,32 @@ class CommunicationService:
 
         return count
     
+
+    def check_event_status(self, user, data):
+        event_id = data.get('event_id')
+        
+        if not event_id:
+            raise ValidationError("Event ID is required.")
+
+        try:
+            event = Event.objects.get(id=event_id)
+        except Event.DoesNotExist:
+            raise ValidationError("Event not found.")
+            
+        is_joined = False
+        if hasattr(user, 'student_profile'):
+            student = user.student_profile
+            is_joined = event.students.filter(id=student.id).exists()
+
+        return {
+            "id": event.id,
+            "title": event.title,
+            "is_joined": is_joined,
+            "slots_remaining": event.slots_remaining,
+            "is_full": event.is_full,
+            "status": event.status
+        }
+
 
     def auto_update_event_status(self):
         local_now = timezone.localtime(timezone.now())

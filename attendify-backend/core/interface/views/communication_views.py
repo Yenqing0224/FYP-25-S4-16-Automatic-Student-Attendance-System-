@@ -55,3 +55,17 @@ def mark_notifications_read(request):
     except Exception as e:
         print(f"Mark Read Error: {e}")
         return Response({"error": "Failed to update"}, status=500)
+    
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def check_event_status(request):
+    service = CommunicationService()
+    
+    try:
+        data = service.check_event_status(request.user, request.data)
+        return Response(data)
+        
+    except Exception as e:
+        return Response({"error": str(e)}, status=400)
+    
