@@ -506,7 +506,8 @@ class AcademicService:
             raise ValidationError(f"Missing images for: {', '.join(missing_files)}")
 
         uploaded_results = {}
-        
+        uploaded_image_ids = []
+    
         try:
             url = settings.COMPREFACE_ADD_FACE_URL
             headers = {'x-api-key': settings.COMPREFACE_API_KEY}
@@ -530,7 +531,11 @@ class AcademicService:
 
                 if response.status_code in [200, 201]:
                     data = response.json()
-                    uploaded_results[pose] = data.get('image_id')
+                    img_id = data.get('image_id')
+
+                    uploaded_results[pose] = img_id
+                    if img_id:
+                        uploaded_image_ids.append(img_id)
                 else:
                     try:
                         err_msg = response.json().get('message', response.text)
@@ -549,5 +554,11 @@ class AcademicService:
                 "image_ids": uploaded_results
             }
 
-        except requests.exceptions.RequestException as e:
-            raise Exception(f"Face Recognition Service unavailable: {str(e)}")
+        except Exception as e:
+            for img_id in uploaded_image_ids:
+                try:
+                    delete_url = f"{url.rstrip('/')}/{img_id}"
+                    requests.delete(delete_url, headers=headers, timeout=10)
+                except Exception as cleanup_err:
+                    print(f"Failed to delete image {img_id}: {cleanup_err}")
+            raise Exception(str(e))
