@@ -396,7 +396,7 @@ class AcademicService:
             end_time=new_end,
             venue=available_venue,
             status='upcoming'
-        ),
+        )
 
         students = session.module.students.all()
         notifications = []
