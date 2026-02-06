@@ -127,7 +127,7 @@ const TimetableScreen = ({ navigation }) => {
           id: item?.id,
           module: { ...item?.module, code: mod.code, name: mod.name },
           venue: toText(item?.venue, ""),
-          session_type: toText(item?.session_type, ""),
+          session_type: toText(item?.type, ""),
           date: toText(item?.date, ""),
           start_time: toText(item?.start_time, ""),
           end_time: toText(item?.end_time, ""),
