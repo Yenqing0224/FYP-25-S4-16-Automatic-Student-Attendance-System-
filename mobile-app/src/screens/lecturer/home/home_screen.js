@@ -29,7 +29,7 @@ const COLORS = {
 
 const REMINDER_KEY = "lecturerReminderIds_v1";
 const READ_LECTURER_ANNOUNCEMENTS_KEY = "lecturerReadAnnouncements_v1";
-const ANNOUNCEMENT_EXPIRE_DAYS = 30; // Increased window since API controls visibility
+const ANNOUNCEMENT_EXPIRE_DAYS = 30; 
 
 export default function LecturerHomeScreen({ navigation, route }) {
   const [user, setUser] = useState(null);
@@ -40,11 +40,9 @@ export default function LecturerHomeScreen({ navigation, route }) {
   const [stats, setStats] = useState({ today: 0, week: 0 });
   const [nextClass, setNextClass] = useState(null);
 
-  // sessions lists to pass to list screen
   const [todayClasses, setTodayClasses] = useState([]);
   const [weekClasses, setWeekClasses] = useState([]);
 
-  // announcements
   const [announcements, setAnnouncements] = useState([]);
   const [isAnnounceExpanded, setIsAnnounceExpanded] = useState(false);
   const [readAnnouncementIds, setReadAnnouncementIds] = useState(new Set());
@@ -92,7 +90,6 @@ export default function LecturerHomeScreen({ navigation, route }) {
     return {
       id: String(a.id),
       title: toText(a.title, "Untitled"),
-      // ✅ JSON uses 'description', your UI uses 'desc'
       desc: toText(a.description || a.desc || a.body, ""),
       created_at: createdAt,
       date: toText(a.dateLabel, createdAt ? formatDateLabel(createdAt) : "Recent"),
@@ -168,7 +165,6 @@ export default function LecturerHomeScreen({ navigation, route }) {
       // 2. Next Class
       if (data.next_class) {
         const nc = data.next_class;
-        // Handle nested objects safely based on your JSON
         const moduleCode = toText(nc.module?.code || nc.module, "Module");
         const moduleName = toText(nc.module?.name || nc.title, "Class");
 
@@ -176,27 +172,26 @@ export default function LecturerHomeScreen({ navigation, route }) {
           id: String(nc.id),
           module: moduleCode,
           title: moduleName,
+          name: toText(nc.name, ""), 
           date: toText(nc.date, ""),
           dateLabel: formatDateLabel(nc.date),
           dateFull: formatDateFull(nc.date),
           startISO: `${nc.date}T${nc.start_time}`,
           endISO: `${nc.date}T${nc.end_time}`,
           time: `${formatTime(nc.start_time)} – ${formatTime(nc.end_time)}`,
-          // Your JSON shows venue is an object {id, name}
           venue: toText(nc.venue?.name || nc.venue, "TBA"),
-          status: nc.status // capture status for logic if needed
+          status: nc.status,
+          // ✅ ADDED: Pass status label just in case
+          statusLabel: nc.status_label, 
         });
       } else {
         setNextClass(null);
       }
 
-      // 3. Announcements (Directly from Dashboard API)
+      // Announcements
       const rawAnnouncements = Array.isArray(data.announcements) ? data.announcements : [];
       const formatted = rawAnnouncements.map(normalizeAnnouncement);
-
-      // Sort: Newest first
       formatted.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-
       setAnnouncements(formatted);
 
     } catch (error) {
@@ -219,7 +214,6 @@ export default function LecturerHomeScreen({ navigation, route }) {
 
   // ---------- navigation ----------
   const goToSessionsTab = () => {
-    // Navigate using the stack structure we defined
     navigation.navigate("LecturerSessionsMain", { tab: "Upcoming" });
   };
 
@@ -238,11 +232,9 @@ export default function LecturerHomeScreen({ navigation, route }) {
   const visibleAnnouncements = isAnnounceExpanded ? listToShow : listToShow.slice(0, 3);
   const hasAnyAnnouncements = listToShow.length > 0;
 
-  // ---------- loading ----------
   if (loading && !refreshing) {
     return (
       <SafeAreaView style={[styles.container, styles.center]} edges={["top"]}>
-
         <ActivityIndicator size="large" color={COLORS.primary} />
       </SafeAreaView>
     );
@@ -284,9 +276,7 @@ export default function LecturerHomeScreen({ navigation, route }) {
             >
               <Ionicons name="person" size={18} color="#fff" />
             </TouchableOpacity>
-
           </View>
-
         </View>
 
         {/* SUMMARY */}
@@ -318,7 +308,6 @@ export default function LecturerHomeScreen({ navigation, route }) {
               <Text style={styles.module}>{toText(nextClass.module, "Module")}</Text>
               <Text style={styles.title}>{toText(nextClass.title, "Class")}</Text>
 
-              {/* Optional: Show status if rescheduled */}
               {nextClass.status === 'rescheduled' && (
                 <View style={[styles.pill, { backgroundColor: '#FEE2E2', marginTop: 4, alignSelf: 'flex-start' }]}>
                   <Text style={[styles.pillText, { color: '#DC2626' }]}>Rescheduled</Text>
@@ -349,7 +338,7 @@ export default function LecturerHomeScreen({ navigation, route }) {
                 <TouchableOpacity
                   style={styles.secondaryBtn}
                   onPress={() =>
-                    // Pass nextClass (which is normalized) as 'cls'
+                    // Pass nextClass (which now includes 'name')
                     navigation.navigate("LecturerClassDetail", { cls: nextClass })
                   }
                 >
@@ -435,7 +424,6 @@ export default function LecturerHomeScreen({ navigation, route }) {
                     style={{ paddingVertical: 12 }}
                     onPress={async () => {
                       if (!isRead) await markAnnouncementRead(a.id);
-
                     }}
                   >
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
@@ -562,7 +550,6 @@ const styles = StyleSheet.create({
 
   summaryValue: { fontSize: 22, fontWeight: "900", color: COLORS.primary },
   summaryLabel: { marginTop: 6, color: COLORS.textMuted, fontWeight: "700" },
-
 
   card: {
     marginTop: 14,
