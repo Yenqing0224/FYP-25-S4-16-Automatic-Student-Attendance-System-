@@ -9,6 +9,8 @@ import {
   Dimensions,
   TouchableOpacity,
   BackHandler,
+  Animated,
+  Easing,
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -16,48 +18,76 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
 
-// API Imports
 import api from '../../api/api_client'; 
 import { verifyPose } from '../../api/student'; 
 
 const { width } = Dimensions.get('window');
-const SQUARE_SIZE = width * 0.9; 
+const SCAN_SIZE = width * 0.9; // 90% Width
+const SCAN_DURATION = 2000;
+
+// ✅ UPDATED: Exact Blue from your Intro Screen
+const THEME_COLOR = '#3A7AFE'; 
 
 const STEPS = [
-  { id: 'center', label: 'Look Straight', color: '#6D5EF5' },
-  { id: 'left', label: 'Turn Head Left', color: '#F59E0B' },
-  { id: 'right', label: 'Turn Head Right', color: '#10B981' },
+  { id: 'center', label: 'Look Straight', icon: 'happy-outline' },
+  { id: 'left', label: 'Turn Left', icon: 'arrow-back' },
+  { id: 'right', label: 'Turn Right', icon: 'arrow-forward' },
 ];
 
 export default function FaceRegistrationScreen({ navigation }) {
   const [permission, requestPermission] = useCameraPermissions();
   const cameraRef = useRef(null);
 
-  // State
-  const [isStarted, setIsStarted] = useState(false); // ✅ New Start State
+  const [isStarted, setIsStarted] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
   const [captures, setCaptures] = useState({});
-  const [feedback, setFeedback] = useState("Align face in square");
+  const [feedback, setFeedback] = useState("Align your face");
   const [isProcessing, setIsProcessing] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
 
+  const scanAnim = useRef(new Animated.Value(0)).current;
   const currentStep = STEPS[stepIndex];
+
+  // --- LASER ANIMATION ---
+  useEffect(() => {
+    if (isStarted && !isUploading) {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(scanAnim, {
+            toValue: 1,
+            duration: SCAN_DURATION,
+            easing: Easing.linear,
+            useNativeDriver: true,
+          }),
+          Animated.timing(scanAnim, {
+            toValue: 0,
+            duration: SCAN_DURATION,
+            easing: Easing.linear,
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+    } else {
+      scanAnim.setValue(0);
+    }
+  }, [isStarted, isUploading]);
+
+  const translateY = scanAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, SCAN_SIZE - 4],
+  });
 
   const handleExitToLogin = async () => {
     await AsyncStorage.removeItem("userToken");
     await AsyncStorage.removeItem("userInfo");
-    navigation.reset({
-      index: 0,
-      routes: [{ name: "Login" }],
-    });
+    navigation.reset({ index: 0, routes: [{ name: "Login" }] });
   };
 
   useEffect(() => {
-    const backAction = () => {
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
       handleExitToLogin();
       return true;
-    };
-    const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
+    });
     return () => backHandler.remove();
   }, []);
 
@@ -67,20 +97,16 @@ export default function FaceRegistrationScreen({ navigation }) {
     }
   }, [permission]);
 
-  // --- SCANNING LOOP (FastAPI) ---
+  // --- SCANNING LOOP ---
   useEffect(() => {
     let interval;
     const scanLoop = async () => {
-      // ✅ Added !isStarted to prevent loop from running early
       if (!isStarted || isUploading || isProcessing || !cameraRef.current) return;
 
       try {
         setIsProcessing(true);
         const photo = await cameraRef.current.takePictureAsync({
-          quality: 0.2,
-          skipProcessing: true,
-          shutterSound: false,
-          fastPrioritization: true, 
+          quality: 0.2, skipProcessing: true, shutterSound: false, fastPrioritization: true, 
         });
 
         const result = await verifyPose(photo.uri, currentStep.id);
@@ -89,7 +115,7 @@ export default function FaceRegistrationScreen({ navigation }) {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
           handleStepSuccess(currentStep.id.toUpperCase(), photo.uri);
         } else {
-          setFeedback(result.detail || "Position face...");
+          setFeedback(result.detail || "Align face...");
         }
       } catch (err) {
         console.log("Verify Error:", err);
@@ -107,12 +133,10 @@ export default function FaceRegistrationScreen({ navigation }) {
   const handleStepSuccess = async (key, uri) => {
     setFeedback("HOLD STILL...");
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    await new Promise(resolve => setTimeout(resolve, 500));
+    await new Promise(resolve => setTimeout(resolve, 1500));
 
     const highResPhoto = await cameraRef.current.takePictureAsync({
-      quality: 0.8,
-      skipProcessing: false,
-      shutterSound: false,
+      quality: 0.8, skipProcessing: false, shutterSound: false,
     });
 
     const newCaptures = { ...captures, [key]: highResPhoto.uri };
@@ -120,7 +144,7 @@ export default function FaceRegistrationScreen({ navigation }) {
 
     if (stepIndex < STEPS.length - 1) {
       setStepIndex((prev) => prev + 1);
-      setFeedback("Perfect! Next position...");
+      setFeedback("Perfect! Next...");
     } else {
       finishRegistration(newCaptures);
     }
@@ -128,7 +152,7 @@ export default function FaceRegistrationScreen({ navigation }) {
 
   const finishRegistration = async (finalCaptures) => {
     setIsUploading(true);
-    setFeedback("Registering Face...");
+    setFeedback("Registering...");
 
     try {
       const formData = new FormData();
@@ -156,12 +180,12 @@ export default function FaceRegistrationScreen({ navigation }) {
       Alert.alert(
         'Registration Failed', 
         'We could not verify your face. Please ensure you are in good lighting and not moving.',
-        [{ text: 'Retry All', onPress: () => {
+        [{ text: 'Retry', onPress: () => {
               setStepIndex(0);
               setCaptures({});
               setIsUploading(false);
-              setIsStarted(false); // ✅ Reset start state on failure
-              setFeedback("Align face in square");
+              setIsStarted(false);
+              setFeedback("Tap Start to begin");
             } 
           }]
       );
@@ -175,50 +199,89 @@ export default function FaceRegistrationScreen({ navigation }) {
       <StatusBar hidden />
       <CameraView ref={cameraRef} style={StyleSheet.absoluteFill} facing="front" mode="picture" />
 
-      {/* SQUARE MASK */}
-      <View style={styles.overlayContainer} pointerEvents="none">
-         <View style={styles.squareTarget}>
-            <View style={[styles.corner, styles.tl, { borderColor: isStarted ? currentStep.color : '#fff' }]} />
-            <View style={[styles.corner, styles.tr, { borderColor: isStarted ? currentStep.color : '#fff' }]} />
-            <View style={[styles.corner, styles.bl, { borderColor: isStarted ? currentStep.color : '#fff' }]} />
-            <View style={[styles.corner, styles.br, { borderColor: isStarted ? currentStep.color : '#fff' }]} />
+      {/* --- MASK --- */}
+      <View style={styles.maskOverlay} pointerEvents="none">
+         <View style={styles.maskTop} />
+         <View style={styles.maskMiddle}>
+            <View style={styles.maskSide} />
+            <View style={styles.maskHole} />
+            <View style={styles.maskSide} />
+         </View>
+         <View style={styles.maskBottom} />
+      </View>
+
+      {/* --- SCANNER BOX --- */}
+      <View style={styles.scanContainer} pointerEvents="none">
+         <View style={[styles.scanFrame, { borderColor: isStarted ? THEME_COLOR : 'rgba(255,255,255,0.5)' }]}>
+            {isStarted && !isUploading && (
+               <Animated.View 
+                  style={[
+                    styles.laserLine, 
+                    { backgroundColor: THEME_COLOR, transform: [{ translateY }] }
+                  ]} 
+               />
+            )}
+            <View style={[styles.corner, styles.tl, { borderColor: isStarted ? THEME_COLOR : '#fff' }]} />
+            <View style={[styles.corner, styles.tr, { borderColor: isStarted ? THEME_COLOR : '#fff' }]} />
+            <View style={[styles.corner, styles.bl, { borderColor: isStarted ? THEME_COLOR : '#fff' }]} />
+            <View style={[styles.corner, styles.br, { borderColor: isStarted ? THEME_COLOR : '#fff' }]} />
          </View>
       </View>
 
-      <SafeAreaView style={styles.ui} pointerEvents="box-none">
+      {/* --- UI LAYER --- */}
+      <SafeAreaView style={styles.uiLayer} pointerEvents="box-none">
+        
         <View style={styles.header}>
           <TouchableOpacity onPress={handleExitToLogin} style={styles.closeBtn}>
-            <Ionicons name="close-circle" size={42} color="#fff" />
+            <Ionicons name="close" size={28} color="#fff" />
           </TouchableOpacity>
-          
-          {isStarted && <Text style={[styles.instruction, { color: currentStep.color }]}>{currentStep.label}</Text>}
-          
-          {isStarted && (
-            <View style={styles.messageBox}>
-              <Text style={styles.feedbackText}>{feedback.toUpperCase()}</Text>
-              {(isProcessing || isUploading) && <ActivityIndicator color={currentStep.color} style={{marginTop: 10}}/>}
-            </View>
-          )}
         </View>
 
+        {isStarted && (
+            <View style={styles.instructionContainer}>
+                <Ionicons 
+                    name={currentStep.icon} 
+                    size={50} 
+                    color={THEME_COLOR} 
+                    style={{ marginBottom: 10, textShadowColor:'rgba(0,0,0,0.5)', textShadowRadius: 10 }} 
+                />
+                <Text style={[styles.instructionText, { color: THEME_COLOR }]}>
+                    {currentStep.label}
+                </Text>
+            </View>
+        )}
+
         <View style={styles.footer}>
+           <View style={styles.feedbackPill}>
+              {(isProcessing || isUploading) && (
+                  <ActivityIndicator color="#fff" size="small" style={{marginRight: 8}}/>
+              )}
+              <Text style={styles.feedbackText}>{feedback}</Text>
+           </View>
+
            {!isStarted ? (
-             // ✅ START BUTTON
              <TouchableOpacity 
-                style={styles.startBtn} 
+                style={[styles.startBtn, { backgroundColor: THEME_COLOR, shadowColor: THEME_COLOR }]} 
+                activeOpacity={0.8}
                 onPress={() => {
                   setIsStarted(true);
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                 }}
               >
-               <Ionicons name="play" size={24} color="#fff" style={{marginRight: 10}} />
-               <Text style={styles.startBtnText}>Start</Text>
+               <Ionicons name="scan-outline" size={24} color="#fff" style={{marginRight: 10}} />
+               <Text style={styles.startBtnText}>START SCAN</Text>
              </TouchableOpacity>
            ) : (
-             <View style={styles.dotRow}>
-               {STEPS.map((_, i) => (
-                 <View key={i} style={[styles.dot, i <= stepIndex && { backgroundColor: currentStep.color }]} />
-               ))}
+             <View style={styles.progressContainer}>
+                {STEPS.map((step, i) => (
+                    <View key={step.id} style={styles.stepWrapper}>
+                        <View style={[
+                            styles.stepDot, 
+                            i <= stepIndex && { backgroundColor: THEME_COLOR, transform: [{scale: 1.3}] },
+                            i > stepIndex && { backgroundColor: 'rgba(255,255,255,0.3)' }
+                        ]} />
+                    </View>
+                ))}
              </View>
            )}
         </View>
@@ -229,34 +292,52 @@ export default function FaceRegistrationScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000' },
-  overlayContainer: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center' },
-  squareTarget: { width: SQUARE_SIZE, height: SQUARE_SIZE, position: 'relative' },
-  corner: { position: 'absolute', width: 60, height: 60, borderWidth: 8 },
-  tl: { top: 0, left: 0, borderRightWidth: 0, borderBottomWidth: 0 },
-  tr: { top: 0, right: 0, borderLeftWidth: 0, borderBottomWidth: 0 },
-  bl: { bottom: 0, left: 0, borderRightWidth: 0, borderTopWidth: 0 },
-  br: { bottom: 0, right: 0, borderLeftWidth: 0, borderTopWidth: 0 },
-  ui: { flex: 1, justifyContent: 'space-between', paddingVertical: 20 },
-  header: { alignItems: 'center', paddingTop: 20 },
-  closeBtn: { alignSelf: 'flex-start', marginLeft: 20, marginBottom: 20 },
-  instruction: { fontSize: 36, fontWeight: '900', textShadowColor: 'rgba(0,0,0,0.5)', textShadowRadius: 4 },
-  messageBox: { marginTop: 20, backgroundColor: 'rgba(0,0,0,0.7)', padding: 20, borderRadius: 20, width: '85%', alignItems: 'center' },
-  feedbackText: { color: '#fff', fontSize: 20, fontWeight: '800', textAlign: 'center' },
-  footer: { alignItems: 'center', marginBottom: 40 },
-  dotRow: { flexDirection: 'row', gap: 15 },
-  dot: { width: 12, height: 12, borderRadius: 6, backgroundColor: 'rgba(255,255,255,0.3)' },
-  // ✅ Start Button Styles
-  startBtn: {
-    backgroundColor: '#6D5EF5',
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 40,
-    paddingVertical: 18,
-    borderRadius: 50,
-    shadowColor: '#6D5EF5',
-    shadowOpacity: 0.5,
-    shadowRadius: 10,
-    elevation: 5
+  maskOverlay: { ...StyleSheet.absoluteFillObject, justifyContent: 'center' },
+  maskTop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)' },
+  maskBottom: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)' },
+  maskMiddle: { flexDirection: 'row', height: SCAN_SIZE },
+  maskSide: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)' },
+  maskHole: { width: SCAN_SIZE, height: SCAN_SIZE, backgroundColor: 'transparent' },
+
+  scanContainer: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center' },
+  scanFrame: { width: SCAN_SIZE, height: SCAN_SIZE, position: 'relative' },
+  
+  laserLine: {
+      width: '100%', height: 3, opacity: 0.8,
+      shadowColor: '#000', shadowOpacity: 0.8, shadowRadius: 10, elevation: 10
   },
-  startBtnText: { color: '#fff', fontSize: 18, fontWeight: '900', letterSpacing: 1 }
+
+  corner: { position: 'absolute', width: 40, height: 40, borderWidth: 5, borderRadius: 4 },
+  tl: { top: 0, left: 0, borderRightWidth: 0, borderBottomWidth: 0, borderTopLeftRadius: 16 },
+  tr: { top: 0, right: 0, borderLeftWidth: 0, borderBottomWidth: 0, borderTopRightRadius: 16 },
+  bl: { bottom: 0, left: 0, borderRightWidth: 0, borderTopWidth: 0, borderBottomLeftRadius: 16 },
+  br: { bottom: 0, right: 0, borderLeftWidth: 0, borderTopWidth: 0, borderBottomRightRadius: 16 },
+
+  uiLayer: { flex: 1, justifyContent: 'space-between' },
+  header: { padding: 20, alignItems: 'flex-start' },
+  closeBtn: {
+      width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.2)',
+      justifyContent: 'center', alignItems: 'center'
+  },
+  instructionContainer: { alignItems: 'center', justifyContent: 'center', marginTop: -80 },
+  instructionText: {
+      fontSize: 28, fontWeight: '900', textTransform: 'uppercase', 
+      textShadowColor: 'rgba(0,0,0,0.8)', textShadowRadius: 15, letterSpacing: 1
+  },
+  footer: { alignItems: 'center', paddingBottom: 40, paddingHorizontal: 20 },
+  feedbackPill: {
+      flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.75)', 
+      paddingHorizontal: 20, paddingVertical: 12, borderRadius: 30,
+      marginBottom: 30, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)'
+  },
+  feedbackText: { color: '#fff', fontSize: 15, fontWeight: '600', letterSpacing: 0.5 },
+  startBtn: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 40, paddingVertical: 16, borderRadius: 30,
+    shadowOpacity: 0.5, shadowRadius: 12, shadowOffset: {width:0, height:4}, elevation: 8
+  },
+  startBtnText: { color: '#fff', fontSize: 16, fontWeight: '900', letterSpacing: 1 },
+  progressContainer: { flexDirection: 'row', gap: 15, alignItems: 'center' },
+  stepWrapper: { padding: 5 },
+  stepDot: { width: 12, height: 12, borderRadius: 6 },
 });
