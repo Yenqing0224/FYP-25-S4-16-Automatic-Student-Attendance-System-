@@ -10,6 +10,9 @@ class PartnerUni(models.Model):
     
 
 class Semester(models.Model):
+    # Relationships
+    partner_uni = models.ForeignKey('PartnerUni', on_delete=models.CASCADE, related_name='semesters')
+
     # Attributes
     name = models.CharField(max_length=50)
     start_date = models.DateField()
@@ -21,8 +24,8 @@ class Semester(models.Model):
         ]
 
     def __str__(self):
-        return self.name
-    
+        return f"{self.partner_uni} - {self.name}"
+
 
 class Module(models.Model):
     STATUS_CHOICES = [
