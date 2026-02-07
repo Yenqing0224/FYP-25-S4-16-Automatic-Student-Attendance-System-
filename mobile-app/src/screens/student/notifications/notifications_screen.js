@@ -1,5 +1,5 @@
 // mobile-app/screens/student/notifications/notifications_screen.js
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import {
   View,
   Text,
@@ -12,11 +12,12 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { useFocusEffect } from "@react-navigation/native";
 import api from "../../../api/api_client";
 
 const COLORS = {
   primary: "#3A7AFE",
-  background: "#F5F7FB", // ✅ FIX: you were using COLORS.background but it wasn't defined
+  background: "#F5F7FB",
   textDark: "#111827",
   textMuted: "#6B7280",
   card: "#FFFFFF",
@@ -28,9 +29,20 @@ const NotificationScreen = ({ navigation }) => {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // ✅ like announcements: default hide read
+  const [showAll, setShowAll] = useState(false);
+
   useEffect(() => {
     fetchNotifications();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // ✅ refresh when returning to this screen
+  useFocusEffect(
+    useCallback(() => {
+      fetchNotifications();
+    }, [])
+  );
 
   const fetchNotifications = async () => {
     try {
@@ -44,22 +56,48 @@ const NotificationScreen = ({ navigation }) => {
     }
   };
 
-  const unreadCount = useMemo(
-    () => notifications.filter((n) => !n.is_read).length,
+  const unreadNotifications = useMemo(
+    () => notifications.filter((n) => !n.is_read),
     [notifications]
   );
+
+  const unreadCount = unreadNotifications.length;
+
+  const listToShow = useMemo(
+    () => (showAll ? notifications : unreadNotifications),
+    [showAll, notifications, unreadNotifications]
+  );
+
+  // ✅ mark one as read when opened (optimistic)
+  const markOneRead = async (id) => {
+    setNotifications((prev) =>
+      prev.map((n) =>
+        String(n.id) === String(id) ? { ...n, is_read: true } : n
+      )
+    );
+
+    try {
+      // ✅ Recommended endpoint (create in backend if you don't have it):
+      // POST /notifications/<id>/mark-read/
+      await api.post(`/notifications/${id}/mark-read/`);
+    } catch (error) {
+      console.error("Failed to mark one read:", error);
+      Alert.alert("Error", "Could not sync read status with server.");
+      fetchNotifications();
+    }
+  };
 
   const handleMarkAllRead = async () => {
     if (unreadCount === 0) return;
 
     // Optimistic update
-    const updatedList = notifications.map((item) => ({ ...item, is_read: true }));
-    setNotifications(updatedList);
+    setNotifications((prev) => prev.map((item) => ({ ...item, is_read: true })));
 
     try {
+      // ✅ your existing endpoint
       await api.post("/notifications/mark-read/");
     } catch (error) {
-      console.error("Failed to mark read:", error);
+      console.error("Failed to mark all read:", error);
       Alert.alert("Error", "Could not sync with server");
       fetchNotifications();
     }
@@ -76,7 +114,6 @@ const NotificationScreen = ({ navigation }) => {
   };
 
   const getIconName = (item) => {
-    // Simple heuristic based on message/title (optional)
     const text = String(item?.message || item?.title || "").toLowerCase();
     if (text.includes("class") || text.includes("timetable")) return "calendar-outline";
     if (text.includes("announcement") || text.includes("news")) return "megaphone-outline";
@@ -122,7 +159,10 @@ const NotificationScreen = ({ navigation }) => {
             <Text style={styles.loadingText}>Checking alerts...</Text>
           </View>
         ) : (
-          <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+          >
             {/* TOP ACTION ROW */}
             <View style={styles.topRow}>
               <View style={styles.unreadPill}>
@@ -130,35 +170,61 @@ const NotificationScreen = ({ navigation }) => {
                 <Text style={styles.unreadPillText}>{unreadCount} unread</Text>
               </View>
 
+              {/* ✅ like announcements: filter pill */}
               <TouchableOpacity
-                style={[styles.markReadButton, unreadCount === 0 && styles.markReadButtonDisabled]}
-                onPress={handleMarkAllRead}
+                onPress={() => setShowAll((v) => !v)}
                 activeOpacity={0.85}
-                disabled={unreadCount === 0}
+                style={styles.filterPill}
               >
-                <Ionicons
-                  name="checkmark-done-outline"
-                  size={16}
-                  color={unreadCount === 0 ? COLORS.textMuted : COLORS.primary}
-                />
-                <Text style={[styles.markReadText, unreadCount === 0 && { color: COLORS.textMuted }]}>
-                  Mark all read
+                <Text style={styles.filterPillText}>
+                  {showAll
+                    ? `Showing: All (${notifications.length})`
+                    : `Showing: Unread (${unreadCount})`}
                 </Text>
               </TouchableOpacity>
             </View>
 
+            {/* mark all read */}
+            <TouchableOpacity
+              style={[
+                styles.markReadButton,
+                unreadCount === 0 && styles.markReadButtonDisabled,
+              ]}
+              onPress={handleMarkAllRead}
+              activeOpacity={0.85}
+              disabled={unreadCount === 0}
+            >
+              <Ionicons
+                name="checkmark-done-outline"
+                size={16}
+                color={unreadCount === 0 ? COLORS.textMuted : COLORS.primary}
+              />
+              <Text
+                style={[
+                  styles.markReadText,
+                  unreadCount === 0 && { color: COLORS.textMuted },
+                ]}
+              >
+                Mark all read
+              </Text>
+            </TouchableOpacity>
+
             {/* LIST */}
-            {notifications.length === 0 ? (
+            {listToShow.length === 0 ? (
               <View style={styles.emptyCard}>
                 <View style={styles.emptyIcon}>
                   <Ionicons name="notifications-off-outline" size={34} color={COLORS.primary} />
                 </View>
-                <Text style={styles.emptyTitle}>All caught up</Text>
-                <Text style={styles.emptySubtitle}>No new notifications right now.</Text>
+                <Text style={styles.emptyTitle}>
+                  {showAll ? "No notifications" : "All caught up"}
+                </Text>
+                <Text style={styles.emptySubtitle}>
+                  {showAll ? "Nothing to show right now." : "No unread notifications right now."}
+                </Text>
               </View>
             ) : (
               <View style={styles.listContainer}>
-                {notifications.map((item) => {
+                {listToShow.map((item) => {
                   const isUnread = !item.is_read;
 
                   return (
@@ -166,18 +232,19 @@ const NotificationScreen = ({ navigation }) => {
                       key={String(item.id)}
                       style={[styles.card, isUnread ? styles.cardUnread : styles.cardRead]}
                       activeOpacity={0.9}
-                      onPress={() => navigation.navigate("NotificationDetail", { item })}
+                      onPress={async () => {
+                        // ✅ mark read on open (so it disappears when showing unread)
+                        if (isUnread) await markOneRead(item.id);
+                        navigation.navigate("NotificationDetail", { item });
+                      }}
                     >
-                      {/* Left accent */}
                       {isUnread && <View style={styles.leftAccent} />}
 
                       <View style={styles.cardInner}>
-                        {/* Icon */}
                         <View style={[styles.iconBox, isUnread && styles.iconBoxUnread]}>
                           <Ionicons name={getIconName(item)} size={18} color={COLORS.primary} />
                         </View>
 
-                        {/* Text */}
                         <View style={{ flex: 1 }}>
                           <View style={styles.cardTopRow}>
                             <View style={styles.titleRow}>
@@ -198,7 +265,7 @@ const NotificationScreen = ({ navigation }) => {
                           </View>
 
                           <Text style={styles.bodyText} numberOfLines={2}>
-                            {item.message || item.title || "-"}
+                            {item.message || item.description || item.title || "-"}
                           </Text>
 
                           <View style={styles.dateRow}>
@@ -276,6 +343,17 @@ const styles = StyleSheet.create({
   },
   unreadPillText: { fontWeight: "900", fontSize: 12, color: COLORS.textDark },
 
+  // ✅ new: filter pill (like announcements)
+  filterPill: {
+    backgroundColor: "#E7F0FF",
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  filterPillText: { fontSize: 11, fontWeight: "900", color: COLORS.primary },
+
   markReadButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -286,10 +364,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 999,
+    alignSelf: "flex-end",
+    marginBottom: 10,
   },
-  markReadButtonDisabled: {
-    opacity: 0.7,
-  },
+  markReadButtonDisabled: { opacity: 0.7 },
   markReadText: { fontWeight: "900", fontSize: 12, color: COLORS.primary },
 
   listContainer: { marginTop: 4 },
@@ -306,9 +384,7 @@ const styles = StyleSheet.create({
     borderColor: "rgba(58,122,254,0.25)",
     backgroundColor: "#F4F8FF",
   },
-  cardRead: {
-    backgroundColor: COLORS.card,
-  },
+  cardRead: { backgroundColor: COLORS.card },
 
   leftAccent: {
     position: "absolute",
@@ -335,9 +411,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  iconBoxUnread: {
-    backgroundColor: "#E7F0FF",
-  },
+  iconBoxUnread: { backgroundColor: "#E7F0FF" },
 
   cardTopRow: {
     flexDirection: "row",
@@ -360,9 +434,7 @@ const styles = StyleSheet.create({
     color: COLORS.textDark,
     flex: 1,
   },
-  messageTextUnread: {
-    color: "#1D2A5B",
-  },
+  messageTextUnread: { color: "#1D2A5B" },
 
   newChip: {
     backgroundColor: COLORS.primary,
@@ -402,7 +474,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   emptyTitle: { marginTop: 10, fontSize: 16, fontWeight: "900", color: COLORS.textDark },
-  emptySubtitle: { marginTop: 6, fontSize: 13, fontWeight: "600", color: COLORS.textMuted, textAlign: "center" },
+  emptySubtitle: {
+    marginTop: 6,
+    fontSize: 13,
+    fontWeight: "600",
+    color: COLORS.textMuted,
+    textAlign: "center",
+  },
 });
 
 export default NotificationScreen;
