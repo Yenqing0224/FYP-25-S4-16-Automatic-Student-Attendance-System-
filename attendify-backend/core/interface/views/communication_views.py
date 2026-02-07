@@ -59,6 +59,23 @@ def mark_notifications_read(request):
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
+def mark_single_notifications_read(request, pk):
+    service = CommunicationService()
+
+    try:
+        updated = service.mark_single_notifications_read(request.user, pk)
+        
+        if updated:
+            return Response({"status": "success", "message": "Notification marked as read"})
+        else:
+            return Response({"status": "ignored", "message": "Notification was already read"})
+
+    except Exception as e:
+        return Response({"error": "Failed to update"}, status=500)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def check_event_status(request):
     service = CommunicationService()
     

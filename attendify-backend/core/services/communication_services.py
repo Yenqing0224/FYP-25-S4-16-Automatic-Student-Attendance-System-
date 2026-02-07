@@ -43,6 +43,13 @@ class CommunicationService:
         return count
     
 
+    def mark_single_notifications_read(self, user, notification_id):
+        notification = Notification.objects.filter(
+            pk=notification_id,
+            recipient=user
+        ).update(is_read=True)
+
+
     def check_event_status(self, user, data):
         event_id = data.get('event_id')
         

@@ -31,7 +31,6 @@ urlpatterns = [
     path('mark-attendance/', academics_views.mark_attendance, name='mark-attendance'),
     path('register-face/', academics_views.register_face, name='register-face'),
 
-
     # Communication
     path('newsevent/', communication_views.get_newsevent, name='newsevent'),
     path('check-event-status/', communication_views.check_event_status, name='check-event-status'),
@@ -39,6 +38,7 @@ urlpatterns = [
     path('quit-event/', communication_views.quit_event, name='quit-event'),
     path('notifications/', communication_views.get_notifications, name='notifications'),
     path('notifications/mark-read/', communication_views.mark_notifications_read, name='mark-read'),
+    path('notifications/<int:pk>/mark-read/', communication_views.mark_single_notifications_read, name='mark-one-read'),
 
     # Requests
     path('leaves/', requests_views.get_leaves, name='leaves'),
