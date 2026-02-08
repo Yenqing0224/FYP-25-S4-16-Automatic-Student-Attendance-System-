@@ -13,7 +13,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 import api from "../../../api/api_client";
-import { registerForPushAndSync } from "../../../utils/push";
+import { registerForPushAndSync } from "../../../../utils/push";
 
 const COLORS = {
   primary: "#3A7AFE",
