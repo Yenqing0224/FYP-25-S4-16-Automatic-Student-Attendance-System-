@@ -3,6 +3,7 @@ from django.utils import timezone
 from datetime import timedelta, datetime, time
 from django.db.models import Q, Prefetch
 from django.conf import settings
+from django.core.mail import send_mail
 import os
 import statistics
 import requests
@@ -246,6 +247,46 @@ class AcademicService:
                 remarks=f"Auto-Absent: Duration < {threshold:.0f}m (Median: {median_duration:.0f}m)"
             )
             print(f"[Audit] Session {session.id}: Marked {count} students absent (Median Check).")
+
+
+    def auto_send_attendance_warning(self):
+        students = Student.objects.filter(user__status='active')
+        sent_count = 0
+
+        for student in students:
+            current_rate = student.attendance_rate
+            threshold = student.attendance_threshold
+
+            if current_rate < threshold:
+                try:
+                    subject = f"Attendance Warning: Rate Below {threshold}%"
+                    
+                    message = (
+                        f"Dear {student.user.first_name},\n\n"
+                        f"This is an automated alert regarding your attendance for {student.programme}.\n\n"
+                        f"Your current attendance rate is {current_rate}%.\n"
+                        f"This has fallen below the required threshold of {threshold}%.\n\n"
+                        f"Please ensure you attend upcoming classes to meet the requirements. "
+                        f"Regards,\n"
+                        f"Attendify System"
+                    )
+                    
+                    recipient_email = student.user.email or student.user.personal_email
+                    
+                    if recipient_email:
+                        send_mail(
+                            subject,
+                            message,
+                            "attendify2026@outlook.com",
+                            [recipient_email],
+                            fail_silently=False,
+                        )
+                        sent_count += 1
+
+                except Exception as e:
+                    print(f"Error sending email to {student.user.username}: {e}")
+
+        return f"Sent attendance warnings to {sent_count} students."
 
             
     def get_reschedule_options(self, user, data):

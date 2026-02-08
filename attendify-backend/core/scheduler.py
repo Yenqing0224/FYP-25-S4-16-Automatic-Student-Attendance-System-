@@ -41,5 +41,25 @@ def start():
         replace_existing=True
     )
 
+    scheduler.add_job(
+        task.task_auto_send_attendance_warning,
+        trigger='cron',
+        minute='*',
+        second='0',
+        timezone='Asia/Singapore',
+        id='attendance_warning_email',
+        replace_existing=True
+    )
+
+    # scheduler.add_job(
+    #     task.task_auto_send_attendance_warning,
+    #     trigger='cron',
+    #     hour='10', 
+    #     minute='0', 
+    #     timezone='Asia/Singapore',
+    #     id='attendance_warning_email',
+    #     replace_existing=True
+    # )
+
     scheduler.start()
     atexit.register(lambda: scheduler.shutdown())

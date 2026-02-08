@@ -44,3 +44,14 @@ def task_update_event_status():
              print(f"[Task] {message}")
     except Exception as e:
         print(f"[Task Error] Update Status Failed: {e}")
+
+
+def task_auto_send_attendance_warning():
+    close_old_connections()
+    service = AcademicService()
+    try:
+        message = service.auto_send_attendance_warning()
+        if "Sent 0" not in message:
+            print(f"[Task] {message}")
+    except Exception as e:
+        print(f"[Task Error] Attendance Warning Failed: {e}")
