@@ -17,16 +17,32 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import api from "../../api/api_client";
 
 const VERIFY_URL = "/verify-otp/";
+const REQUEST_URL = "/request-otp/"; 
 
 const VerifyOtpScreen = ({ route, navigation }) => {
   const { email } = route.params;
   const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
+  
+  // ✅ NEW: Timer State (starts at 60s immediately)
+  const [timer, setTimer] = useState(60); 
+  
   const inputRef = useRef(null);
 
   useEffect(() => {
     setTimeout(() => inputRef.current?.focus(), 100);
   }, []);
+
+  // ✅ NEW: Countdown Effect
+  useEffect(() => {
+    let interval;
+    if (timer > 0) {
+      interval = setInterval(() => {
+        setTimer((prev) => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [timer]);
 
   const handleVerify = async () => {
     if (otp.length < 6) return;
@@ -40,6 +56,22 @@ const VerifyOtpScreen = ({ route, navigation }) => {
       console.log("Verify OTP error:", err.response?.data || err);
       const errorMessage = err.response?.data?.error || "Invalid OTP. Please try again.";
       Alert.alert("Verification Failed", errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResend = async () => {
+    if (timer > 0) return; // Prevent tap if timer running
+
+    try {
+      setLoading(true);
+      await api.post(REQUEST_URL, { email });
+      setTimer(60); // ✅ Restart timer immediately on success
+      // No Alert shown, user sees timer reset
+    } catch (err) {
+      console.log("Resend error:", err);
+      Alert.alert("Error", "Failed to resend OTP. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -110,15 +142,27 @@ const VerifyOtpScreen = ({ route, navigation }) => {
               />
             </View>
 
-            <TouchableOpacity style={styles.resendContainer}>
-              <Text style={styles.resendText}>Resend</Text>
-            </TouchableOpacity>
+            {/* ✅ Updated Resend Logic */}
+            <View style={styles.resendContainer}>
+              <Text style={styles.resendLabel}>Didn't receive code? </Text>
+              <TouchableOpacity 
+                onPress={handleResend}
+                disabled={timer > 0 || loading} 
+              >
+                <Text style={[
+                  styles.resendText, 
+                  (timer > 0 || loading) && { color: '#999' } // Grey out when disabled
+                ]}>
+                  {timer > 0 ? `Resend in ${timer}s` : "Resend"}
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           <View style={styles.bottomSection}>
             <TouchableOpacity
               style={[
-                styles.submitButton, // ✅ Updated Style Name
+                styles.submitButton, 
                 (otp.length < 6 || loading) && styles.submitButtonDisabled,
               ]}
               onPress={handleVerify}
@@ -170,8 +214,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
 
-  // OTP Styles
-  otpWrapper: { position: 'relative', marginBottom: 10 },
+  otpWrapper: { position: 'relative', marginBottom: 20 },
   boxesRow: { 
     flexDirection: "row", 
     justifyContent: "space-between", 
@@ -207,12 +250,25 @@ const styles = StyleSheet.create({
     opacity: 0,
   },
   
-  resendContainer: { alignItems: 'flex-end', marginTop: 10 },
-  resendText: { color: "#3A7AFE", fontWeight: "600", fontSize: 14 },
+  // ✅ New Container for "Didn't receive code? Resend"
+  resendContainer: { 
+    flexDirection: 'row', 
+    justifyContent: 'center', 
+    alignItems: 'center',
+    marginTop: 10 
+  },
+  resendLabel: {
+    color: "#555",
+    fontSize: 14,
+  },
+  resendText: { 
+    color: "#3A7AFE", 
+    fontWeight: "600", 
+    fontSize: 14 
+  },
 
   bottomSection: { marginBottom: 20, alignItems: "center" },
 
-  // ✅ New "Pill Shape" Button Style
   submitButton: {
     backgroundColor: "#3A7AFE",
     paddingVertical: 14,
