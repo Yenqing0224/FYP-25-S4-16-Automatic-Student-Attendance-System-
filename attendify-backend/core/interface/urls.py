@@ -16,6 +16,8 @@ urlpatterns = [
     path('verify-otp/', auth_views.verify_otp, name='verify-otp'),
     path('reset-password/', auth_views.reset_password, name='reset-password'),
     path('keep-redis-alive/', auth_views.keep_redis_alive, name='keep-redis-alive'),
+    path('save-push-token/', auth_views.save_push_token, name='save-push-token'),
+    path('remove-push-token/', auth_views.remove_push_token, name='remove-push-token'),
 
     # Users
     path('profile/', users_views.get_profile, name='profile'),

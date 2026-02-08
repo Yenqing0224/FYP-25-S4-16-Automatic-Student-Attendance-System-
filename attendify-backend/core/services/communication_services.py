@@ -3,8 +3,12 @@ from django.utils import timezone
 from datetime import datetime, timedelta
 from django.db.models import Count
 from rest_framework.exceptions import ValidationError
+import requests
+import json
+import threading
 # Import Logic
 from core.logic.communication_logics import CommunicationLogic
+
 
 class CommunicationService:
 
@@ -192,3 +196,29 @@ class CommunicationService:
 
         return f"Sent {sent_count} reminders."
 
+
+    def send_push_to_token(self, token, title, body, data=None):
+        url = "https://exp.host/--/api/v2/push/send"
+        
+        headers = {
+            "host": "exp.host",
+            "accept": "application/json",
+            "accept-encoding": "gzip, deflate",
+            "content-type": "application/json"
+        }
+        
+        payload = {
+            "to": token,
+            "title": title,
+            "body": body,
+            "sound": "default",
+            "data": data or {}
+        }
+
+        def _send():
+            try:
+                response = requests.post(url, headers=headers, data=json.dumps(payload))
+            except Exception as e:
+                print(f"Push Notification Error: {e}")
+
+        threading.Thread(target=_send).start()

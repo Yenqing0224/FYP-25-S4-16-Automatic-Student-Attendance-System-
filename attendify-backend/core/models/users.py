@@ -79,6 +79,7 @@ class Student(models.Model):
     attendance_threshold = models.FloatField(default=80.0)
     partner_uni = models.ForeignKey('PartnerUni', on_delete=models.SET_NULL, null=True, blank=True,related_name='students')
     registration = models.BooleanField(default=False)
+    expo_push_token = models.CharField(max_length=255, blank=True, null=True)
 
     @property
     def attendance_rate(self):

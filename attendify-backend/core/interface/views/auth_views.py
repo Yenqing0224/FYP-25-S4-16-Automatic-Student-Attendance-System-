@@ -137,6 +137,43 @@ def reset_password(request):
         return Response({"error": "Server error processing request"}, status=500)
     
 
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def save_push_token(request):
+    service = AuthService()
+
+    try:
+        service.save_push_token(request.user, request.data)
+
+        return Response({
+            "message": "Push token saved successfully"
+        }, status=200)
+
+    except ValueError as e:
+        return Response({"error": str(e)}, status=400)
+    
+    except Exception as e:
+        print(f"Save Token Error: {str(e)}")
+        return Response({"error": "Server error saving token"}, status=500)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def remove_push_token(request):
+    service = AuthService()
+
+    try:
+        service.remove_push_token(request.user)
+
+        return Response({
+            "message": "Push token removed successfully"
+        }, status=200)
+
+    except Exception as e:
+        print(f"Remove Token Error: {str(e)}")
+        return Response({"error": "Server error removing token"}, status=500)
+    
+
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def keep_redis_alive(request):

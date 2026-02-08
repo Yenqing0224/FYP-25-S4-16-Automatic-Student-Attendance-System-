@@ -67,6 +67,7 @@ const ProfileScreen = ({ navigation }) => {
         style: "destructive",
         onPress: async () => {
           try {
+            await api.post("/remove-push-token/");
             await api.post("/logout/");
           } catch (e) {
             // even if server fails, we still logout locally

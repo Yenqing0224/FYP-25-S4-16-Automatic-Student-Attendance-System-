@@ -3,7 +3,7 @@ from django.core.cache import cache
 from django.core.mail import send_mail
 from django.contrib.auth import authenticate
 from django.core.exceptions import ValidationError
-from core.models import User
+from core.models import User, Student
 from rest_framework.authtoken.models import Token
 from core.logic.auth_logics import AuthLogic
 
@@ -166,3 +166,28 @@ class AuthService:
 
         return True
     
+
+    def save_push_token(self, user, data):
+        token = data.get('expo_push_token')
+        
+        if not token:
+            raise ValueError("Token is required.")
+
+        if not hasattr(user, 'student_profile'):
+            raise ValueError("Only students can receive push notifications.")
+
+        Student.objects.filter(expo_push_token=token).update(expo_push_token=None)
+
+        student = user.student_profile
+        student.expo_push_token = token
+        student.save()
+
+        return True
+
+    def remove_push_token(self, user):
+        if hasattr(user, 'student_profile'):
+            student = user.student_profile
+            student.expo_push_token = None
+            student.save()
+        
+        return True
