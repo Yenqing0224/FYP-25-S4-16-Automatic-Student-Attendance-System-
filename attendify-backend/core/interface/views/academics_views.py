@@ -155,7 +155,7 @@ def mark_attendance(request):
     try:
         serializer = FaceRecognitionSerializer(data=request.data)
         if not serializer.is_valid():
-            print("❌ Serializer Validation Errors:", serializer.errors)
+            print("Serializer Validation Errors:", serializer.errors)
             return Response(serializer.errors, status=400)
 
         student_id = serializer.validated_data['student_id']
@@ -169,7 +169,7 @@ def mark_attendance(request):
         return Response(result, status=200)
 
     except Exception as e:
-        print(f"❌ Unexpected Error: {e}")
+        print(f"Unexpected Error: {e}")
         return Response({"error": str(e)}, status=400)
 
 

@@ -61,12 +61,12 @@ export async function registerForPushAndSync() {
     // 5. Send to Backend
     // ✅ CHANGED: URL must match your Django URL (api/users/push-token/)
     await api.post("/save-push-token/", { expo_push_token: expoPushToken });
-    console.log("✅ Token synced with backend successfully");
+    console.log("Token synced with backend successfully");
     
     return expoPushToken;
 
   } catch (e) {
-    console.log("❌ Push register error:", e);
+    console.log("Push register error:", e);
     return null;
   }
 }
