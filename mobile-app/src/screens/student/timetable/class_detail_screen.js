@@ -1,7 +1,9 @@
+// ✅ FULL EDITED FRONTEND CODE (UI-only) — ClassDetailScreen
+// - Adds "Appeal period has expired" UI state
+// - Hides/disables appeal button when expired
+// - Does NOT change backend (backend should still enforce for real security)
+
 // src/screens/student/timetable/class_detail_screen.js
-// ✅ Header matches Timetable (pill buttons)
-// ✅ Top-right Refresh button added
-// ✅ Logic unchanged (polling + appeal)
 
 import React, { useState, useCallback, useRef } from "react";
 import {
@@ -33,8 +35,10 @@ const COLORS = {
   textDark: "#111827",
   textMuted: "#6B7280",
   borderSoft: "#E5E7EB",
-  chipBg: "rgba(58,122,254,0.12)", // same vibe as timetable
+  chipBg: "rgba(58,122,254,0.12)",
 };
+
+const APPEAL_WINDOW_HOURS = 48; // ✅ change to your policy (e.g. 24 / 48 / 72)
 
 const ClassDetailScreen = ({ route, navigation }) => {
   const { session_id } = route.params;
@@ -45,37 +49,38 @@ const ClassDetailScreen = ({ route, navigation }) => {
 
   const isMountedRef = useRef(true);
 
-  const fetchData = useCallback(async (opts = { showSpinner: false }) => {
-    const showSpinner = !!opts?.showSpinner;
+  const fetchData = useCallback(
+    async (opts = { showSpinner: false }) => {
+      const showSpinner = !!opts?.showSpinner;
 
-    try {
-      if (showSpinner) setRefreshing(true);
+      try {
+        if (showSpinner) setRefreshing(true);
 
-      const res = await api.get(`/class-details/${session_id}/`);
+        const res = await api.get(`/class-details/${session_id}/`);
 
-      if (isMountedRef.current) {
-        setClassData(res.data);
-        setLoading(false);
+        if (isMountedRef.current) {
+          setClassData(res.data);
+          setLoading(false);
+        }
+      } catch (err) {
+        console.error("Fetch Details Error:", err);
+        if (isMountedRef.current) {
+          setLoading(false);
+          if (showSpinner) Alert.alert("Error", "Could not refresh class details.");
+        }
+      } finally {
+        if (isMountedRef.current) setRefreshing(false);
       }
-    } catch (err) {
-      console.error("Fetch Details Error:", err);
-      if (isMountedRef.current) {
-        setLoading(false);
-        if (showSpinner) Alert.alert("Error", "Could not refresh class details.");
-      }
-    } finally {
-      if (isMountedRef.current) setRefreshing(false);
-    }
-  }, [session_id]);
+    },
+    [session_id]
+  );
 
   useFocusEffect(
     useCallback(() => {
       isMountedRef.current = true;
 
-      // initial fetch
       fetchData({ showSpinner: false });
 
-      // polling every 5s
       const interval = setInterval(() => fetchData({ showSpinner: false }), 5000);
 
       return () => {
@@ -85,21 +90,43 @@ const ClassDetailScreen = ({ route, navigation }) => {
     }, [fetchData])
   );
 
+  // ✅ safer time: handles "14:30:00" OR ISO datetime
   const formatTimeStr = (timeString) => {
     if (!timeString) return "-";
-    const d = new Date(timeString);
+    const s = String(timeString);
+
+    if (/^\d{2}:\d{2}/.test(s)) return s.slice(0, 5);
+
+    const d = new Date(s);
     if (!isNaN(d.getTime())) {
       return d
         .toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })
         .toLowerCase();
     }
-    return String(timeString).slice(0, 5);
+    return s.slice(0, 5);
   };
 
+  // ✅ safer date: prevents UTC shift for "YYYY-MM-DD"
   const formatDateStr = (dateString) => {
     if (!dateString) return "-";
-    const d = new Date(dateString);
+    const d = new Date(`${dateString}T00:00:00`);
+    if (isNaN(d.getTime())) return "-";
     return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+  };
+
+  // ✅ UI-only expiry calc (Asia/Singapore)
+  const getAppealDeadline = (dateStr, endTimeStr) => {
+    if (!dateStr) return null;
+    const t = String(endTimeStr || "00:00").slice(0, 5); // HH:MM
+    const end = new Date(`${dateStr}T${t}:00+08:00`);
+    if (isNaN(end.getTime())) return null;
+    return new Date(end.getTime() + APPEAL_WINDOW_HOURS * 60 * 60 * 1000);
+  };
+
+  const isAppealExpired = (data) => {
+    const deadline = getAppealDeadline(data?.date, data?.end_time);
+    if (!deadline) return false; // fail-open in UI
+    return new Date() > deadline;
   };
 
   if (loading) {
@@ -118,13 +145,19 @@ const ClassDetailScreen = ({ route, navigation }) => {
   const status = toText(classData.status);
   const attendanceStatus = toText(classData.attendance_status);
 
+  const expired = isAppealExpired(classData);
+
+  // show appeal UI only when absent+completed
+  const canAttemptAppeal = attendanceStatus === "absent" && status === "completed";
+  const showExpiredUI = canAttemptAppeal && expired;
+  const showAppealButton = canAttemptAppeal && !expired;
+
   return (
     <View style={styles.mainContainer}>
       <SafeAreaView edges={["top"]} style={styles.topSafeArea} />
       <View style={styles.contentContainer}>
         <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
 
-        {/* ✅ HEADER matches Timetable */}
         <View style={styles.header}>
           <TouchableOpacity
             onPress={() => navigation.goBack()}
@@ -136,7 +169,6 @@ const ClassDetailScreen = ({ route, navigation }) => {
 
           <Text style={styles.headerTitle}>Class Details</Text>
 
-          {/* ✅ Refresh button */}
           <TouchableOpacity
             onPress={() => fetchData({ showSpinner: true })}
             style={styles.headerPillBtn}
@@ -179,6 +211,17 @@ const ClassDetailScreen = ({ route, navigation }) => {
                     {venue}
                   </Text>
                 </View>
+
+                <View style={styles.chipRow}>
+                  <View style={styles.chip}>
+                    <Text style={styles.chipText}>Class: {toText(status).toUpperCase()}</Text>
+                  </View>
+                  <View style={styles.chip}>
+                    <Text style={styles.chipText}>
+                      Attendance: {toText(attendanceStatus).toUpperCase()}
+                    </Text>
+                  </View>
+                </View>
               </View>
             </View>
 
@@ -199,17 +242,27 @@ const ClassDetailScreen = ({ route, navigation }) => {
             </View>
           </View>
 
-          {attendanceStatus === "absent" && status === "completed" && (
+          {/* ✅ EXPIRED UI */}
+          {showExpiredUI && (
+            <View style={styles.expiredBox}>
+              <Ionicons name="lock-closed-outline" size={16} color="#475569" />
+              <Text style={styles.expiredText}>Appeal period has expired</Text>
+              {/* Optional: show deadline */}
+              {/* <Text style={styles.expiredSub}>
+                Deadline: {getAppealDeadline(classData?.date, classData?.end_time)?.toLocaleString?.() || ""}
+              </Text> */}
+            </View>
+          )}
+
+          {/* ✅ Appeal button only when not expired */}
+          {showAppealButton && (
             <TouchableOpacity
               style={styles.appealButton}
-              onPress={() =>
-                navigation.navigate("ApplyAppeal", {
-                  classSession: classData,
-                })
-              }
-              activeOpacity={0.9}
+              onPress={() => navigation.navigate("ApplyAppeal", { classSession: classData })}
+              activeOpacity={0.92}
             >
-              <Text style={styles.appealButtonText}>Appeal</Text>
+              <Ionicons name="alert-circle-outline" size={18} color="#fff" />
+              <Text style={styles.appealButtonText}>Submit Appeal</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -225,7 +278,6 @@ const styles = StyleSheet.create({
 
   loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
 
-  // ✅ Timetable/NewsEvents-like header
   header: {
     backgroundColor: COLORS.background,
     paddingVertical: 12,
@@ -276,6 +328,15 @@ const styles = StyleSheet.create({
   metaText: { fontSize: 13, fontWeight: "700", color: COLORS.textMuted, flexShrink: 1 },
   timeHighlight: { color: COLORS.primary, fontWeight: "800" },
 
+  chipRow: { flexDirection: "row", gap: 10, flexWrap: "wrap", marginTop: 12 },
+  chip: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: "rgba(58,122,254,0.12)",
+  },
+  chipText: { fontSize: 11, fontWeight: "900", color: COLORS.primary },
+
   divider: {
     height: 1,
     backgroundColor: "rgba(17,24,39,0.10)",
@@ -291,12 +352,32 @@ const styles = StyleSheet.create({
   appealButton: {
     marginTop: 16,
     width: "100%",
-    backgroundColor: "#8E8E93",
+    backgroundColor: COLORS.primary,
     paddingVertical: 14,
-    borderRadius: 12,
+    borderRadius: 999,
     alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
+    gap: 8,
   },
-  appealButtonText: { color: "#fff", fontSize: 16, fontWeight: "700" },
+  appealButtonText: { color: "#fff", fontSize: 15, fontWeight: "900" },
+
+  // ✅ Expired UI box
+  expiredBox: {
+    marginTop: 16,
+    width: "100%",
+    backgroundColor: "#EEF2FF",
+    borderWidth: 1,
+    borderColor: "#C7D2FE",
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
+    gap: 8,
+  },
+  expiredText: { color: "#475569", fontSize: 13.5, fontWeight: "900" },
 });
 
 export default ClassDetailScreen;
