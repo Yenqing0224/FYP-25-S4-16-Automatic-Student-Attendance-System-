@@ -5,20 +5,13 @@ from collections import deque
 import requests
 from datetime import datetime, timezone
 import sys
-import json
 from pathlib import Path 
 from liveness_detection.tsn_predict import TSNPredictor
 
 BASE_DIR = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(BASE_DIR))
-
 from compreface import CompreFace
 from compreface.service import RecognitionService
-from dotenv import load_dotenv
-import os
-
-env_path = Path(__file__).resolve().parents[0] / ".env"
-load_dotenv(dotenv_path=env_path)
 
 # Global vars
 recog_interval = 0          # does reognition every x seconds
@@ -26,40 +19,25 @@ absence_threshold = 5       # y seconds of not seen, will update leave time, RMB
 liveness_history_len = 5    # stores how many history??
 spoof_threshold = 0.2       # can only be detected as spoof x% of the time
 
-def load_config():
-    config_file = Path("config.json")
-    with open(config_file, 'r') as f:
-        config = json.load(f)
-
-    venue = config.get("venue", "Unknown")  # venue = unknow if no venue
-    cameras = config.get("cameras", [])
-    return venue , cameras
+def load_venue():
+    with open('venue.txt', 'r') as f:
+        venue = f.read().strip()
+    return venue
 
 class ThreadedCamera:
-    def __init__(self, venue, cameras):
+    def __init__(self, venue):
         self.active = True
-        self.frames = {}
-        self.results = {}
+        self.results = []
         self.last_recog_time = datetime.now(timezone.utc)  # stores in datetime format
         self.attendance_state = {}              # For writing to DB
-        #self.capture = cv2.VideoCapture(0)     # for local webcam
-        # for multiple ip cameras
-        self.capture = {}
-        for cam in cameras:
-            cam_id = cam.get("id", f"cam_{len(self.capture)}")
-            cam_url = cam.get("url")
-            cap = cv2.VideoCapture(cam_url)  
-            cap.set(cv2.CAP_PROP_BUFFERSIZE, 2)
-            if not cap.isOpened():
-                print(f"[!] Could not open camera {cam_id} ({cam_url})")
-            self.capture[cam_id] = cap
-
+        self.capture = cv2.VideoCapture(0)
+        self.capture.set(cv2.CAP_PROP_BUFFERSIZE, 2)
         self.liveness_predictor = TSNPredictor()
 
         # API SETTINGS
-        self.api_key = os.getenv("COMPR_FACE_API_KEY")
-        self.host = os.getenv("HOST")
-        self.port = os.getenv("PORT")
+        self.api_key = '17769fd0-cc56-4b6f-83fc-08e2fe636758'
+        self.host = 'http://13.251.225.129'
+        self.port = '8000'
         self.venue = venue
 
         compre_face: CompreFace = CompreFace(self.host, self.port, {
@@ -97,70 +75,90 @@ class ThreadedCamera:
 
 
     def show_frame(self):
-        while any(cap.isOpened() for cap in self.capture.values()):
-            for cam_id, cap in self.capture.items():
-                ret, frame_raw = cap.read()
-                if not ret:
-                    continue
-                frame = cv2.flip(frame_raw, 1)
-                self.frames[cam_id] = frame
-                
+        while self.capture.isOpened():
+            (status, frame_raw) = self.capture.read()
+            if not status:
+                continue
+            
+            self.frame = cv2.flip(frame_raw, 1)
 
-                if self.results.get(cam_id):
-                    results = self.results[cam_id]
-                    for result in results:
-                        box = result.get('box')
-                        age = result.get('age')
-                        gender = result.get('gender')
-                        mask = result.get('mask')
-                        subjects = result.get('subjects')
-                        #landmarks = result.get('landmarks')
-                        if box:
-                            cv2.rectangle(img=frame, pt1=(box['x_min'], box['y_min']),
-                                        pt2=(box['x_max'], box['y_max']), color=(0, 255, 0), thickness=1)
-                            if age:
-                                age = f"Age: {age['low']} - {age['high']}"
-                                cv2.putText(frame, age, (box['x_max'], box['y_min'] + 15),
+            if self.results:
+                results = self.results
+                for result in results:
+                    box = result.get('box')
+                    age = result.get('age')
+                    gender = result.get('gender')
+                    mask = result.get('mask')
+                    subjects = result.get('subjects')
+                    landmarks = result.get('landmarks')
+                    if box:
+                        cv2.rectangle(img=self.frame, pt1=(box['x_min'], box['y_min']),
+                                      pt2=(box['x_max'], box['y_max']), color=(0, 255, 0), thickness=1)
+                        if age:
+                            age = f"Age: {age['low']} - {age['high']}"
+                            cv2.putText(self.frame, age, (box['x_max'], box['y_min'] + 15),
+                                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 1)
+                        if gender:
+                            gender = f"Gender: {gender['value']}"
+                            cv2.putText(self.frame, gender, (box['x_max'], box['y_min'] + 35),
+                                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 1)
+                        if mask:
+                            mask = f"Mask: {mask['value']}"
+                            cv2.putText(self.frame, mask, (box['x_max'], box['y_min'] + 55),
+                                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 1)
+                        
+                        # Draw points & index of points for visual
+                        if landmarks:
+                            for i, (x, y) in enumerate(landmarks):
+                                cv2.circle(
+                                    self.frame,
+                                    (int(x), int(y)),
+                                    radius=2,
+                                    color=(0, 0, 255),
+                                    thickness=-1
+                                )
+                                # for index visual 
+                                cv2.putText(
+                                    self.frame,
+                                    str(i),
+                                    (int(x) + 2, int(y) + 2),
+                                    cv2.FONT_HERSHEY_SIMPLEX,
+                                    0.35,
+                                    (0,255,0),
+                                    1
+                                ) 
+                        
+                        if subjects:
+                            # subjects already takes the highest similarity
+                            #subjects = sorted(subjects, key=lambda k: k['similarity'], reverse=True)
+                            # to put a threshold on matching faces
+                            #if subjects[0]['similarity'] >= 0:
+                                subject = f"Subject: {subjects[0]['subject']}"
+                                similarity = f"Similarity: {subjects[0]['similarity']}"
+                                cv2.putText(self.frame, subject, (box['x_max'], box['y_min'] + 75),
                                             cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 1)
-                            if gender:
-                                gender = f"Gender: {gender['value']}"
-                                cv2.putText(frame, gender, (box['x_max'], box['y_min'] + 35),
+                                cv2.putText(self.frame, similarity, (box['x_max'], box['y_min'] + 95),
                                             cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 1)
-                            if mask:
-                                mask = f"Mask: {mask['value']}"
-                                cv2.putText(frame, mask, (box['x_max'], box['y_min'] + 55),
-                                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 1)
-                            
-                            if subjects:
-                                # subjects already takes the highest similarity
-                                #subjects = sorted(subjects, key=lambda k: k['similarity'], reverse=True)
-                                # to put a threshold on matching faces
-                                #if subjects[0]['similarity'] >= 0:
-                                    subject = f"Subject: {subjects[0]['subject']}"
-                                    similarity = f"Similarity: {subjects[0]['similarity']}"
-                                    cv2.putText(frame, subject, (box['x_max'], box['y_min'] + 75),
-                                                cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 1)
-                                    cv2.putText(frame, similarity, (box['x_max'], box['y_min'] + 95),
-                                                cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 1)
-                                            
-                            else:
-                                subject = f"No known faces"
-                                cv2.putText(frame, subject, (box['x_max'], box['y_min'] + 75),
-                                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 1)
-                                
-                cv2.imshow(f"{self.venue} - {cam_id}", frame)
+                                        
+                        else:
+                            subject = f"No known faces"
+                            cv2.putText(self.frame, subject, (box['x_max'], box['y_min'] + 75),
+                                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 1)
+
+            cv2.imshow('CompreFace demo', self.frame)
+            #time.sleep(self.FPS)
 
             if cv2.waitKey(1) & 0xFF == 27:
-                for cap in self.capture.values():
-                    cap.release()
+                self.capture.release()
                 cv2.destroyAllWindows()
                 self.active=False
+
 
     def is_active(self):
         return self.active
 
     def update(self):
-        if not self.frames:
+        if not hasattr(self, 'frame'):
             return
 
         now = datetime.now(timezone.utc)
@@ -172,17 +170,17 @@ class ThreadedCamera:
         # Updates the time the last recognition is done, to apply the throttling  
         self.last_recog_time = now
 
-        for cam_id, frame in self.frames.items():
-            _, im_buf_arr = cv2.imencode(".jpg", frame, [int(cv2.IMWRITE_JPEG_QUALITY), 75])
-            byte_im = im_buf_arr.tobytes()
-            data = self.recognition.recognize(byte_im)
-            self.results[cam_id] = data.get('result')
+        _, im_buf_arr = cv2.imencode(".jpg", self.frame, [int(cv2.IMWRITE_JPEG_QUALITY), 75])
+        byte_im = im_buf_arr.tobytes()
+        data = self.recognition.recognize(byte_im)
+        self.results = data.get('result')
 
-            self.process_attendance(self.results[cam_id], now, frame)
-            self.check_leavers(now)
+        self.process_attendance(self.results, now)
+        self.check_leavers(now)
+
 
     # results contains all recognized faces in the frame
-    def process_attendance(self, results, now, frame):
+    def process_attendance(self, results, now):
         if not results:
             return  # nothing to process
 
@@ -219,7 +217,7 @@ class ThreadedCamera:
             
             # crops the face that was detected
             x_min, y_min, x_max, y_max = box['x_min'], box['y_min'] , box['x_max'], box['y_max']
-            face_crop = [frame[y_min:y_max, x_min:x_max]]
+            face_crop = [self.frame[y_min:y_max, x_min:x_max]]
             liveness = self.liveness_predictor.predict(face_crop)
             if liveness[0][0] > liveness[0][1]:
                 print("Live", student_id)   # for debug
@@ -270,9 +268,8 @@ class ThreadedCamera:
 if __name__ == '__main__':
     #args = parseArguments()
     #threaded_camera = ThreadedCamera(args.api_key, args.host, args.port)
-    venue, cameras = load_config()
-    print(venue, cameras)
-    threaded_camera = ThreadedCamera(venue, cameras)
+    venue = load_venue()
+    threaded_camera = ThreadedCamera(venue)
     while threaded_camera.is_active():
         threaded_camera.update()
         time.sleep(0.1)     # limits main loop

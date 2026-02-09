@@ -1,13 +1,7 @@
-public ip- 13.251.225.129:8000
+Please use: facial-recognition.py , for actual use cases
 
-admin@fyp.com
-password
-
-
-change absence_threshold (in seconds) for testing. Business logic = 600s
-
-Uses CelebA dataset for liveness detection
-
+The file: facial-recognition_webcam.py
+is used for debugging using a webcam on a pc.
 
 INSTALLATION GUIDE
 

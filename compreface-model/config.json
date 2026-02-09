@@ -1,0 +1,7 @@
+{
+    "venue": "BLK A 5.05",
+    "cameras" : [
+        {"id": "cam1", "url": "http://192.168.0.186:8080/video"},
+        {"id": "cam2", "url": "http://192.168.0.186:8080/video"}
+    ]
+}
