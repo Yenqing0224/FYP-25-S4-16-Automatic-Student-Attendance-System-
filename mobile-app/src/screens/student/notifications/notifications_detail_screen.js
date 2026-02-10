@@ -32,7 +32,6 @@ const NotificationDetailScreen = ({ route, navigation }) => {
     });
   };
 
-  // ✅ no need to mark read here because we already mark read on tap in list
   useEffect(() => {}, []);
 
   return (

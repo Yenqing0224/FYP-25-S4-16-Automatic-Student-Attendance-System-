@@ -29,7 +29,7 @@ const COLORS = {
   soft: "#ECE9FF",
 };
 
-/** ✅ Helper to standardise API data */
+/* Helper to standardise API data */
 const deriveFieldsFromISO = (c) => {
   const startISO = String(c?.startISO ?? "");
   const endISO = String(c?.endISO ?? "");
@@ -65,7 +65,7 @@ const LecturerSessionsScreen = ({ navigation, route }) => {
     }
   }, [selectedDate]);
 
-  // ✅ Fetch Real Data Only
+  // Fetch Real Data
   const fetchTimetable = async () => {
     setLoading(true);
     try {
@@ -76,16 +76,9 @@ const LecturerSessionsScreen = ({ navigation, route }) => {
         const base = {
           id: String(c.id),
           
-          // 1. Module Code (e.g. "CSCI 128") -> For the small colored label
           module: c.module?.code ?? "MOD",
-          
-          // 2. Module Name (e.g. "Intro to Programming") -> For the Main Title
-          // ✅ FIX: This matches HomeScreen logic now.
           title: c.module?.name ?? c.module?.code ?? "Class",
-
-          // 3. Session Name (e.g. "Lecture 18") -> For Logic / Subtitles
           name: c.name ?? "Session", 
-
           venue: c.venue ?? "TBA",
           startISO: `${c.date}T${c.start_time}`,
           endISO: `${c.date}T${c.end_time}`,

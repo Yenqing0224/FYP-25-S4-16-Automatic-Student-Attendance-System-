@@ -13,7 +13,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
-import api from "../../../api/api_client"; // ✅ Import API
+import api from "../../../api/api_client";
 
 const COLORS = {
   primary: "#6D5EF5",
@@ -27,15 +27,14 @@ const COLORS = {
 
 export default function LecturerActiveClassesScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
-  const [classes, setClasses] = useState([]); // ✅ Store API data here
+  const [classes, setClasses] = useState([]);
   const [query, setQuery] = useState("");
 
-  // ✅ Fetch Data from Profile API
+  // Fetch Data from Profile API
   const fetchClasses = async () => {
     try {
       setLoading(true);
       const res = await api.get("/profile/");
-      // The service returns the list in 'active_modules'
       setClasses(res.data.active_modules || []);
     } catch (err) {
       console.error("Failed to fetch active classes:", err);
@@ -50,7 +49,7 @@ export default function LecturerActiveClassesScreen({ navigation }) {
     }, [])
   );
 
-  // ✅ Filter Logic (Updated for API fields)
+  // Filter Logic
   const data = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return classes;
@@ -61,13 +60,11 @@ export default function LecturerActiveClassesScreen({ navigation }) {
   }, [query, classes]);
 
   const openClass = (item) => {
-    // You can update this later to go to a specific detail page
-    // navigation.navigate("LecturerClassDetail", { module: item });
+
   };
 
   const renderItem = ({ item }) => (
     <TouchableOpacity style={styles.card} onPress={() => openClass(item)} activeOpacity={0.7}>
-      {/* Top Row: Code, Name & Status */}
       <View style={styles.topRow}>
         <View style={{ flex: 1 }}>
           <Text style={styles.title}>
@@ -77,20 +74,17 @@ export default function LecturerActiveClassesScreen({ navigation }) {
         </View>
 
         <View style={styles.statusChip}>
-          {/* ✅ Status from API */}
+          {/* Status from API */}
           <Text style={styles.statusText}>
             {item.status ? item.status.charAt(0).toUpperCase() + item.status.slice(1) : "Active"}
           </Text>
         </View>
       </View>
 
-      {/* ❌ Removed Time/Venue MetaRow as requested */}
-
       {/* Bottom Row: Students Count */}
       <View style={styles.bottomRow}>
         <View style={styles.metaItem}>
           <Ionicons name="people-outline" size={14} color={COLORS.textMuted} />
-          {/* ✅ Student Count from API */}
           <Text style={styles.metaText}>{item.student_enrolled || 0} students</Text>
         </View>
 
@@ -206,8 +200,6 @@ const styles = StyleSheet.create({
     borderColor: "#DCD7FF",
   },
   statusText: { color: COLORS.primary, fontWeight: "900", fontSize: 12 },
-
-  // Removed metaRow style usage since we removed the Time/Venue section
 
   metaItem: { flexDirection: "row", alignItems: "center", gap: 6 },
   metaText: { color: COLORS.textMuted, fontWeight: "700" },

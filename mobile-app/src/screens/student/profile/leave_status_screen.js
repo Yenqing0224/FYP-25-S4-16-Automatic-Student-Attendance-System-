@@ -25,7 +25,7 @@ const COLORS = {
   borderSoft: "#E5E7EB",
 };
 
-// Helper to get colors based on status
+// Helper
 const getStatusStyle = (status) => {
   const normalized = status ? status.toLowerCase() : "";
   switch (normalized) {
@@ -66,7 +66,7 @@ const LeaveStatusScreen = ({ navigation }) => {
     }
   };
 
-  // --- FORMATTING HELPERS ---
+  // Formatting helper
   const formatStatus = (status) => {
     if (!status) return "";
     return status.charAt(0).toUpperCase() + status.slice(1);
@@ -171,7 +171,7 @@ const LeaveStatusScreen = ({ navigation }) => {
                       { backgroundColor: statusStyles.bg || COLORS.card },
                     ]}
                   >
-                    {/* Header row: reason + badge */}
+                    {/* Header row */}
                     <View style={styles.cardHeaderRow}>
                       <Text style={styles.cardType}>{item.reason}</Text>
 
@@ -212,7 +212,7 @@ const LeaveStatusScreen = ({ navigation }) => {
                       </Text>
                     </Text>
 
-                    {/* --- 1. STUDENT DESCRIPTION --- */}
+                    {/* STUDENT DESCRIPTION */}
                     {item.description ? (
                       <View style={styles.remarksBox}>
                         <Text style={styles.remarksLabel}>Description</Text>
@@ -220,7 +220,7 @@ const LeaveStatusScreen = ({ navigation }) => {
                       </View>
                     ) : null}
 
-                    {/* --- 2. ADMIN REMARKS --- */}
+                    {/* ADMIN REMARKS */}
                     {item.remarks ? (
                       <View style={[styles.remarksBox, { marginTop: 8, backgroundColor: 'rgba(255,255,255,0.6)' }]}>
                         <Text style={[styles.remarksLabel, { color: statusStyles.text }]}>

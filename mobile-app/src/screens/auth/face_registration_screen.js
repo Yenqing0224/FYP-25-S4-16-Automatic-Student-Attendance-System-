@@ -22,10 +22,9 @@ import api from '../../api/api_client';
 import { verifyPose } from '../../api/student'; 
 
 const { width } = Dimensions.get('window');
-const SCAN_SIZE = width * 0.9; // 90% Width
+const SCAN_SIZE = width * 0.9;
 const SCAN_DURATION = 2000;
 
-// ✅ UPDATED: Exact Blue from your Intro Screen
 const THEME_COLOR = '#3A7AFE'; 
 
 const STEPS = [
@@ -48,7 +47,7 @@ export default function FaceRegistrationScreen({ navigation }) {
   const scanAnim = useRef(new Animated.Value(0)).current;
   const currentStep = STEPS[stepIndex];
 
-  // --- LASER ANIMATION ---
+  // Animation
   useEffect(() => {
     if (isStarted && !isUploading) {
       Animated.loop(
@@ -97,7 +96,7 @@ export default function FaceRegistrationScreen({ navigation }) {
     }
   }, [permission]);
 
-  // --- SCANNING LOOP ---
+  // Loop
   useEffect(() => {
     let interval;
     const scanLoop = async () => {

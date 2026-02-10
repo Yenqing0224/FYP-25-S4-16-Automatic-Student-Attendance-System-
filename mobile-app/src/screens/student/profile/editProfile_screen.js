@@ -12,7 +12,7 @@ import {
   StatusBar,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import api from "../../../api/api_client"; // 👈 Ensure this path matches your folder structure
+import api from "../../../api/api_client";
 import { Ionicons } from "@expo/vector-icons";
 
 const COLORS = {
@@ -28,12 +28,12 @@ const EditProfileScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  // --- READ ONLY FIELDS ---
+  // Read only
   const [name, setName] = useState("");
   const [course, setCourse] = useState("");
   const [schoolEmail, setSchoolEmail] = useState("");
 
-  // --- EDITABLE FIELDS ---
+  // Editable
   const [mobileNumber, setMobileNumber] = useState("");
   const [personalEmail, setPersonalEmail] = useState("");
 
@@ -43,20 +43,19 @@ const EditProfileScreen = ({ navigation }) => {
   const [unitNumber, setUnitNumber] = useState("");
   const [postalCode, setPostalCode] = useState("");
 
-  // To check for changes
+  // Check for changes
   const initialValues = useRef(null);
 
-  // 1️⃣ LOAD DATA
+  // Load data
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        // ✅ CORRECT: Use the GET endpoint to READ data
         const res = await api.get('/profile/');
 
         const student = res.data;
         const user = student.user || {};
 
-        // --- MAP DATA TO STATE ---
+        // Map data
         setName(`${user.first_name} ${user.last_name}`);
         setCourse(student.programme);
         setSchoolEmail(user.email);
@@ -88,9 +87,8 @@ const EditProfileScreen = ({ navigation }) => {
     fetchProfile();
   }, [navigation]);
 
-  // 2️⃣ SAVE DATA
+  // Save Data
   const handleSave = async () => {
-    // Trim inputs
     const mobileTrim = mobileNumber.trim();
     const personalEmailTrim = personalEmail.trim();
     const countryTrim = country.trim();
@@ -121,7 +119,6 @@ const EditProfileScreen = ({ navigation }) => {
     setSaving(true);
 
     try {
-      // ✅ USES /edit-profile/ for SAVING
       const payload = {
         phone_number: mobileTrim,
         personal_email: personalEmailTrim,
@@ -150,7 +147,6 @@ const EditProfileScreen = ({ navigation }) => {
         <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
         <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
           <ActivityIndicator size="large" color={COLORS.primary} />
-          {/* ✅ FIXED SYNTAX ERROR HERE */}
           <Text style={{ marginTop: 10, color: COLORS.textMuted }}>Loading profile...</Text>
         </View>
       </SafeAreaView>

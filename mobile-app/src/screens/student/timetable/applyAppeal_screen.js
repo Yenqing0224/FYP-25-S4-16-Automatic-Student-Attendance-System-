@@ -154,7 +154,7 @@ const ApplyAppealScreen = ({ route, navigation }) => {
       <View style={styles.contentContainer}>
         <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
 
-        {/* ✅ Timetable-style header */}
+        {/* Timetable-style header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerBtn} activeOpacity={0.85}>
             <Ionicons name="chevron-back" size={22} color={COLORS.primary} />
@@ -309,7 +309,7 @@ const styles = StyleSheet.create({
   topSafeArea: { flex: 0, backgroundColor: COLORS.background },
   contentContainer: { flex: 1, backgroundColor: COLORS.background },
 
-  // Header (Timetable-like)
+  // Header
   header: {
     backgroundColor: COLORS.background,
     paddingVertical: 12,

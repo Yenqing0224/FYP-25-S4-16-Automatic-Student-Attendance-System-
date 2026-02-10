@@ -1,8 +1,4 @@
 // src/screens/student/profile/appeal_detail_screen.js
-// ✅ Beautified to match Timetable/NewsEvents vibe (pill header, chips, icon rows, nicer document card)
-// ✅ Safer date parsing for "YYYY-MM-DD" (no UTC shift)
-// ✅ Safer time formatting for "HH:MM:SS" or ISO datetime
-
 import React, { useState } from "react";
 import {
   View,
@@ -43,7 +39,6 @@ const formatStatus = (status) => {
   return s.charAt(0).toUpperCase() + s.slice(1);
 };
 
-// ✅ Safe for both "YYYY-MM-DD" and ISO strings
 const formatDate = (dateString) => {
   if (!dateString) return "-";
   const s = String(dateString);
@@ -113,7 +108,6 @@ const AppealDetailScreen = ({ navigation, route }) => {
         return;
       }
 
-      // canOpenURL is fine, but even if false, openURL will often still work
       await Linking.openURL(document_url);
     } catch (error) {
       console.error("Open File Error:", error);
@@ -173,7 +167,7 @@ const AppealDetailScreen = ({ navigation, route }) => {
       <View style={styles.contentContainer}>
         <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
 
-        {/* ✅ Timetable-style header */}
+        {/* Timetable-style header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerBtn} activeOpacity={0.85}>
             <Ionicons name="chevron-back" size={22} color={COLORS.primary} />

@@ -50,7 +50,7 @@ const LoginScreen = ({ navigation }) => {
 
       await AsyncStorage.setItem("userToken", token);
       await AsyncStorage.setItem("userInfo", JSON.stringify(user));
-      await AsyncStorage.setItem("userRole", user.role_type); // optional (helps your splash)
+      await AsyncStorage.setItem("userRole", user.role_type); 
 
       if (user.role_type === "lecturer") {
         navigation.reset({ index: 0, routes: [{ name: "LecturerTabs" }] });
@@ -81,7 +81,7 @@ const LoginScreen = ({ navigation }) => {
           behavior={Platform.OS === "ios" ? "padding" : "height"}
           style={styles.innerContainer}
         >
-          {/* HEADER (minimalist) */}
+          {/* HEADER */}
           <View style={styles.header}>
             <View style={styles.brandRow}>
               <View style={styles.logoCircle}>
@@ -102,10 +102,10 @@ const LoginScreen = ({ navigation }) => {
             <Text style={styles.heroTitle}>Welcome back</Text>
           </View>
 
-          {/* small controlled gap (no big empty space) */}
+          {/* Gap */}
           <View style={{ height: 12 }} />
 
-          {/* CARD */}
+          {/* Card */}
           <View style={styles.card}>
             <Text style={styles.label}>Username or Email</Text>
             <View style={styles.inputWrap}>
@@ -216,7 +216,6 @@ const COLORS = {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.bg },
 
-  // ✅ no "space-between" so it won't push card too far down
   innerContainer: {
     flex: 1,
     paddingHorizontal: 18,
@@ -225,7 +224,6 @@ const styles = StyleSheet.create({
     justifyContent: "flex-start",
   },
 
-  // ✅ minimalist header (no glow, no big hero block)
   header: {
     paddingHorizontal: 2,
     paddingTop: 6,
@@ -243,7 +241,6 @@ const styles = StyleSheet.create({
   appName: { fontSize: 18, fontWeight: "900", color: COLORS.text, letterSpacing: 0.2 },
   appSubtitle: { fontSize: 12.5, color: COLORS.muted, marginTop: 2 },
 
-  // ✅ tighter spacing
   heroTitle: { marginTop: 10, fontSize: 22, fontWeight: "900", color: COLORS.text },
 
   card: {
@@ -255,7 +252,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.border,
 
-    // ✅ flatter shadow (more minimalist)
     shadowColor: "#000",
     shadowOpacity: 0.06,
     shadowRadius: 10,

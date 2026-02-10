@@ -35,7 +35,7 @@ const CalendarTab = ({
 }) => {
   const dayListRef = useRef(null);
 
-  // --- Helper Functions ---
+  // Helper Functions
   const toText = (v, fallback = "-") => {
     if (v == null) return fallback;
     if (typeof v === "string" || typeof v === "number") return String(v);
@@ -81,7 +81,7 @@ const CalendarTab = ({
 
   const selectedDateText = typeof selectedDate === "string" ? selectedDate : toText(selectedDate, "");
 
-  // --- Logic ---
+  // Logic
   const markedDates = useMemo(() => {
     const marks = {};
     (sessions || []).forEach((c) => {
@@ -100,7 +100,7 @@ const CalendarTab = ({
 
   const scrollToDetails = () => dayListRef.current?.scrollTo({ y: 260, animated: true });
 
-  // --- Render ---
+  // Render
   return (
     <ScrollView ref={dayListRef} style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 24 }}>
       <CalendarList
@@ -167,7 +167,6 @@ const CalendarTab = ({
                 styles.sessionCard,
                 { borderColor: moduleColor + "55", backgroundColor: moduleColor + "10" },
               ]}
-              // ✅ FIX: Allow navigation even if rescheduled.
               // The Detail Screen will handle the "locked" logic.
               onPress={() => navigation.navigate("LecturerClassDetail", { cls: s })}
             >
@@ -234,9 +233,9 @@ const CalendarTab = ({
                       style={[
                         styles.secondaryBtn,
                         { backgroundColor: COLORS.soft },
-                        isRescheduled && { opacity: 0.5 }, // Dim button if rescheduled
+                        isRescheduled && { opacity: 0.5 },
                       ]}
-                      disabled={isRescheduled} // Disable reminder for rescheduled classes
+                      disabled={isRescheduled}
                       onPress={() => addReminderToCalendar?.(s)}
                     >
                       <Ionicons

@@ -47,7 +47,7 @@ const NewsEventDetailScreen = ({ route, navigation }) => {
 
   const isActionable = currentStatus === 'upcoming';
 
-  // --- 1. FETCH STATUS ON FOCUS ---
+  // Fetch
   useFocusEffect(
     useCallback(() => {
       if (isEvent) {
@@ -59,7 +59,7 @@ const NewsEventDetailScreen = ({ route, navigation }) => {
   const checkStatus = async () => {
     setIsLoading(true); 
     try {
-      // Direct API call
+      // API call
       const response = await api.post('/check-event-status/', { event_id: item.id });
       
       setIsJoined(response.data.is_joined);
@@ -75,18 +75,16 @@ const NewsEventDetailScreen = ({ route, navigation }) => {
     }
   };
 
-  // --- 2. HANDLE ACTIONS ---
+  // Handle Action
   const handleAction = async () => {
     if (isJoined) {
       Alert.alert("Quit Event", "Are you sure you want to quit?", [
         { text: "No", style: "cancel" },
-        // CHANGED: Text is just "Yes"
         { text: "Yes", style: "destructive", onPress: () => performApiAction('quit') }
       ]);
     } else {
       Alert.alert("Join Event", "Do you want to participate?", [
         { text: "Cancel", style: "cancel" },
-        // CHANGED: Text is just "Yes"
         { text: "Yes", onPress: () => performApiAction('join') }
       ]);
     }
@@ -96,7 +94,6 @@ const NewsEventDetailScreen = ({ route, navigation }) => {
     setActionLoading(true);
     try {
       if (type === 'quit') {
-        // CHANGED: URL must match backend '/quit-event/'
         await api.post('/quit-event/', { event_id: item.id });
         
         Alert.alert("Success", "You have left the event.", [
@@ -112,14 +109,13 @@ const NewsEventDetailScreen = ({ route, navigation }) => {
     } catch (error) {
       const msg = error.response?.data?.message || error.response?.data?.error || "Action failed.";
       Alert.alert("Error", msg);
-      // Don't go back if failed, just refresh status
       checkStatus(); 
     } finally {
       setActionLoading(false);
     }
   };
 
-  // --- UI HELPERS ---
+  // UI helpers
   const getFormattedDate = () => {
     const dateString = item.news_date || item.event_date || item.date_sent;
     if (!dateString) return "Date not available";
@@ -213,7 +209,6 @@ const NewsEventDetailScreen = ({ route, navigation }) => {
                     {actionLoading ? (
                       <ActivityIndicator color={isJoined ? COLORS.textDark : "#FFF"} />
                     ) : (
-                      // CHANGED: Button text is now "Quit"
                       <Text style={[styles.actionBtnText, isJoined ? styles.textQuit : styles.textJoin]}>
                         {isJoined ? "Quit" : (slots <= 0 ? "Event Full" : "Participate")}
                       </Text>
@@ -262,7 +257,6 @@ const styles = StyleSheet.create({
   headerIconBox: { width: 32, alignItems: "flex-start" },
   headerTitle: { fontSize: 20, fontWeight: "700", color: COLORS.textDark },
   
-  // --- FULL SCREEN LOADER STYLES ---
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',

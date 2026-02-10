@@ -14,8 +14,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import api from "../../../api/api_client";
 import { Ionicons } from "@expo/vector-icons";
-
-// ✅ auto-register push (no toggle UI)
 import { registerForPushAndSync } from "../../../../utils/push";
 
 const COLORS = {
@@ -44,7 +42,6 @@ const ProfileScreen = ({ navigation }) => {
   useEffect(() => {
     loadProfile();
     registerForPushAndSync();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadProfile = async () => {
@@ -70,7 +67,6 @@ const ProfileScreen = ({ navigation }) => {
             await api.post("/remove-push-token/");
             await api.post("/logout/");
           } catch (e) {
-            // even if server fails, we still logout locally
             console.error("Logout API failed:", e);
           } finally {
             await AsyncStorage.multiRemove(["userInfo", "userToken"]);

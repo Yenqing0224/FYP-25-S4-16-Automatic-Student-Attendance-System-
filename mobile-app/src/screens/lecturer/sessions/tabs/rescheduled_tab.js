@@ -24,18 +24,14 @@ const RescheduledTab = ({ COLORS, navigation, sessions = [] }) => {
 
   const clean = (str) => toText(str).toLowerCase().trim().replace(/\s+/g, " ");
 
-  // 1. Get Old Classes (Status = Rescheduled)
   const oldClasses = useMemo(() => {
     return sessions
       .filter((s) => clean(s.status) === "rescheduled")
       .sort((a, b) => new Date(b.startISO) - new Date(a.startISO)); 
   }, [sessions]);
 
-  // 2. MATCHING LOGIC (Using session name logic)
   const findReplacement = (oldClass) => {
-    // We match based on specific Session Name (e.g. "Lecture 18")
     const oldName = clean(oldClass.name);
-    // Double check with Module Name
     const oldModule = clean(oldClass.title); 
 
     return sessions.find((s) => {
@@ -76,12 +72,10 @@ const RescheduledTab = ({ COLORS, navigation, sessions = [] }) => {
               {/* Header */}
               <View style={styles.topRow}>
                 <View style={{ flex: 1 }}>
-                  {/* ✅ Label: Module Code (CSCI 128) */}
                   <Text style={[styles.module, { color: COLORS.primary }]}>
                     {toText(oldClass.module)}
                   </Text>
                   
-                  {/* ✅ Title: Module Name (Intro to Programming) */}
                   <Text style={styles.sessionTitle}>
                     {toText(oldClass.title)}
                   </Text>
@@ -92,7 +86,7 @@ const RescheduledTab = ({ COLORS, navigation, sessions = [] }) => {
                 </View>
               </View>
 
-              {/* BEFORE */}
+              {/* Before */}
               <View style={styles.block}>
                 <View style={styles.row}>
                   <Ionicons name="arrow-back-outline" size={16} color={COLORS.textMuted} />
@@ -102,7 +96,7 @@ const RescheduledTab = ({ COLORS, navigation, sessions = [] }) => {
                 <Text style={styles.blockSub}>Venue: {toText(oldClass.venue) || "TBA"}</Text>
               </View>
 
-              {/* AFTER */}
+              {/* After */}
               <View style={styles.block}>
                 <View style={styles.row}>
                   <Ionicons name="arrow-forward-outline" size={16} color={COLORS.textMuted} />
@@ -110,7 +104,6 @@ const RescheduledTab = ({ COLORS, navigation, sessions = [] }) => {
                 </View>
                 {newClass ? (
                   <>
-                    {/* ✅ Green color removed as requested */}
                     <Text style={styles.blockText}>
                       {formatNice(newClass.startISO)}
                     </Text>

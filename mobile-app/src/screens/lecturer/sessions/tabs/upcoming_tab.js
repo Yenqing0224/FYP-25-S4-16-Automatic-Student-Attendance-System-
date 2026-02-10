@@ -76,7 +76,6 @@ const UpcomingTab = ({
     const status = String(toText(cls?.status, "active")).toLowerCase();
     const sessionName = String(toText(cls?.name, "")).toLowerCase();
     
-    // ✅ Logic: Block if it's the original moved class OR a replacement class
     const isLocked = status === "rescheduled" || sessionName.includes("(rescheduled)");
 
     if (isLocked) {
@@ -113,12 +112,10 @@ const UpcomingTab = ({
           const status = String(toText(s?.status, "active")).toLowerCase();
           const sessionName = toText(s?.name, "");
 
-          // ✅ SEPARATED LOGIC
+          // Seperate Logic
           const isReplacement = sessionName.toLowerCase().includes("(rescheduled)");
-          // Button is locked for BOTH original moved classes and new replacement classes
           const isLocked = status === "rescheduled" || isReplacement;
           
-          // ✅ Label logic: Show 'Rescheduled' ONLY for the original moved class
           const statusLabel = status === "rescheduled" ? "Rescheduled" : "Upcoming";
 
           const moduleColor = getModuleColor(moduleText);

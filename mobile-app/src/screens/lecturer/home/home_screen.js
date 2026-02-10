@@ -48,7 +48,7 @@ export default function LecturerHomeScreen({ navigation, route }) {
   const [readAnnouncementIds, setReadAnnouncementIds] = useState(new Set());
   const [showAllAnnouncements, setShowAllAnnouncements] = useState(false);
 
-  // ---------- safe helpers ----------
+  // helpers
   const toText = (v, fallback = "-") => {
     if (v == null) return fallback;
     if (typeof v === "string" || typeof v === "number") return String(v);
@@ -96,7 +96,7 @@ export default function LecturerHomeScreen({ navigation, route }) {
     };
   };
 
-  // ---------- init ----------
+  // init
   useEffect(() => {
     const init = async () => {
       try {
@@ -157,12 +157,12 @@ export default function LecturerHomeScreen({ navigation, route }) {
       const res = await api.get("/dashboard/");
       const data = res.data || {};
 
-      // 1. Stats
+      // Stats
       setStats(data.stats || { today: 0, week: 0 });
       setTodayClasses(Array.isArray(data.today_sessions) ? data.today_sessions : []);
       setWeekClasses(Array.isArray(data.week_sessions) ? data.week_sessions : []);
 
-      // 2. Next Class
+      // Next Class
       if (data.next_class) {
         const nc = data.next_class;
         const moduleCode = toText(nc.module?.code || nc.module, "Module");
@@ -181,7 +181,6 @@ export default function LecturerHomeScreen({ navigation, route }) {
           time: `${formatTime(nc.start_time)} – ${formatTime(nc.end_time)}`,
           venue: toText(nc.venue?.name || nc.venue, "TBA"),
           status: nc.status,
-          // ✅ ADDED: Pass status label just in case
           statusLabel: nc.status_label, 
         });
       } else {
@@ -212,7 +211,7 @@ export default function LecturerHomeScreen({ navigation, route }) {
     fetchDashboardData();
   };
 
-  // ---------- navigation ----------
+  // navigation
   const goToSessionsTab = () => {
     navigation.navigate("LecturerSessionsMain", { tab: "Upcoming" });
   };
@@ -222,7 +221,7 @@ export default function LecturerHomeScreen({ navigation, route }) {
     navigation.navigate("LecturerClassList", { mode, classes: classesToSend });
   };
 
-  // ---------- announcements derived ----------
+  // announcements
   const unreadAnnouncements = useMemo(
     () => announcements.filter((a) => !readAnnouncementIds.has(String(a.id))),
     [announcements, readAnnouncementIds]
@@ -338,7 +337,6 @@ export default function LecturerHomeScreen({ navigation, route }) {
                 <TouchableOpacity
                   style={styles.secondaryBtn}
                   onPress={() =>
-                    // Pass nextClass (which now includes 'name')
                     navigation.navigate("LecturerClassDetail", { cls: nextClass })
                   }
                 >

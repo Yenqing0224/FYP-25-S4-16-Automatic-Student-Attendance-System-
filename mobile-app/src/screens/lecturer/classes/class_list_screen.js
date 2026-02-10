@@ -26,7 +26,6 @@ const COLORS = {
 
 const RESCHEDULE_OVERRIDES_KEY = "lecturerRescheduleOverrides_v1";
 
-/* ✅ NEW: module color palette + mapper */
 const MODULE_COLORS = [
   "#6D5EF5", // purple
   "#10B981", // green
@@ -75,8 +74,7 @@ const LecturerClassListScreen = ({ route, navigation }) => {
 
     setLoading(true);
     fetchClasses();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [overrides]); // ✅ re-process after overrides loaded
+  }, [overrides]); 
 
   const processData = (rawData) => {
     const formatted = rawData.map((c) => ({
@@ -93,7 +91,6 @@ const LecturerClassListScreen = ({ route, navigation }) => {
       endISO: `${c.date}T${c.end_time}`,
     }));
 
-    // ✅ apply override (afterSnapshot)
     const merged = formatted.map((x) => {
       const o = overrides?.[String(x.id)];
       if (!o) return x;
@@ -180,7 +177,7 @@ const LecturerClassListScreen = ({ route, navigation }) => {
                 onPress={() => navigation.navigate("LecturerClassDetail", { cls: c })}
                 activeOpacity={0.9}
               >
-                {/* ✅ left accent bar */}
+                {/* left accent bar */}
                 <View style={{ flexDirection: "row" }}>
                   <View style={[styles.moduleBar, { backgroundColor: moduleColor }]} />
 

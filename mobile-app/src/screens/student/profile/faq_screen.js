@@ -13,7 +13,6 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 
-// Enable smooth animation on Android
 if (Platform.OS === "android") {
   if (UIManager.setLayoutAnimationEnabledExperimental) {
     UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -29,7 +28,7 @@ const COLORS = {
   borderSoft: "#E5E7EB",
 };
 
-// ✅ STATIC DATA (No Database needed)
+// Static Data (No Database needed)
 const FAQ_CATEGORIES = [
   {
     title: "Attendance & Detection",

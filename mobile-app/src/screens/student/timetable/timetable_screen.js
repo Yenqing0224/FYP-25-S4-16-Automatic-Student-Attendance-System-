@@ -29,13 +29,11 @@ const COLORS = {
   textMuted: "#6B7280",
   borderSoft: "#E5E7EB",
 
-  // NewsEvents-style helper colors
   border: "#E5E7EB",
   chipBg: "rgba(58,122,254,0.12)",
   shadow: "rgba(0,0,0,0.08)",
 };
 
-// ✅ render-safe helper (prevents {id,name} crash)
 const toText = (v, fallback = "") => {
   if (v == null) return fallback;
   if (typeof v === "string" || typeof v === "number" || typeof v === "boolean") return String(v);
@@ -44,7 +42,6 @@ const toText = (v, fallback = "") => {
   return fallback;
 };
 
-// ✅ normalize module safely
 const normalizeModule = (m) => {
   if (!m) return { code: "", name: "" };
   if (typeof m === "string") return { code: m, name: "" };
@@ -67,7 +64,7 @@ const TimetableScreen = ({ navigation }) => {
   const [bulkSaving, setBulkSaving] = useState(false);
   const [bulkProgress, setBulkProgress] = useState({ done: 0, total: 0 });
 
-  // --- Load reminder ids once ---
+  // Load reminder
   useEffect(() => {
     (async () => {
       try {
@@ -89,7 +86,6 @@ const TimetableScreen = ({ navigation }) => {
     }
   };
 
-  // --- NAV LISTENER (jump from Home upcoming card) ---
   useFocusEffect(
     useCallback(() => {
       const checkJumpDate = async () => {
@@ -108,10 +104,9 @@ const TimetableScreen = ({ navigation }) => {
     }, [])
   );
 
-  // --- FETCH TIMETABLE ---
+  // Fetch timetable
   useEffect(() => {
     fetchTimetable();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchTimetable = async () => {
@@ -145,7 +140,7 @@ const TimetableScreen = ({ navigation }) => {
     }
   };
 
-  // --- HELPERS ---
+  // Helpers
   const formatTime = (timeString) => {
     const s = toText(timeString, "");
     return s ? s.slice(0, 5) : "";
@@ -200,7 +195,6 @@ const TimetableScreen = ({ navigation }) => {
     return newMarked;
   };
 
-  // --- REMINDER IDS (tracking only, no per-card button) ---
   const reminderIdFor = (item) => {
     const code = toText(item?.module?.code, "MOD");
     return `${code}|${toText(item?.date, "")}|${toText(item?.start_time, "")}|${toText(item?.venue, "")}`;
@@ -220,7 +214,6 @@ const TimetableScreen = ({ navigation }) => {
     return { start, end };
   };
 
-  // --- BULK ADD ---
   const getDefaultCalendarId = async () => {
     const { status } = await ExpoCalendar.requestCalendarPermissionsAsync();
     if (status !== "granted") return null;
@@ -302,14 +295,13 @@ const TimetableScreen = ({ navigation }) => {
     }
   };
 
-  // --- UI HELPERS ---
+  // UI helpers
   const goToday = () => {
     const today = new Date().toISOString().split("T")[0];
     setSelectedDate(today);
     setActiveTab("Selected");
   };
 
-  // ✅ KEEP CLASS CARD DETAILS (unchanged) — no reminder button inside cards
   const renderSelectedContent = () => {
     const classesForDay = fullSchedule.filter((item) => toText(item.date, "") === selectedDate);
 
@@ -369,14 +361,12 @@ const TimetableScreen = ({ navigation }) => {
     );
   };
 
-  // ✅ KEEP CLASS CARD DETAILS (unchanged) — add all button in header row
   const renderUpcomingContent = () => {
     const now = new Date();
     const upcoming = fullSchedule
       .filter((item) => getJsDate(item) > now)
       .sort((a, b) => getJsDate(a) - getJsDate(b));
 
-    // show "Added" state if everything upcoming already tracked
     const allUpcomingAdded =
       upcoming.length > 0 && upcoming.every((x) => savedReminderIds.has(reminderIdFor(x)));
 
@@ -482,7 +472,7 @@ const TimetableScreen = ({ navigation }) => {
       <View style={styles.contentContainer}>
         <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
 
-        {/* ✅ HEADER = NewsEvents style */}
+        {/* HEADER */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.85}>
             <Ionicons name="chevron-back" size={22} color={COLORS.primary} />
@@ -524,7 +514,7 @@ const TimetableScreen = ({ navigation }) => {
               />
             </View>
 
-            {/* ✅ Tabs = NewsEvents style */}
+            {/* Tabs */}
             <View style={styles.tabContainer}>
               {["Selected", "Upcoming"].map((tab) => {
                 const isActive = activeTab === tab;
@@ -560,7 +550,6 @@ const styles = StyleSheet.create({
   contentContainer: { flex: 1, backgroundColor: COLORS.background },
   scrollContent: { paddingBottom: 28 },
 
-  // ✅ NewsEvents-style header
   header: {
     backgroundColor: COLORS.background,
     paddingVertical: 12,
@@ -606,7 +595,6 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
 
-  // ✅ NewsEvents-style tabs
   tabContainer: {
     flexDirection: "row",
     marginHorizontal: 20,

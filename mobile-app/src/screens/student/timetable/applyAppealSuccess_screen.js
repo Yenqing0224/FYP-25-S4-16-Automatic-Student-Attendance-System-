@@ -12,7 +12,7 @@ const COLORS = {
 };
 
 const ApplyAppealSuccessScreen = ({ navigation, route }) => {
-    // Get data passed from the previous screen
+    // Get data
     const { moduleCode, moduleName, reason } = route.params || {};
 
     const goToStatus = () => {

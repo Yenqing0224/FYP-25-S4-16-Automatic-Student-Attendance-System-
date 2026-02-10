@@ -27,7 +27,6 @@ const COLORS = {
   chipBg: "#ECE9FF",
 };
 
-// ✅ safe renderer for API values (string/number/object/array)
 const toText = (v, fallback = "N/A") => {
   if (v == null) return fallback;
   if (typeof v === "string" || typeof v === "number" || typeof v === "boolean") return String(v);
@@ -83,7 +82,6 @@ export default function LecturerProfileScreen({ navigation }) {
   const goChangePassword = () => navigation.navigate("LecturerChangePassword");
   const goActiveClasses = () => navigation.navigate("LecturerActiveClasses");
 
-  // ✅ Show module details on tap
   const handleModuleTap = (module) => {
     Alert.alert(
       `${toText(module?.code, "MOD")} - ${toText(module?.name, "Module")}`,
@@ -92,7 +90,6 @@ export default function LecturerProfileScreen({ navigation }) {
     );
   };
 
-  // ✅ Loading (use SafeAreaView and remove bottom inset too)
   if (loading) {
     return (
       <SafeAreaView style={[styles.container, styles.center]} edges={["top"]}>
@@ -116,7 +113,6 @@ export default function LecturerProfileScreen({ navigation }) {
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        // ✅ remove bottom padding "bar"
         contentContainerStyle={{ paddingBottom: 0 }}
       >
         {/* Header */}

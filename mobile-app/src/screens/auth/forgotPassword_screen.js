@@ -81,7 +81,7 @@ const ForgotPasswordScreen = ({ navigation }) => {
           <View style={styles.bottomSection}>
             <TouchableOpacity
               style={[
-                styles.submitButton, // ✅ Updated Style Name
+                styles.submitButton,
                 (!email.trim() || loading) && styles.submitButtonDisabled,
               ]}
               onPress={handleSendReset}
@@ -113,11 +113,10 @@ const styles = StyleSheet.create({
   input: { height: 50, borderWidth: 1, borderColor: "#333", borderRadius: 10, paddingHorizontal: 15, fontSize: 16, color: "#000" },
   bottomSection: { marginBottom: 20, alignItems: "center" },
 
-  // ✅ New "Pill Shape" Button Style matching ApplyLeaveScreen
   submitButton: {
-    backgroundColor: "#3A7AFE", // Primary Blue
+    backgroundColor: "#3A7AFE", 
     paddingVertical: 14,
-    borderRadius: 999, // Pill shape
+    borderRadius: 999,
     alignItems: "center",
     alignSelf: "stretch",
     justifyContent: "center",
@@ -128,7 +127,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   submitButtonDisabled: { 
-    backgroundColor: "#A6C2FF" // Lighter blue for disabled
+    backgroundColor: "#A6C2FF"
   },
   submitText: { 
     color: "#fff", 

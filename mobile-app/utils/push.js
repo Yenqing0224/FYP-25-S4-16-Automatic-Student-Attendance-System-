@@ -3,10 +3,8 @@ import * as Device from "expo-device";
 import * as Notifications from "expo-notifications";
 import Constants from "expo-constants";
 import { Platform } from "react-native";
-// ⚠️ Check this path: if utils is outside src, you likely need "../src/api/api_client"
 import api from "../src/api/api_client"; 
 
-// Optional: You can keep this handler here, or keep it in App.js (App.js is better)
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
@@ -17,7 +15,6 @@ Notifications.setNotificationHandler({
 
 export async function registerForPushAndSync() {
   try {
-    // 1. Android Channel Setup
     if (Platform.OS === "android") {
       await Notifications.setNotificationChannelAsync("default", {
         name: "default",
@@ -27,13 +24,13 @@ export async function registerForPushAndSync() {
       });
     }
 
-    // 2. Physical Device Check
+    // Physical Device Check
     if (!Device.isDevice) {
       console.log("Must use physical device for Push Notifications");
       return null;
     }
 
-    // 3. Permission Check
+    // Permission Check
     const { status: existingStatus } = await Notifications.getPermissionsAsync();
     let finalStatus = existingStatus;
 
@@ -47,8 +44,7 @@ export async function registerForPushAndSync() {
       return null;
     }
 
-    // 4. Get Expo Push Token
-    // We use the Project ID from your app.json config to ensure it works on APKs
+    // Get Expo Push Token
     const projectId =
       Constants?.expoConfig?.extra?.eas?.projectId ||
       Constants?.easConfig?.projectId;
@@ -58,8 +54,7 @@ export async function registerForPushAndSync() {
 
     console.log("📍 EXPO PUSH TOKEN GENERATED:", expoPushToken);
 
-    // 5. Send to Backend
-    // ✅ CHANGED: URL must match your Django URL (api/users/push-token/)
+    // Send to Backend
     await api.post("/save-push-token/", { expo_push_token: expoPushToken });
     console.log("Token synced with backend successfully");
     

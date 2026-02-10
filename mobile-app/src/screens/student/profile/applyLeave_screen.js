@@ -9,7 +9,7 @@ import {
   ScrollView,
   Modal,
   Platform,
-  ActivityIndicator, // For the spinner
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import DateTimePicker from "@react-native-community/datetimepicker";
@@ -29,7 +29,7 @@ const COLORS = {
 
 const REASONS = ["Medical Leave", "In-Camp Training", "Others"];
 
-// ✅ Helper to ensure correct file type for backend
+// Helper
 const getMimeType = (fileName) => {
   if (!fileName) return "application/octet-stream";
   const lowerName = fileName.toLowerCase();
@@ -54,10 +54,10 @@ const toApiDate = (date) => {
 };
 
 const ApplyLeaveScreen = ({ navigation }) => {
-  // -------- Loading State --------
+  // Loading State
   const [loading, setLoading] = useState(false);
 
-  // -------- Dates --------
+  // Dates
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
 
@@ -67,21 +67,20 @@ const ApplyLeaveScreen = ({ navigation }) => {
   const [showStartPicker, setShowStartPicker] = useState(false);
   const [showEndPicker, setShowEndPicker] = useState(false);
 
-  // Temp state for iOS spinner (confirm/cancel pattern)
   const [tempStartDate, setTempStartDate] = useState(new Date());
   const [tempEndDate, setTempEndDate] = useState(new Date());
 
-  // -------- File --------
+  // File
   const [fileName, setFileName] = useState("No file chosen");
   const [fileUri, setFileUri] = useState(null);
   const [fileType, setFileType] = useState(null);
 
-  // -------- Reason --------
+  // Reason
   const [reason, setReason] = useState("");
   const [otherReason, setOtherReason] = useState("");
   const [isReasonSheetVisible, setIsReasonSheetVisible] = useState(false);
 
-  // ---------- SUBMIT LOGIC ----------
+  // Submit logic
   const handleSubmit = async () => {
     // Basic Validation
     if (!startDate) return alert("Please select a start date.");
@@ -94,7 +93,7 @@ const ApplyLeaveScreen = ({ navigation }) => {
     const description = reason === "Others" && trimmedOther ? trimmedOther : "";
     const finalReason = reason === "Others" && trimmedOther ? `Others: ${trimmedOther}` : reason;
 
-    // 1. Start Loading
+    // Start Loading
     setLoading(true);
 
     try {
@@ -104,21 +103,21 @@ const ApplyLeaveScreen = ({ navigation }) => {
       formData.append("reason", mainReason);
       formData.append("description", description);
 
-      // 2. Attach File
+      // Attach File
       formData.append("document", {
         uri: fileUri,
         name: fileName,
         type: fileType || getMimeType(fileName),
       });
 
-      // 3. API Call
+      // API Call
       await api.post("/apply-leaves/", formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
       });
 
-      // 4. Success Navigation
+      // Success Navigation
       navigation.navigate("ApplyLeaveSuccess", {
         startDate,
         endDate,
@@ -129,12 +128,12 @@ const ApplyLeaveScreen = ({ navigation }) => {
       console.error("Submit leave error:", err.response?.data || err);
       alert("Failed to submit leave. Please try again.");
     } finally {
-      // 5. Stop Loading (Always runs)
+      // Stop Loading (Always runs)
       setLoading(false);
     }
   };
 
-  // ---------- FILE PICKER ----------
+  // File picker
   const handlePickDocument = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
@@ -157,14 +156,13 @@ const ApplyLeaveScreen = ({ navigation }) => {
     }
   };
 
-  // ---------- DATE PICKER HELPERS ----------
+  // Date picker helpers-
   const openStartPicker = () => {
     setTempStartDate(startDateObj);
     setShowStartPicker(true);
   };
 
   const openEndPicker = () => {
-    // Default the picker to start date if current end date is invalid
     const base = endDateObj < startDateObj ? startDateObj : endDateObj;
     setTempEndDate(base);
     setShowEndPicker(true);
@@ -172,7 +170,7 @@ const ApplyLeaveScreen = ({ navigation }) => {
 
   const confirmStartDate = (dateParam) => {
     const finalDate = dateParam || tempStartDate;
-    // Basic check: Start date cannot be in the past
+    // Basic check
     const today = new Date(); today.setHours(0, 0, 0, 0);
     if (finalDate < today) {
       alert("Start date cannot be earlier than today.");
@@ -185,7 +183,7 @@ const ApplyLeaveScreen = ({ navigation }) => {
 
   const confirmEndDate = (dateParam) => {
     const finalDate = dateParam || tempEndDate;
-    // Basic check: End date cannot be before Start date
+    // Basic check
     if (finalDate < startDateObj) {
       alert("End date cannot be earlier than the start date.");
       return;
@@ -195,8 +193,7 @@ const ApplyLeaveScreen = ({ navigation }) => {
     setShowEndPicker(false);
   };
 
-  // ---------- ANDROID PICKERS (NO MODAL) ----------
-  // These render directly to avoid the "Black Bar" freeze issue
+
   const renderAndroidPickers = () => {
     if (Platform.OS !== "android") return null;
     return (
@@ -206,7 +203,7 @@ const ApplyLeaveScreen = ({ navigation }) => {
             value={tempStartDate}
             mode="date"
             display="default"
-            minimumDate={new Date()} // Block past dates automatically
+            minimumDate={new Date()}
             onChange={(event, selected) => {
               setShowStartPicker(false);
               if (event.type === "set" && selected) {
@@ -220,7 +217,7 @@ const ApplyLeaveScreen = ({ navigation }) => {
             value={tempEndDate}
             mode="date"
             display="default"
-            minimumDate={startDateObj} // Block dates before start date automatically
+            minimumDate={startDateObj}
             onChange={(event, selected) => {
               setShowEndPicker(false);
               if (event.type === "set" && selected) {
@@ -233,7 +230,6 @@ const ApplyLeaveScreen = ({ navigation }) => {
     );
   };
 
-  // ---------- REASON SHEET HANDLERS ----------
   const openReasonSheet = () => setIsReasonSheetVisible(true);
   const closeReasonSheet = () => setIsReasonSheetVisible(false);
   const handleSelectReason = (value) => {
@@ -352,10 +348,8 @@ const ApplyLeaveScreen = ({ navigation }) => {
         </View>
       </ScrollView>
 
-      {/* ✅ Render Android Pickers (Invisible logic hooks) */}
       {renderAndroidPickers()}
 
-      {/* ✅ Render iOS Pickers (Modal Wrapped) */}
       {Platform.OS === "ios" && showStartPicker && (
         <Modal transparent animationType="fade">
           <View style={styles.modalBackground}>
@@ -513,7 +507,7 @@ const styles = StyleSheet.create({
   },
   addFileText: { fontSize: 12, fontWeight: "700", color: "#FFFFFF" },
 
-  // Submit button centered content for Spinner
+  // Submit button
   submitButton: {
     marginTop: 8,
     backgroundColor: COLORS.primary,

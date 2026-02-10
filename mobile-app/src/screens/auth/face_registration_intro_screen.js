@@ -88,12 +88,11 @@ const styles = StyleSheet.create({
   backBtn: { padding: 4 },
   headerTitle: { fontSize: 18, fontWeight: "700", color: COLORS.text },
 
-  // ✅ UPDATED: Moved content up
   content: { 
     flex: 1, 
     alignItems: "center", 
-    justifyContent: "flex-start", // Changed from 'center' to 'flex-start'
-    paddingTop: 60,               // Added top padding to push it down slightly from header
+    justifyContent: "flex-start", 
+    paddingTop: 60,       
     paddingHorizontal: 24 
   },
 

@@ -70,7 +70,6 @@ const ChangePasswordScreen = ({ navigation }) => {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
 
-      {/* ✅ Timetable-style Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerIconBox}>
           <Ionicons name="chevron-back" size={24} color={COLORS.primary} />
@@ -143,7 +142,7 @@ const ChangePasswordScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
 
-  // ✅ Timetable header styles
+  // Timetable header styles
   header: {
     backgroundColor: COLORS.background,
     paddingVertical: 14,
@@ -175,7 +174,7 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
 
-  // ✅ Card wrapper (same vibe as your other screens)
+  // Card wrapper
   card: {
     backgroundColor: COLORS.card,
     borderRadius: 18,

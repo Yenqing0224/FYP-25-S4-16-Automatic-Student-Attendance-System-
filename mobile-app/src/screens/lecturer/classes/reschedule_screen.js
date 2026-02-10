@@ -51,7 +51,6 @@ export default function LecturerRescheduleScreen({ route, navigation }) {
   }, [cls]);
 
   const isReplacementClass = useMemo(() => {
-    // ✅ backend rejects rescheduling if "(Rescheduled)" in name
     return titleOrName.includes("(Rescheduled)");
   }, [titleOrName]);
 
@@ -69,7 +68,6 @@ export default function LecturerRescheduleScreen({ route, navigation }) {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    // ✅ If cls missing, exit safely
     if (!sessionId) {
       setLoadingOptions(false);
       Alert.alert("Error", "No class session selected.");
@@ -77,7 +75,7 @@ export default function LecturerRescheduleScreen({ route, navigation }) {
       return;
     }
 
-    // ✅ Block replacement class reschedule to avoid 400
+    // Block replacement class reschedule
     if (isReplacementClass) {
       setLoadingOptions(false);
       Alert.alert("Not allowed", "This is a replacement class and cannot be rescheduled again.", [
@@ -106,7 +104,6 @@ export default function LecturerRescheduleScreen({ route, navigation }) {
     };
 
     loadOptions();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId, isReplacementClass]);
 
   const processCalendarMarkers = (list) => {
@@ -145,7 +142,6 @@ export default function LecturerRescheduleScreen({ route, navigation }) {
     setStartTime(s?.start_time ? String(s.start_time).slice(0, 5) : "");
     setEndTime(s?.end_time ? String(s.end_time).slice(0, 5) : "");
 
-    // backend options currently do not include venue; keep existing venue
     if (s?.venue) setVenue(s.venue);
   };
 
@@ -192,7 +188,6 @@ export default function LecturerRescheduleScreen({ route, navigation }) {
 
       await api.post("/reschedule-class/", payload);
 
-      // ✅ AFTER snapshot (what UI should show)
       const afterSnapshot = {
         ...cls,
         id: sessionId,
@@ -202,20 +197,18 @@ export default function LecturerRescheduleScreen({ route, navigation }) {
         status: "rescheduled",
       };
 
-      // ✅ store override (only important fields)
       await saveOverride(sessionId, {
         startISO: afterSnapshot.startISO,
         endISO: afterSnapshot.endISO,
         venue: afterSnapshot.venue,
 
-        // ✅ store before snapshot too
         beforeStartISO: cls?.startISO,
         beforeEndISO: cls?.endISO,
         beforeVenue: cls?.venue,
       });
 
 
-      // ✅ store history
+      // store history
       await saveHistory({
         key: `${sessionId}-${Date.now()}`,
         session_id: sessionId,

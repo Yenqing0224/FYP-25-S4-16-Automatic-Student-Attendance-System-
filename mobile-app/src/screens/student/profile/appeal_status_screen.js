@@ -12,7 +12,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
-import api from "../../../api/api_client"; // 👈 1. Use Helper Client
+import api from "../../../api/api_client";
 
 const COLORS = {
   primary: "#3A7AFE",
@@ -25,7 +25,7 @@ const COLORS = {
 
 const FILTERS = ["All", "Pending", "Approved", "Rejected"];
 
-// Helper to get colors based on status (MATCHING LEAVE SCREEN)
+// Helper to get colors based on status
 const getStatusStyle = (status) => {
   const normalized = status ? status.toLowerCase() : "";
   switch (normalized) {
@@ -38,9 +38,9 @@ const getStatusStyle = (status) => {
     case "pending":
     default:
       return {
-        bg: "#F7F4EC",       // ⬅️ VERY SOFT CREAM (barely yellow)
-        text: "#8B6B2C",     // muted gold-brown text
-        stripe: "#E6D892"    // soft pastel gold stripe
+        bg: "#F7F4EC", 
+        text: "#8B6B2C", 
+        stripe: "#E6D892" 
       };
   }
 };
@@ -59,8 +59,6 @@ const AppealStatusScreen = ({ navigation }) => {
 
   const fetchAppeals = async () => {
     try {
-      // 👈 2. Secure Fetch (No user_id param needed)
-      // The token automatically tells the backend which student's appeals to fetch.
       const response = await api.get('/appeals/');
       setAppeals(response.data);
     } catch (error) {
@@ -89,7 +87,6 @@ const AppealStatusScreen = ({ navigation }) => {
 
   const formatTime = (timeString) => {
     if (!timeString) return "";
-    // If it's a full ISO string, extract time; if "HH:mm:ss", slice it
     return timeString.slice(0, 5);
   };
 

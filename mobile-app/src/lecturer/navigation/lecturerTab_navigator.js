@@ -3,7 +3,6 @@ import React from "react";
 import { Image } from "react-native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 
-// lecturer stacks/screens (create later)
 import LecturerHomeStack from "./lecturer_home_stack";
 import LecturerSessionsStack from "./lecturer_sessions_stack";
 import LecturerProfileStack from "./lecturer_profile_stack";

@@ -29,15 +29,13 @@ const NotificationScreen = ({ navigation }) => {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // ✅ like announcements: default hide read
   const [showAll, setShowAll] = useState(false);
 
   useEffect(() => {
     fetchNotifications();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ✅ refresh when returning to this screen
+  // refresh
   useFocusEffect(
     useCallback(() => {
       fetchNotifications();
@@ -68,7 +66,6 @@ const NotificationScreen = ({ navigation }) => {
     [showAll, notifications, unreadNotifications]
   );
 
-  // ✅ mark one as read when opened (optimistic)
   const markOneRead = async (id) => {
     setNotifications((prev) =>
       prev.map((n) =>
@@ -77,8 +74,6 @@ const NotificationScreen = ({ navigation }) => {
     );
 
     try {
-      // ✅ Recommended endpoint (create in backend if you don't have it):
-      // POST /notifications/<id>/mark-read/
       await api.post(`/notifications/${id}/mark-read/`);
     } catch (error) {
       console.error("Failed to mark one read:", error);
@@ -90,11 +85,9 @@ const NotificationScreen = ({ navigation }) => {
   const handleMarkAllRead = async () => {
     if (unreadCount === 0) return;
 
-    // Optimistic update
     setNotifications((prev) => prev.map((item) => ({ ...item, is_read: true })));
 
     try {
-      // ✅ your existing endpoint
       await api.post("/notifications/mark-read/");
     } catch (error) {
       console.error("Failed to mark all read:", error);
@@ -170,7 +163,6 @@ const NotificationScreen = ({ navigation }) => {
                 <Text style={styles.unreadPillText}>{unreadCount} unread</Text>
               </View>
 
-              {/* ✅ like announcements: filter pill */}
               <TouchableOpacity
                 onPress={() => setShowAll((v) => !v)}
                 activeOpacity={0.85}
@@ -343,7 +335,6 @@ const styles = StyleSheet.create({
   },
   unreadPillText: { fontWeight: "900", fontSize: 12, color: COLORS.textDark },
 
-  // ✅ new: filter pill (like announcements)
   filterPill: {
     backgroundColor: "#E7F0FF",
     paddingHorizontal: 10,

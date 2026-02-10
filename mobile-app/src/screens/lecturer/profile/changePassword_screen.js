@@ -15,11 +15,11 @@ import {
   StatusBar,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons"; // Added for icon consistency if needed
+import { Ionicons } from "@expo/vector-icons";
 import api from "../../../api/api_client";
 
 const COLORS = {
-  primary: "#6D5EF5", // Lecturer Purple
+  primary: "#6D5EF5",
   background: "#F6F5FF",
   card: "#FFFFFF",
   textDark: "#111827",
@@ -218,7 +218,7 @@ const styles = StyleSheet.create({
   },
   
   saveButton: {
-    backgroundColor: COLORS.primary, // Purple for Lecturer
+    backgroundColor: COLORS.primary,
     paddingVertical: 14,
     borderRadius: 14, 
     alignItems: "center",

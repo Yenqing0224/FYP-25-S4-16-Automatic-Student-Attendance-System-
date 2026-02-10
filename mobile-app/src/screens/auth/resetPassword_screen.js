@@ -223,7 +223,6 @@ const styles = StyleSheet.create({
   },
   bottomSection: { marginBottom: 20, alignItems: "center" },
 
-  // ✅ New "Pill Shape" Button Style
   submitButton: {
     backgroundColor: "#3A7AFE",
     paddingVertical: 14,

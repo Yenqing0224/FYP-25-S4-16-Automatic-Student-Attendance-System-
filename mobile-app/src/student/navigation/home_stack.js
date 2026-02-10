@@ -7,7 +7,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import HomeScreen from "../../screens/student/home/home_screen";
 import AttendanceHistoryScreen from "../../screens/student/attendance/attendanceHistory_screen";
 import StudentAnnouncementDetailScreen from "../../screens/student/newsevent/announcement_detail_screen";
-import WelcomeScreen from "../../screens/student/onboarding/welcome_screen"; // ✅ add this
+import WelcomeScreen from "../../screens/student/onboarding/welcome_screen";
 
 const Stack = createNativeStackNavigator();
 const ONBOARDING_KEY = "studentOnboardingSeen_v1";
@@ -21,7 +21,7 @@ export default function HomeStack() {
         const seen = await AsyncStorage.getItem(ONBOARDING_KEY);
         setInitialRoute(seen === "1" ? "HomeMain" : "Welcome");
       } catch (e) {
-        setInitialRoute("HomeMain"); // fallback
+        setInitialRoute("HomeMain");
       }
     })();
   }, []);

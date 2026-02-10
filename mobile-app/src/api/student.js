@@ -1,9 +1,4 @@
 // api/student.js
-
-/**
- * PHASE 1: Verification (FastAPI / Google Cloud)
- * Only handles the temporary pose checking
- */
 export const verifyPose = async (imageUri, targetPose) => {
   const formData = new FormData();
   formData.append('file', {

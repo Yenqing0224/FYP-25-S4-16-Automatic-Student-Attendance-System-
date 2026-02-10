@@ -30,7 +30,7 @@ const COLORS = {
 const READ_ANNOUNCEMENTS_KEY = "studentReadAnnouncements_v1";
 const ANNOUNCEMENT_EXPIRE_DAYS = 14;
 
-// ✅ Render-safe helper
+// Render-safe helper
 const toText = (v, fallback = "") => {
   if (v == null) return fallback;
   if (typeof v === "string" || typeof v === "number" || typeof v === "boolean") return String(v);
@@ -59,7 +59,7 @@ export default function HomeScreen({ navigation }) {
   const [readAnnouncementIds, setReadAnnouncementIds] = useState(new Set());
   const [showAllAnnouncements, setShowAllAnnouncements] = useState(false);
 
-  // ---------------- Helpers ----------------
+  // Helpers
   const formatTime = (timeString) => (timeString ? String(timeString).slice(0, 5) : "");
 
   const formatDate = (dateString) => {
@@ -102,7 +102,6 @@ export default function HomeScreen({ navigation }) {
     };
   };
 
-  // ---------------- Persistence ----------------
   useEffect(() => {
     (async () => {
       try {
@@ -142,7 +141,7 @@ export default function HomeScreen({ navigation }) {
     registerForPushAndSync();
   }, []);
   
-  // ---------------- Data Fetching ----------------
+  // Data Fetching
   useEffect(() => {
     const initDashboard = async () => {
       try {
@@ -155,7 +154,6 @@ export default function HomeScreen({ navigation }) {
       }
     };
     initDashboard();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchDashboardData = async () => {
@@ -167,13 +165,13 @@ export default function HomeScreen({ navigation }) {
       const dashRes = await api.get("/dashboard/");
       const data = dashRes.data || {};
 
-      // 1. Basic Info
+      // Basic Info
       setSemesterRange(data.semester_range ?? "—");
       setAttendanceRate(Number(data.attendance_rate ?? 0));
       setTodayClasses(Array.isArray(data.today_classes) ? data.today_classes : []);
       setUpcomingClasses(Array.isArray(data.upcoming_classes) ? data.upcoming_classes : []);
 
-      // 2. Announcements
+      // Announcements
       const rawAnnouncements = Array.isArray(data.announcements) ? data.announcements : [];
       let merged = rawAnnouncements.map(normalizeAnnouncement);
 
@@ -198,7 +196,6 @@ export default function HomeScreen({ navigation }) {
     }
   };
 
-  // ---------------- Current Date UI ----------------
   const [currentDate, setCurrentDate] = useState({ dayName: "", dateString: "" });
   useEffect(() => {
     const now = new Date();
@@ -210,7 +207,6 @@ export default function HomeScreen({ navigation }) {
     });
   }, []);
 
-  // ---------------- Derived Lists ----------------
   const unreadAnnouncements = useMemo(
     () => announcements.filter((a) => !readAnnouncementIds.has(String(a.id))),
     [announcements, readAnnouncementIds]
@@ -220,7 +216,7 @@ export default function HomeScreen({ navigation }) {
   const visibleAnnouncements = isAnnounceExpanded ? listToShow : listToShow.slice(0, 3);
   const hasAnyAnnouncements = listToShow.length > 0;
 
-  // ---------------- Render ----------------
+  //Render
   return (
     <SafeAreaView style={styles.safeArea} edges={["top"]}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
@@ -643,7 +639,6 @@ const styles = StyleSheet.create({
 
   horizontalScrollContainer: { paddingHorizontal: 20, paddingTop: 6, paddingBottom: 2 },
 
-  // old upcoming styles kept (safe)
   upcomingCard: {
     backgroundColor: "#3A7AFE",
     borderRadius: 18,
@@ -664,7 +659,6 @@ const styles = StyleSheet.create({
   upcomingValue: { fontSize: 14, fontWeight: "700", color: "#FFFFFF", marginBottom: 6 },
   upcomingModule: { marginTop: 6, fontSize: 14, fontWeight: "800", color: "#FFFFFF" },
 
-  // ✅ new modern upcoming card
   upcomingCard2: {
     backgroundColor: COLORS.primary,
     borderRadius: 20,

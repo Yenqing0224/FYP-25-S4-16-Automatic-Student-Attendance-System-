@@ -73,7 +73,7 @@ export default function WelcomeScreen({ navigation }) {
 
   const finish = async () => {
     await AsyncStorage.setItem(ONBOARDING_KEY, "1");
-    navigation.replace("HomeMain"); // ✅ go to home inside HomeStack
+    navigation.replace("HomeMain");
   };
 
   const next = () => {

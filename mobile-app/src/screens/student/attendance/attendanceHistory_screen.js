@@ -32,7 +32,6 @@ const toText = (v, fallback = "-") => {
   return fallback;
 };
 
-// date like "2025-12-20" => safe local date
 const parseDateOnly = (rawDate) => {
   if (!rawDate) return null;
   const d = new Date(`${rawDate}T00:00:00`);
@@ -55,17 +54,16 @@ const formatTime = (rawTime) => (rawTime ? String(rawTime).slice(0, 5) : "-");
 
 const statusUI = (statusRaw) => {
   const s = String(statusRaw || "").toLowerCase();
+  
   if (s === "present")
     return { key: "present", label: "PRESENT", icon: "checkmark-circle-outline", fg: "#16A34A", bg: "rgba(22,163,74,0.12)" };
-  if (s === "late")
-    return { key: "late", label: "LATE", icon: "time-outline", fg: "#D97706", bg: "rgba(217,119,6,0.14)" };
+  
   return { key: "absent", label: "ABSENT", icon: "close-circle-outline", fg: "#DC2626", bg: "rgba(220,38,38,0.12)" };
 };
 
 const FILTERS = [
   { key: "all", label: "All" },
   { key: "present", label: "Present" },
-  { key: "late", label: "Late" },
   { key: "absent", label: "Absent" },
 ];
 
@@ -91,7 +89,6 @@ const AttendanceHistoryScreen = ({ navigation }) => {
 
   useEffect(() => {
     fetchHistory();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const onRefresh = useCallback(() => {
@@ -99,13 +96,13 @@ const AttendanceHistoryScreen = ({ navigation }) => {
     fetchHistory();
   }, []);
 
-  // 1) filter records
+  // filter records
   const filtered = useMemo(() => {
     if (activeFilter === "all") return records;
     return records.filter((r) => String(r?.status || "").toLowerCase() === activeFilter);
   }, [records, activeFilter]);
 
-  // 2) sort newest-first (by session.date then start_time)
+  // sort newest-first
   const sorted = useMemo(() => {
     const copy = [...filtered];
     copy.sort((a, b) => {
@@ -123,7 +120,7 @@ const AttendanceHistoryScreen = ({ navigation }) => {
     return copy;
   }, [filtered]);
 
-  // 3) group into month sections
+  // group into month sections
   const sections = useMemo(() => {
     const map = new Map(); // monthKey -> items
     for (const item of sorted) {

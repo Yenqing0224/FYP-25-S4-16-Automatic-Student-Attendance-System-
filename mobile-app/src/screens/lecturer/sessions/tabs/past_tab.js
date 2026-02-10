@@ -29,7 +29,6 @@ const PastTab = ({ COLORS, navigation, list = [] }) => {
         </View>
       ) : (
         list.map((s, idx) => {
-          // ✅ FIX: Use 'module' for Code and 'title' for Module Name (from SessionsScreen)
           const moduleText = toText(s?.module, "MOD"); 
           const titleText = toText(s?.title, "Session"); 
           
@@ -47,9 +46,7 @@ const PastTab = ({ COLORS, navigation, list = [] }) => {
             >
               <View style={styles.sessionTop}>
                 <View style={{ flex: 1 }}>
-                  {/* Label: CSCI 128 */}
                   <Text style={[styles.module, { color: COLORS.primary }]}>{moduleText}</Text>
-                  {/* Title: Intro to Programming */}
                   <Text style={styles.sessionTitle}>{titleText}</Text>
                 </View>
                 <View style={styles.statusPill}>

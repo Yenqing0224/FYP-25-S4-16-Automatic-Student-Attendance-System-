@@ -24,7 +24,6 @@ const VerifyOtpScreen = ({ route, navigation }) => {
   const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
   
-  // ✅ NEW: Timer State (starts at 60s immediately)
   const [timer, setTimer] = useState(60); 
   
   const inputRef = useRef(null);
@@ -33,7 +32,6 @@ const VerifyOtpScreen = ({ route, navigation }) => {
     setTimeout(() => inputRef.current?.focus(), 100);
   }, []);
 
-  // ✅ NEW: Countdown Effect
   useEffect(() => {
     let interval;
     if (timer > 0) {
@@ -62,13 +60,12 @@ const VerifyOtpScreen = ({ route, navigation }) => {
   };
 
   const handleResend = async () => {
-    if (timer > 0) return; // Prevent tap if timer running
+    if (timer > 0) return;
 
     try {
       setLoading(true);
       await api.post(REQUEST_URL, { email });
-      setTimer(60); // ✅ Restart timer immediately on success
-      // No Alert shown, user sees timer reset
+      setTimer(60); 
     } catch (err) {
       console.log("Resend error:", err);
       Alert.alert("Error", "Failed to resend OTP. Please try again.");
@@ -151,7 +148,7 @@ const VerifyOtpScreen = ({ route, navigation }) => {
               >
                 <Text style={[
                   styles.resendText, 
-                  (timer > 0 || loading) && { color: '#999' } // Grey out when disabled
+                  (timer > 0 || loading) && { color: '#999' }
                 ]}>
                   {timer > 0 ? `Resend in ${timer}s` : "Resend"}
                 </Text>
@@ -250,7 +247,6 @@ const styles = StyleSheet.create({
     opacity: 0,
   },
   
-  // ✅ New Container for "Didn't receive code? Resend"
   resendContainer: { 
     flexDirection: 'row', 
     justifyContent: 'center', 

@@ -13,7 +13,7 @@ const COLORS = {
   border: "#E5E7EB",
 };
 
-// ✅ Local helper (no shared import)
+// Helper
 const toText = (v, fallback = "-") => {
   if (v == null) return fallback;
   if (typeof v === "string" || typeof v === "number" || typeof v === "boolean") return String(v);

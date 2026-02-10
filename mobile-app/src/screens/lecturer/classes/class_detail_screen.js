@@ -7,7 +7,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import api from "../../../api/api_client"; 
 
-// Keep these here for logic
 const COLORS = {
   primary: "#6D5EF5",
   background: "#F6F5FF",

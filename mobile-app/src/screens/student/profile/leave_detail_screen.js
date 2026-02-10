@@ -9,10 +9,10 @@ import {
   Alert,
   Linking,
   StatusBar,
-  ActivityIndicator, // 👈 1. Import Spinner
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import api from "../../../api/api_client"; // 👈 2. Import API Client
+import api from "../../../api/api_client";
 import { Ionicons } from "@expo/vector-icons";
 
 
@@ -33,7 +33,7 @@ const COLORS = {
 
 const LeaveDetailScreen = ({ navigation, route }) => {
   const { leave } = route.params || {};
-  const [opening, setOpening] = useState(false); // 👈 3. Loading state
+  const [opening, setOpening] = useState(false);
 
   if (!leave) {
     return (
@@ -54,7 +54,7 @@ const LeaveDetailScreen = ({ navigation, route }) => {
 
   const descriptionText = leave.description || leave.remarks;
 
-  // --- HELPERS ---
+  // Helpers
   const formatStatus = (status) => {
     if (!status) return "";
     return status.charAt(0).toUpperCase() + status.slice(1);
@@ -72,7 +72,6 @@ const LeaveDetailScreen = ({ navigation, route }) => {
       .replace(/\//g, "-");
   };
 
-  // ✅ Just-in-Time Link Generation (Matches Appeal Screen)
   const handleOpenFile = async () => {
     const hasFile = leave.document_path || leave.document;
 
@@ -84,12 +83,11 @@ const LeaveDetailScreen = ({ navigation, route }) => {
     setOpening(true);
 
     try {
-      // 1. Call your new endpoint to get a fresh link
       const response = await api.get(`/get-leave-document/${leave.id}/`);
       const { document_url } = response.data;
 
       if (document_url) {
-        // 2. Open the URL
+        // open URL
         const supported = await Linking.canOpenURL(document_url);
         if (supported) {
           await Linking.openURL(document_url);
@@ -327,7 +325,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary,
     borderRadius: 8,
     alignSelf: "flex-start",
-    minWidth: 140, // Ensures button doesn't shrink when spinner shows
+    minWidth: 140,
     alignItems: 'center',
     justifyContent: 'center'
   },

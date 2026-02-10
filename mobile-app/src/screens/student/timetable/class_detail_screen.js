@@ -1,8 +1,3 @@
-// ✅ FULL EDITED FRONTEND CODE (UI-only) — ClassDetailScreen
-// - Adds "Appeal period has expired" UI state
-// - Hides/disables appeal button when expired
-// - Does NOT change backend (backend should still enforce for real security)
-
 // src/screens/student/timetable/class_detail_screen.js
 
 import React, { useState, useCallback, useRef } from "react";
@@ -38,7 +33,7 @@ const COLORS = {
   chipBg: "rgba(58,122,254,0.12)",
 };
 
-const APPEAL_WINDOW_HOURS = 48; // ✅ change to your policy (e.g. 24 / 48 / 72)
+const APPEAL_WINDOW_HOURS = 48;
 
 const ClassDetailScreen = ({ route, navigation }) => {
   const { session_id } = route.params;
@@ -90,7 +85,6 @@ const ClassDetailScreen = ({ route, navigation }) => {
     }, [fetchData])
   );
 
-  // ✅ safer time: handles "14:30:00" OR ISO datetime
   const formatTimeStr = (timeString) => {
     if (!timeString) return "-";
     const s = String(timeString);
@@ -106,7 +100,6 @@ const ClassDetailScreen = ({ route, navigation }) => {
     return s.slice(0, 5);
   };
 
-  // ✅ safer date: prevents UTC shift for "YYYY-MM-DD"
   const formatDateStr = (dateString) => {
     if (!dateString) return "-";
     const d = new Date(`${dateString}T00:00:00`);
@@ -114,10 +107,9 @@ const ClassDetailScreen = ({ route, navigation }) => {
     return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
   };
 
-  // ✅ UI-only expiry calc (Asia/Singapore)
   const getAppealDeadline = (dateStr, endTimeStr) => {
     if (!dateStr) return null;
-    const t = String(endTimeStr || "00:00").slice(0, 5); // HH:MM
+    const t = String(endTimeStr || "00:00").slice(0, 5);
     const end = new Date(`${dateStr}T${t}:00+08:00`);
     if (isNaN(end.getTime())) return null;
     return new Date(end.getTime() + APPEAL_WINDOW_HOURS * 60 * 60 * 1000);
@@ -125,7 +117,7 @@ const ClassDetailScreen = ({ route, navigation }) => {
 
   const isAppealExpired = (data) => {
     const deadline = getAppealDeadline(data?.date, data?.end_time);
-    if (!deadline) return false; // fail-open in UI
+    if (!deadline) return false;
     return new Date() > deadline;
   };
 
@@ -147,7 +139,6 @@ const ClassDetailScreen = ({ route, navigation }) => {
 
   const expired = isAppealExpired(classData);
 
-  // show appeal UI only when absent+completed
   const canAttemptAppeal = attendanceStatus === "absent" && status === "completed";
   const showExpiredUI = canAttemptAppeal && expired;
   const showAppealButton = canAttemptAppeal && !expired;
@@ -242,19 +233,13 @@ const ClassDetailScreen = ({ route, navigation }) => {
             </View>
           </View>
 
-          {/* ✅ EXPIRED UI */}
           {showExpiredUI && (
             <View style={styles.expiredBox}>
               <Ionicons name="lock-closed-outline" size={16} color="#475569" />
               <Text style={styles.expiredText}>Appeal period has expired</Text>
-              {/* Optional: show deadline */}
-              {/* <Text style={styles.expiredSub}>
-                Deadline: {getAppealDeadline(classData?.date, classData?.end_time)?.toLocaleString?.() || ""}
-              </Text> */}
             </View>
           )}
 
-          {/* ✅ Appeal button only when not expired */}
           {showAppealButton && (
             <TouchableOpacity
               style={styles.appealButton}
@@ -362,7 +347,6 @@ const styles = StyleSheet.create({
   },
   appealButtonText: { color: "#fff", fontSize: 15, fontWeight: "900" },
 
-  // ✅ Expired UI box
   expiredBox: {
     marginTop: 16,
     width: "100%",
