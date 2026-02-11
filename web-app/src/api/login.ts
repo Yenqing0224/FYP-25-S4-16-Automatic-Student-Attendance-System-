@@ -16,6 +16,15 @@ export function login(data: LoginData): AxiosPromise<LoginResult> {
     username: data.username,
     password: data.password
   };
+  
+  console.log('🔐 [Login API] Preparing login request');
+  console.log('📋 [Login API] Username:', params.username);
+  console.log('🌐 [Login API] Environment:', {
+    baseURL: import.meta.env.VITE_APP_BASE_URL,
+    baseAPI: import.meta.env.VITE_APP_BASE_API,
+    clientID: import.meta.env.VITE_APP_CLIENT_ID
+  });
+  
   return request({
     // baseURL 默认 /api，接口路径保持 /login/
     url: '/login/',
@@ -26,6 +35,12 @@ export function login(data: LoginData): AxiosPromise<LoginResult> {
     },
     method: 'post',
     data: params
+  }).then(response => {
+    console.log('✅ [Login API] Request successful:', response);
+    return response;
+  }).catch(error => {
+    console.error('❌ [Login API] Request failed:', error);
+    throw error;
   });
 }
 
@@ -50,7 +65,7 @@ export function register(data: any) {
 
 /**
  * 注销
- * AURA: Modify - 路径改为 /auth/logout/ 匹配后端
+ * AURA: Modify - 路径改为 /logout/ 匹配后端
  */
 export function logout() {
   if (import.meta.env.VITE_APP_SSE === 'true') {
@@ -60,7 +75,7 @@ export function logout() {
     });
   }
   return request({
-    url: '/auth/logout/',
+    url: '/logout/',
     method: 'post'
   });
 }

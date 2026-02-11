@@ -167,6 +167,15 @@ export function listSemesters(query?: any) {
   });
 }
 
+// ---- Partner Universities (UP) ----
+export function listPartnerUniversities(query?: any) {
+  return request({
+    url: `${adminPrefix}/uni/`,
+    method: 'get',
+    params: query
+  });
+}
+
 export function getSemester(id: string | number) {
   return request({
     url: `${adminPrefix}/semesters/${id}/`,
@@ -275,12 +284,59 @@ export function delClassSession(id: string | number) {
   });
 }
 
+// ---- Classrooms ----
+export function listClassrooms(query?: any) {
+  return request({
+    url: `${adminPrefix}/classrooms/`,
+    method: 'get',
+    params: query
+  });
+}
+
+export function getClassroom(id: string | number) {
+  return request({
+    url: `${adminPrefix}/classrooms/${id}/`,
+    method: 'get'
+  });
+}
+
+export function addClassroom(data: any) {
+  return request({
+    url: `${adminPrefix}/classrooms/`,
+    method: 'post',
+    data
+  });
+}
+
+export function updateClassroom(id: string | number, data: any) {
+  return request({
+    url: `${adminPrefix}/classrooms/${id}/`,
+    method: 'patch',
+    data
+  });
+}
+
+export function delClassroom(id: string | number) {
+  return request({
+    url: `${adminPrefix}/classrooms/${id}/`,
+    method: 'delete'
+  });
+}
+
 // ---- Attendance Records ----
 export function listAttendanceRecords(query?: any) {
   return request({
     url: `${adminPrefix}/attendance/`,
     method: 'get',
     params: query
+  });
+}
+
+export function getStudentSemesterAttendance(studentId: string | number) {
+  const safeId = encodeURIComponent(String(studentId));
+  return request({
+    url: `/admin/semester-attendance/${safeId}/`,
+    method: 'get'
   });
 }
 
@@ -388,6 +444,45 @@ export function updateNews(id: string | number, data: any) {
 export function delNews(id: string | number) {
   return request({
     url: `${adminPrefix}/news/${id}/`,
+    method: 'delete'
+  });
+}
+
+// ---- Announcements ----
+export function listAnnouncements(query?: any) {
+  return request({
+    url: `${adminPrefix}/announcements/`,
+    method: 'get',
+    params: query
+  });
+}
+
+export function getAnnouncement(id: string | number) {
+  return request({
+    url: `${adminPrefix}/announcements/${id}/`,
+    method: 'get'
+  });
+}
+
+export function addAnnouncement(data: any) {
+  return request({
+    url: `${adminPrefix}/announcements/`,
+    method: 'post',
+    data
+  });
+}
+
+export function updateAnnouncement(id: string | number, data: any) {
+  return request({
+    url: `${adminPrefix}/announcements/${id}/`,
+    method: 'patch',
+    data
+  });
+}
+
+export function delAnnouncement(id: string | number) {
+  return request({
+    url: `${adminPrefix}/announcements/${id}/`,
     method: 'delete'
   });
 }
@@ -506,5 +601,14 @@ export function delAppeal(id: string | number) {
   return request({
     url: `${adminPrefix}/appeals/${id}/`,
     method: 'delete'
+  });
+}
+
+// ---- Secure Documents (Admin) ----
+export function getSecureDocumentUrl(data: { id: string | number; type: 'leave' | 'appeal' | 'user' }) {
+  return request({
+    url: `/admin/get-document-url/`,
+    method: 'post',
+    data
   });
 }

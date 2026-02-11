@@ -79,7 +79,6 @@ export default {
     layoutSize: 'Layout Size',
     selectTenant: 'Select Tenant',
     layoutSetting: 'Layout Setting',
-    personalCenter: 'Profile',
     logout: 'Logout'
   }
 };

@@ -7,9 +7,9 @@ import { HttpStatus } from '@/enums/RespEnum';
 import { errorCode } from '@/utils/errorCode';
 import { LoadingInstance } from 'element-plus/es/components/loading/src/loading';
 import FileSaver from 'file-saver';
-import { getLanguage } from '@/lang';
 import { encryptBase64, encryptWithAes, generateAesKey, decryptWithAes, decryptBase64 } from '@/utils/crypto';
 import { encrypt, decrypt } from '@/utils/jsencrypt';
+import { getLanguage } from '@/lang';
 import router from '@/router';
 
 const encryptHeader = 'encrypt-key';
@@ -19,12 +19,13 @@ export const isRelogin = { show: false };
 export const globalHeaders = () => {
   return {
     Authorization: 'Bearer ' + getToken(),
-    clientid: import.meta.env.VITE_APP_CLIENT_ID
+    clientid: import.meta.env.VITE_APP_CLIENT_ID || 'e5cd7e4891bf95d1d19206ce24a7b32e'
   };
 };
 
 axios.defaults.headers['Content-Type'] = 'application/json;charset=utf-8';
-axios.defaults.headers['clientid'] = import.meta.env.VITE_APP_CLIENT_ID;
+// 确保 clientid 有默认值，避免 undefined
+axios.defaults.headers['clientid'] = import.meta.env.VITE_APP_CLIENT_ID || 'e5cd7e4891bf95d1d19206ce24a7b32e';
 // 创建 axios 实例，带默认基础路径（当环境变量未配置时回退到 /api）
 // 若提供 VITE_APP_BASE_URL（如 https://attendify-ekg6.onrender.com），则直连后端，跳过本地代理
 const apiHost = (import.meta.env.VITE_APP_BASE_URL || '').replace(/\/+$/, '');
@@ -51,6 +52,11 @@ service.interceptors.request.use(
     const isRepeatSubmit = config.headers?.repeatSubmit === false;
     // 是否需要加密
     const isEncrypt = config.headers?.isEncrypt === 'true';
+    
+    // 删除这些内部配置项，避免被当作实际 HTTP 请求头发送
+    delete config.headers.isToken;
+    delete config.headers.repeatSubmit;
+    delete config.headers.isEncrypt;
 
     if (getToken() && !isToken) {
       config.headers['Authorization'] = 'Token ' + getToken(); // 让每个请求携带自定义token 请根据实际情况自行修改
@@ -109,6 +115,12 @@ service.interceptors.request.use(
 // 响应拦截器
 service.interceptors.response.use(
   (res: AxiosResponse) => {
+    // 登录接口特殊处理 - 直接返回原始数据，避免被其他逻辑拦截
+    if (res.config.url?.includes('/login/')) {
+      console.log('✅ [Login] Response received, returning raw data');
+      return Promise.resolve(res.data);
+    }
+    
     if (import.meta.env.VITE_APP_ENCRYPT === 'true') {
       // 加密后的 AES 秘钥
       const keyStr = res.headers[encryptHeader];
@@ -129,21 +141,22 @@ service.interceptors.response.use(
     if (res.request.responseType === 'blob' || res.request.responseType === 'arraybuffer') {
       return res.data;
     }
-    // AURA: Add - 适配后端Admin CRUD接口格式 {status, code, message, data}
-    if (res.data && res.data.status === 'success' && res.data.hasOwnProperty('data')) {
-      // 后端返回成功，提取data字段返回给业务层
-      return Promise.resolve(res.data.data);
-    }
-    // 如果响应数据没有 code 字段，且 HTTP 状态码是 200，直接返回原始数据（兼容 Django REST Framework）
-    if (!res.data.hasOwnProperty('code') && res.status === 200) {
+    
+    // HTTP 状态码 2xx 都视为成功
+    if (res.status >= 200 && res.status < 300) {
+      // 后端 Admin CRUD 格式: {status: "success", code: 200, data: {...}}
+      if (res.data && res.data.status === 'success' && res.data.hasOwnProperty('data')) {
+        return Promise.resolve(res.data.data);
+      }
+      // 其他成功格式，直接返回原始数据
       return Promise.resolve(res.data);
     }
-    // 未设置状态码则默认成功状态
-    const code = res.data.code || HttpStatus.SUCCESS;
-    // 获取错误信息
-    const msg = errorCode[code] || res.data.msg || errorCode['default'];
+    
+    // 以下是错误处理（非 2xx 状态码）
+    const code = res.data?.code || res.status || HttpStatus.SERVER_ERROR;
+    const msg = errorCode[code] || res.data?.msg || res.data?.message || errorCode['default'];
+    
     if (code === 401) {
-      // prettier-ignore
       if (!isRelogin.show) {
         isRelogin.show = true;
         ElMessageBox.confirm('登录状态已过期，您可以继续留在该页面，或者重新登录', '系统提示', {
@@ -165,30 +178,40 @@ service.interceptors.response.use(
         });
       }
       return Promise.reject('无效的会话，或者会话已过期，请重新登录。');
-    } else if (code === HttpStatus.SERVER_ERROR) {
-      ElMessage({ message: msg, type: 'error' });
-      return Promise.reject(new Error(msg));
-    } else if (code === HttpStatus.WARN) {
-      ElMessage({ message: msg, type: 'warning' });
-      return Promise.reject(new Error(msg));
-    } else if (code !== HttpStatus.SUCCESS) {
-      ElNotification.error({ title: msg });
-      return Promise.reject('error');
-    } else {
-      return Promise.resolve(res.data);
     }
+    
+    ElNotification.error({ title: msg });
+    return Promise.reject(new Error(msg));
   },
   (error: any) => {
-    const { message } = error;
-    // if (message == 'Network Error') {
-    //   message = '后端接口连接异常';
-    // } else if (message.includes('timeout')) {
-    //   message = '系统接口请求超时';
-    // } else if (message.includes('Request failed with status code')) {
-    //   message = '系统接口' + message.substr(message.length - 3) + '异常';
-    // }
-    // ElMessage({ message: message, type: 'error', duration: 5 * 1000 });
-    return Promise.reject(error);
+    let errorMessage = error.message || 'Request failed';
+    
+    // 尝试从后端响应中提取详细错误信息
+    if (error.response && error.response.data) {
+      const data = error.response.data;
+      if (data.message) {
+        errorMessage = data.message;
+      } else if (data.detail) {
+        errorMessage = data.detail;
+      } else if (data.email) {
+        errorMessage = 'Email: ' + (Array.isArray(data.email) ? data.email[0] : data.email);
+      } else if (data.username) {
+        errorMessage = 'Username: ' + (Array.isArray(data.username) ? data.username[0] : data.username);
+      } else if (data.student_id) {
+        errorMessage = 'Student ID: ' + (Array.isArray(data.student_id) ? data.student_id[0] : data.student_id);
+      } else if (typeof data === 'string') {
+        errorMessage = data;
+      } else if (data.non_field_errors) {
+        errorMessage = Array.isArray(data.non_field_errors) ? data.non_field_errors[0] : data.non_field_errors;
+      }
+    }
+    
+    // 创建一个包含详细信息的错误对象
+    const enhancedError = new Error(errorMessage);
+    (enhancedError as any).response = error.response;
+    (enhancedError as any).originalError = error;
+    
+    return Promise.reject(enhancedError);
   }
 );
 // 通用下载方法

@@ -32,9 +32,9 @@ export default defineConfig(({ mode, command }) => {
       proxy: {
         [baseApi]: {
           // AURA: Modify - 连接线上后端进行接口测试
-          // 线上后端: 'https://attendify-ekg6.onrender.com'
+          // 线上后端: 'https://attendify-40rk.onrender.com'
           // 本地后端: 'http://127.0.0.1:8000'
-          target: 'https://attendify-ekg6.onrender.com',
+          target: 'https://attendify-40rk.onrender.com',
           changeOrigin: true,
           secure: true,
           ws: true,

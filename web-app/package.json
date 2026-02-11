@@ -13,7 +13,21 @@
     "preview": "vite preview",
     "lint:eslint": "eslint",
     "lint:eslint:fix": "eslint --fix",
-    "prettier": "prettier --write ."
+    "prettier": "prettier --write .",
+    "test": "vitest --run",
+    "test:watch": "vitest",
+    "test:e2e": "npx playwright test",
+    "test:e2e:ui": "npx playwright test --ui",
+    "test:e2e:headed": "npx playwright test --headed",
+    "test:e2e:report": "npx playwright show-report",
+    "test:e2e:auth": "npx playwright test auth.spec.ts",
+    "test:e2e:students": "npx playwright test students.spec.ts",
+    "test:e2e:lecturers": "npx playwright test lecturers.spec.ts",
+    "test:e2e:modules": "npx playwright test modules.spec.ts",
+    "test:e2e:attendance": "npx playwright test attendance.spec.ts",
+    "test:e2e:announcements": "npx playwright test announcements.spec.ts",
+    "test:e2e:sessions": "npx playwright test sessions.spec.ts",
+    "test:e2e:data": "npx playwright test data-consistency.spec.ts"
   },
   "repository": {
     "type": "git",
@@ -47,6 +61,7 @@
     "vxe-table": "4.13.7"
   },
   "devDependencies": {
+    "@playwright/test": "^1.40.0",
     "@iconify/json": "^2.2.276",
     "@types/crypto-js": "4.2.2",
     "@types/file-saver": "2.0.7",
@@ -78,6 +93,9 @@
     "vite-plugin-svg-icons-ng": "^1.4.0",
     "vite-plugin-vue-devtools": "7.7.5",
     "vitest": "3.1.2",
+    "fast-check": "^3.23.2",
+    "@vue/test-utils": "^2.4.6",
+    "jsdom": "^25.0.1",
     "vue-tsc": "^2.2.8"
   },
   "overrides": {

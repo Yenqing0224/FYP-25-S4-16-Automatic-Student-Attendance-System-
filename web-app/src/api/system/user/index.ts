@@ -111,61 +111,6 @@ export const changeUserStatus = (userId: number | string, status: string) => {
 };
 
 /**
- * 查询用户个人信息
- */
-export const getUserProfile = (): AxiosPromise<UserInfoVO> => {
-  return request({
-    url: '/system/user/profile',
-    method: 'get'
-  });
-};
-
-/**
- * 修改用户个人信息
- * @param data 用户信息
- */
-export const updateUserProfile = (data: UserForm) => {
-  return request({
-    url: '/system/user/profile',
-    method: 'put',
-    data: data
-  });
-};
-
-/**
- * 用户密码重置
- * @param oldPassword 旧密码
- * @param newPassword 新密码
- */
-export const updateUserPwd = (oldPassword: string, newPassword: string) => {
-  const data = {
-    oldPassword,
-    newPassword
-  };
-  return request({
-    url: '/system/user/profile/updatePwd',
-    method: 'put',
-    headers: {
-      isEncrypt: true,
-      repeatSubmit: false
-    },
-    data: data
-  });
-};
-
-/**
- * 用户头像上传
- * @param data 头像文件
- */
-export const uploadAvatar = (data: FormData) => {
-  return request({
-    url: '/system/user/profile/avatar',
-    method: 'post',
-    data: data
-  });
-};
-
-/**
  * 查询授权角色
  * @param userId 用户ID
  */
@@ -218,10 +163,6 @@ export default {
   delUser,
   resetUserPwd,
   changeUserStatus,
-  getUserProfile,
-  updateUserProfile,
-  updateUserPwd,
-  uploadAvatar,
   getAuthRole,
   updateAuthRole,
   deptTreeSelect,

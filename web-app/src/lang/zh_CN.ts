@@ -79,7 +79,6 @@ export default {
     layoutSize: '布局大小',
     selectTenant: '选择租户',
     layoutSetting: '布局设置',
-    personalCenter: 'Personal Center',
     logout: 'Logout'
   }
 };

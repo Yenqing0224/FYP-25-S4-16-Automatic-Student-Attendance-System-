@@ -22,12 +22,12 @@
         <div class="module-summary-item">
           <p class="module-summary-label">Credit Points</p>
           <p class="module-summary-value">{{ moduleDetail.credits }}</p>
-        </div>
+        </div>                                            
         <div class="module-summary-item">
           <p class="module-summary-label">Students Enrolled</p>
           <p class="module-summary-value">{{ moduleDetail.studentsEnrolled }}</p>
         </div>
-        <div class="module-summary-item status-item">
+        <div class="module-summary-item status-item"> 
           <p class="module-summary-label">Status</p>
           <p class="module-summary-status">{{ moduleDetail.status || '-' }}</p>
         </div>
@@ -67,9 +67,12 @@
           <el-table-column label="Attendance Rate" prop="attendanceRate" width="100" />
           <el-table-column label="Status" prop="status" width="130">
             <template #default="scope">
-              <el-tag v-if="scope.row.status === 'Active'" type="success">Active</el-tag>
-              <el-tag v-else-if="scope.row.status === 'Scheduled'" type="info">Scheduled</el-tag>
-              <el-tag v-else type="warning">Completed</el-tag>
+              <el-tag v-if="scope.row.status === 'Upcoming'" type="info">Upcoming</el-tag>
+              <el-tag v-else-if="scope.row.status === 'In Progress'" type="warning">In Progress</el-tag>
+              <el-tag v-else-if="scope.row.status === 'Completed'" type="success">Completed</el-tag>
+              <el-tag v-else-if="scope.row.status === 'Cancelled'" type="danger">Cancelled</el-tag>
+              <el-tag v-else-if="scope.row.status === 'Rescheduled'" type="info">Rescheduled</el-tag>
+              <el-tag v-else type="info">{{ scope.row.status }}</el-tag>
             </template>
           </el-table-column>
         </el-table>
@@ -95,11 +98,15 @@
           <el-table-column label="Name" prop="name" min-width="200" />
           <el-table-column label="Check-in Time" prop="inTime" min-width="140" />
           <el-table-column label="Check-out Time" prop="outTime" min-width="200" />
+          <el-table-column label="Duration" prop="duration" min-width="120">
+            <template #default="scope">{{ formatDuration(scope.row.duration) }}</template>
+          </el-table-column>
           <el-table-column label="Status" prop="status" width="140">
             <template #default="scope">
               <el-tag v-if="scope.row.status === 'Present'" type="success">Present</el-tag>
               <el-tag v-else-if="scope.row.status === 'Absent'" type="danger">Absent</el-tag>
-              <el-tag v-else type="warning">{{ scope.row.status }}</el-tag>
+              <el-tag v-else-if="scope.row.status === 'On Leave'" type="warning">On Leave</el-tag>
+              <el-tag v-else type="info">{{ scope.row.status }}</el-tag>
             </template>
           </el-table-column>
         </el-table>
@@ -109,6 +116,8 @@
 </template>
 
 <script setup name="ModuleDetail" lang="ts">
+import { getModule, listClassSessions, listAttendanceRecords, listAdminStudents, listAdminLecturers } from '@/api/admin';
+
 interface ModuleInfo {
   id: number;
   moduleCode: string;
@@ -121,22 +130,25 @@ interface ModuleInfo {
 }
 
 interface ModuleClass {
-  id: string;
+  id: number | string;
   type: 'Lecture' | 'Tutorial';
   lecturer: string;
   venue: string;
   date: string;
   present: number;
   absent: number;
-  attendanceRate: number;
-  status: 'Active' | 'Scheduled' | 'Completed';
+  attendanceRate: string;
+  status: 'Upcoming' | 'In Progress' | 'Completed' | 'Cancelled' | 'Rescheduled';
 }
 
 interface ClassStudent {
   id: number;
   studentId: string;
   name: string;
-  status: 'Present' | 'Absent' | 'Late';
+  inTime: string;
+  outTime: string;
+  duration: number | null;
+  status: 'Present' | 'Absent' | 'On Leave';
 }
 
 const router = useRouter();
@@ -144,6 +156,7 @@ const route = useRoute();
 const moduleId = computed(() => Number(route.params.moduleId));
 
 const classTableRef = ref<ElTableInstance>();
+const loading = ref(false);
 const moduleDetail = reactive<ModuleInfo>({
   id: 0,
   moduleCode: '',
@@ -157,6 +170,8 @@ const moduleDetail = reactive<ModuleInfo>({
 const classList = ref<ModuleClass[]>([]);
 const selectedClass = ref<ModuleClass | null>(null);
 const studentList = ref<ClassStudent[]>([]);
+const studentOptionsMap = ref<Map<number, any>>(new Map()); // 学生ID映射表
+const lecturerOptionsMap = ref<Map<number, string>>(new Map()); // 讲师ID映射表
 const classPagination = reactive({
   pageNum: 1,
   pageSize: 5
@@ -166,290 +181,6 @@ const pagedClassList = computed(() => {
   return classList.value.slice(start, start + classPagination.pageSize);
 });
 const classPaginationTotal = computed(() => classList.value.length);
-
-const moduleCatalog: Record<number, ModuleInfo> = {
-  1: {
-    id: 1,
-    moduleCode: 'CSIT131',
-    moduleName: 'Intro to Python Programming',
-    credits: 6,
-    studentsEnrolled: 213,
-    avgAttendance: 78,
-    lecturers: ['Lawrence Long', 'Jamie Oliver'],
-    status: 'Inactive'
-  },
-  2: {
-    id: 2,
-    moduleCode: 'CSCI256',
-    moduleName: 'Advanced Programming',
-    credits: 6,
-    studentsEnrolled: 213,
-    avgAttendance: 78,
-    lecturers: ['Dr. Parker'],
-    status: 'Active'
-  },
-  3: {
-    id: 3,
-    moduleCode: 'CSCI305',
-    moduleName: 'Baseball Analytics',
-    credits: 6,
-    studentsEnrolled: 213,
-    avgAttendance: 97.65,
-    lecturers: ['ICT Department'],
-    status: 'Active'
-  },
-  4: {
-    id: 4,
-    moduleCode: 'DNC101',
-    moduleName: 'Dance Club Entry Audition',
-    credits: 6,
-    studentsEnrolled: 213,
-    avgAttendance: 97.65,
-    lecturers: ['Dance Club'],
-    status: 'Active'
-  }
-};
-
-const moduleClassMap: Record<number, ModuleClass[]> = {
-  1: [
-    {
-      id: 'CSIT131-L1',
-      type: 'Lecture',
-      lecturer: 'Lawrence Long',
-      venue: 'Main Hall 1',
-      date: 'Mon · 09:00 - 11:00',
-      present: 180,
-      absent: 33,
-      attendanceRate: 84.5,
-      status: 'Active'
-    },
-    {
-      id: 'CSIT131-T1',
-      type: 'Tutorial',
-      lecturer: 'Jamie Oliver',
-      venue: 'Room B203',
-      date: 'Wed · 14:00 - 15:00',
-      present: 25,
-      absent: 5,
-      attendanceRate: 83.3,
-      status: 'Scheduled'
-    },
-    {
-      id: 'CSIT131-L2',
-      type: 'Lecture',
-      lecturer: 'Lawrence Long',
-      venue: 'Main Hall 2',
-      date: 'Tue · 11:00 - 13:00',
-      present: 170,
-      absent: 43,
-      attendanceRate: 79.8,
-      status: 'Scheduled'
-    },
-    {
-      id: 'CSIT131-T2',
-      type: 'Tutorial',
-      lecturer: 'Jamie Oliver',
-      venue: 'Room B205',
-      date: 'Thu · 09:00 - 10:00',
-      present: 28,
-      absent: 2,
-      attendanceRate: 93.3,
-      status: 'Active'
-    },
-    {
-      id: 'CSIT131-L3',
-      type: 'Lecture',
-      lecturer: 'Guest Lecturer',
-      venue: 'Auditorium B',
-      date: 'Fri · 15:00 - 17:00',
-      present: 160,
-      absent: 53,
-      attendanceRate: 75.1,
-      status: 'Completed'
-    },
-    {
-      id: 'CSIT131-T3',
-      type: 'Tutorial',
-      lecturer: 'Teaching Assistants',
-      venue: 'Room C101',
-      date: 'Sat · 10:00 - 11:00',
-      present: 26,
-      absent: 4,
-      attendanceRate: 86.7,
-      status: 'Scheduled'
-    }
-  ],
-  2: [
-    {
-      id: 'CSCI256-L1',
-      type: 'Lecture',
-      lecturer: 'Dr. Parker',
-      venue: 'Auditorium A',
-      date: 'Tue · 10:00 - 12:00',
-      present: 185,
-      absent: 28,
-      attendanceRate: 86.9,
-      status: 'Active'
-    },
-    {
-      id: 'CSCI256-T2',
-      type: 'Tutorial',
-      lecturer: 'ICT Department',
-      venue: 'Lab 3',
-      date: 'Thu · 13:00 - 14:30',
-      present: 32,
-      absent: 3,
-      attendanceRate: 91.4,
-      status: 'Scheduled'
-    },
-    {
-      id: 'CSCI256-L2',
-      type: 'Lecture',
-      lecturer: 'Dr. Parker',
-      venue: 'Auditorium A',
-      date: 'Thu · 09:00 - 11:00',
-      present: 178,
-      absent: 35,
-      attendanceRate: 83.6,
-      status: 'Scheduled'
-    },
-    {
-      id: 'CSCI256-T3',
-      type: 'Tutorial',
-      lecturer: 'ICT Mentors',
-      venue: 'Lab 5',
-      date: 'Fri · 14:00 - 15:30',
-      present: 30,
-      absent: 5,
-      attendanceRate: 85.7,
-      status: 'Active'
-    }
-  ],
-  3: [
-    {
-      id: 'CSCI305-L1',
-      type: 'Lecture',
-      lecturer: 'Coach Miles',
-      venue: 'Stadium Briefing Room',
-      date: 'Fri · 08:00 - 10:00',
-      present: 110,
-      absent: 10,
-      attendanceRate: 91.7,
-      status: 'Active'
-    },
-    {
-      id: 'CSCI305-T1',
-      type: 'Tutorial',
-      lecturer: 'Analytics Team',
-      venue: 'Sports Lab',
-      date: 'Mon · 16:00 - 17:30',
-      present: 40,
-      absent: 3,
-      attendanceRate: 93.0,
-      status: 'Scheduled'
-    },
-    {
-      id: 'CSCI305-T2',
-      type: 'Tutorial',
-      lecturer: 'Analytics Team',
-      venue: 'Sports Lab',
-      date: 'Wed · 16:00 - 17:30',
-      present: 38,
-      absent: 5,
-      attendanceRate: 88.4,
-      status: 'Completed'
-    }
-  ],
-  4: [
-    {
-      id: 'DNC101-L1',
-      type: 'Lecture',
-      lecturer: 'Dance Club',
-      venue: 'Studio 4',
-      date: 'Sat · 10:00 - 12:00',
-      present: 55,
-      absent: 5,
-      attendanceRate: 91.7,
-      status: 'Scheduled'
-    },
-    {
-      id: 'DNC101-T1',
-      type: 'Tutorial',
-      lecturer: 'Dance Coaches',
-      venue: 'Studio 2',
-      date: 'Sun · 09:00 - 10:30',
-      present: 48,
-      absent: 2,
-      attendanceRate: 96.0,
-      status: 'Active'
-    }
-  ]
-};
-
-const classStudentMap: Record<string, ClassStudent[]> = {
-  'CSIT131-L1': [
-    { id: 1, studentId: 'S001', name: 'Emily Carter', status: 'Present' },
-    { id: 2, studentId: 'S002', name: 'Daniel Kim', status: 'Late' },
-    { id: 3, studentId: 'S003', name: 'Sofia Liu', status: 'Present' }
-  ],
-  'CSIT131-T1': [
-    { id: 1, studentId: 'S004', name: 'Michael Chan', status: 'Present' },
-    { id: 2, studentId: 'S005', name: 'Chloe Smith', status: 'Absent' }
-  ],
-  'CSIT131-L2': [
-    { id: 1, studentId: 'S006', name: 'Brian Zhao', status: 'Present' },
-    { id: 2, studentId: 'S007', name: 'Alice Moore', status: 'Present' },
-    { id: 3, studentId: 'S008', name: 'Kayden Ross', status: 'Late' }
-  ],
-  'CSIT131-T2': [
-    { id: 1, studentId: 'S009', name: 'Priya Patel', status: 'Present' },
-    { id: 2, studentId: 'S010', name: 'Leo Martin', status: 'Present' }
-  ],
-  'CSIT131-L3': [
-    { id: 1, studentId: 'S011', name: 'Hannah Reed', status: 'Absent' },
-    { id: 2, studentId: 'S012', name: 'Marcus Allen', status: 'Present' }
-  ],
-  'CSIT131-T3': [
-    { id: 1, studentId: 'S013', name: 'Sophia Diaz', status: 'Present' },
-    { id: 2, studentId: 'S014', name: 'Noah Wright', status: 'Late' }
-  ],
-  'CSCI256-L1': [
-    { id: 1, studentId: 'S101', name: 'Olivia White', status: 'Present' },
-    { id: 2, studentId: 'S102', name: 'Noah Patel', status: 'Present' }
-  ],
-  'CSCI256-T2': [
-    { id: 1, studentId: 'S103', name: 'Liam Johnson', status: 'Late' },
-    { id: 2, studentId: 'S104', name: 'Isabella Green', status: 'Present' }
-  ],
-  'CSCI256-L2': [
-    { id: 1, studentId: 'S105', name: 'Evelyn Scott', status: 'Present' },
-    { id: 2, studentId: 'S106', name: 'Caleb Price', status: 'Late' }
-  ],
-  'CSCI256-T3': [
-    { id: 1, studentId: 'S107', name: 'Amelia Young', status: 'Present' },
-    { id: 2, studentId: 'S108', name: 'Ethan Cooper', status: 'Present' }
-  ],
-  'CSCI305-L1': [
-    { id: 1, studentId: 'S201', name: 'Ethan Baker', status: 'Present' },
-    { id: 2, studentId: 'S202', name: 'Grace Hill', status: 'Present' }
-  ],
-  'CSCI305-T1': [
-    { id: 1, studentId: 'S203', name: 'Lucas Perez', status: 'Present' },
-    { id: 2, studentId: 'S204', name: 'Samantha Ward', status: 'Absent' }
-  ],
-  'CSCI305-T2': [
-    { id: 1, studentId: 'S205', name: 'Aiden Bell', status: 'Present' },
-    { id: 2, studentId: 'S206', name: 'Zara Fox', status: 'Present' }
-  ],
-  'DNC101-L1': [
-    { id: 1, studentId: 'S301', name: 'Mia Flores', status: 'Present' },
-    { id: 2, studentId: 'S302', name: 'Kayla Reed', status: 'Late' }
-  ],
-  'DNC101-T1': [
-    { id: 1, studentId: 'S303', name: 'Natalie Cruz', status: 'Present' },
-    { id: 2, studentId: 'S304', name: 'Oliver Hayes', status: 'Present' }
-  ]
-};
 
 const highlightSelectedClass = () => {
   if (!selectedClass.value) {
@@ -468,28 +199,216 @@ const handleClassPagination = ({ page, limit }: { page: number; limit: number })
   highlightSelectedClass();
 };
 
-const loadModuleDetail = () => {
-  const detail = moduleCatalog[moduleId.value];
-  if (!detail) {
+const loadModuleDetail = async () => {
+  if (!moduleId.value) {
     router.replace('/modules');
     return;
   }
-  Object.assign(moduleDetail, detail);
-  classList.value = moduleClassMap[moduleId.value] || [];
-  classPagination.pageNum = 1;
-  selectedClass.value = classList.value[0] || null;
-  studentList.value = selectedClass.value ? classStudentMap[selectedClass.value.id] || [] : [];
-  highlightSelectedClass();
+  
+  loading.value = true;
+  try {
+    // 加载模块详情（必须成功）
+    const moduleRes: any = await getModule(moduleId.value);
+    const lecturerName = moduleRes?.lecturer_details 
+      ? `${moduleRes.lecturer_details.first_name || ''} ${moduleRes.lecturer_details.last_name || ''}`.trim()
+      : '';
+    
+    Object.assign(moduleDetail, {
+      id: moduleRes.id,
+      moduleCode: moduleRes.code || '',
+      moduleName: moduleRes.name || '',
+      credits: moduleRes.credit || 0,
+      studentsEnrolled: moduleRes.student_enrolled || moduleRes.students?.length || 0,
+      avgAttendance: moduleRes.average_attendance || 0,
+      lecturers: lecturerName ? [lecturerName] : [],
+      status: moduleRes.status === 'active' ? 'Active' : 'Inactive'
+    });
+    
+    // 加载学生列表和讲师列表（失败不阻断详情展示）
+    try {
+      await Promise.all([loadStudentOptions(), loadLecturerOptions()]);
+    } catch (error) {
+      console.warn('Failed to load dropdown options:', error);
+    }
+    
+    // 加载该模块的课程会话（失败则显示空列表）
+    let sessions: any[] = [];
+    try {
+      const sessionsRes: any = await listClassSessions({ module: moduleId.value, page_size: 100 });
+      sessions = sessionsRes?.data?.results ?? sessionsRes?.results ?? sessionsRes?.data ?? [];
+    } catch (error) {
+      console.warn('Failed to load class sessions:', error);
+      sessions = [];
+    }
+    
+    classList.value = sessions.map((s: any) => {
+      // 尝试从 session 的嵌套信息获取讲师，如果没有则从映射表查找
+      let lecName = '-';
+      if (s.module_details?.lecturer_details) {
+        lecName = `${s.module_details.lecturer_details.first_name || ''} ${s.module_details.lecturer_details.last_name || ''}`.trim() || '-';
+      } else if (moduleDetail.lecturers?.length) {
+        // 使用模块的讲师信息
+        lecName = moduleDetail.lecturers[0];
+      } else {
+        // 从映射表中查找
+        const lecturerId = s.module_details?.lecturer || moduleRes?.lecturer;
+        if (lecturerId && lecturerOptionsMap.value.has(lecturerId)) {
+          lecName = lecturerOptionsMap.value.get(lecturerId) || '-';
+        }
+      }
+      return {
+        id: s.id,
+        type: s.type === 'lecture' ? 'Lecture' : 'Tutorial',
+        lecturer: lecName,
+        venue: s.venue?.name ?? s.venue ?? '-',
+        date: `${s.date || ''} · ${s.start_time || ''} - ${s.end_time || ''}`,
+        present: s.present_students || 0,
+        absent: s.absent_students || 0,
+        attendanceRate: `${s.attendance_rate || 0}%`,
+        status: s.status === 'completed'
+          ? 'Completed'
+          : s.status === 'in_progress'
+            ? 'In Progress'
+            : s.status === 'cancelled'
+              ? 'Cancelled'
+              : (s.status === 'rescheduled' || s.status === 'reschedule')
+                ? 'Rescheduled'
+                : 'Upcoming'
+      };
+    });
+    
+    classPagination.pageNum = 1;
+    selectedClass.value = classList.value[0] || null;
+    
+    if (selectedClass.value) {
+      try {
+        await loadStudentsForSession(selectedClass.value.id);
+      } catch (error) {
+        console.warn('Failed to load students for session:', error);
+      }
+    }
+    
+    highlightSelectedClass();
+  } catch (error) {
+    console.error('Failed to load module detail:', error);
+    router.replace('/modules');
+  } finally {
+    loading.value = false;
+  }
 };
 
-const handleClassRowClick = (row: ModuleClass) => {
+const loadStudentsForSession = async (sessionId: number | string) => {
+  try {
+    const recordsRes: any = await listAttendanceRecords({ session: sessionId, page_size: 100 });
+    const records = recordsRes?.data?.results ?? recordsRes?.results ?? recordsRes?.data ?? [];
+    
+    studentList.value = records.map((r: any) => {
+      // 尝试从嵌套信息获取
+      let studentId = '-';
+      let fullName = '-';
+      
+      if (r.student_details?.student_id) {
+        // 后端返回了嵌套信息
+        const student = r.student_details;
+        const user = student.user_details ?? {};
+        studentId = student.student_id || '-';
+        fullName = `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.username || '-';
+      } else {
+        // 后端只返回了 student ID（user ID），从已加载的学生列表中查找
+        const studentUserId = r.student; // 这是 user ID
+        const studentData = studentOptionsMap.value.get(studentUserId);
+        if (studentData) {
+          studentId = studentData.studentId || '-';
+          fullName = studentData.name || '-';
+        }
+      }
+      
+      return {
+        id: r.id,
+        studentId: studentId,
+        name: fullName,
+        inTime: r.entry_time ? new Date(r.entry_time).toLocaleTimeString() : '-',
+        outTime: r.exit_time ? new Date(r.exit_time).toLocaleTimeString() : '-',
+        duration: r.duration ?? null,
+        status: r.status === 'present' ? 'Present' : r.status === 'absent' ? 'Absent' : r.status === 'on_leave' ? 'On Leave' : r.status
+      };
+    });
+  } catch (error) {
+    console.error('Failed to load students:', error);
+    studentList.value = [];
+  }
+};
+
+/** 加载学生选项列表 */
+const loadStudentOptions = async () => {
+  try {
+    const payload: any = await listAdminStudents({ page_size: 200 });
+    const students = payload?.data?.results ?? payload?.results ?? payload?.data ?? payload ?? [];
+    
+    studentOptionsMap.value.clear();
+    students.forEach((s: any) => {
+      const userDetails = s.user_details ?? {};
+      const fullName = `${userDetails.first_name || ''} ${userDetails.last_name || ''}`.trim() || userDetails.username || '-';
+      // 使用 user ID 作为 key，因为 attendance 记录中的 student 字段实际上是 user ID
+      studentOptionsMap.value.set(s.user, {
+        studentId: s.student_id || '-',
+        name: fullName,
+        email: userDetails.email || '-',
+        phone: userDetails.phone_number || '-'
+      });
+    });
+  } catch (error) {
+    console.error('Failed to load student options:', error);
+  }
+};
+
+/** 加载讲师选项列表 */
+const loadLecturerOptions = async () => {
+  try {
+    const payload: any = await listAdminLecturers({ page_size: 100 });
+    const lecturers = payload?.data?.results ?? payload?.results ?? payload?.data ?? payload ?? [];
+    
+    lecturerOptionsMap.value.clear();
+    lecturers.forEach((l: any) => {
+      const userDetails = l.user_details ?? {};
+      const fullName = `${userDetails.first_name || ''} ${userDetails.last_name || ''}`.trim() || userDetails.username || '-';
+      // 使用 user ID 作为 key
+      lecturerOptionsMap.value.set(l.user, fullName);
+    });
+    
+    // 如果模块讲师为空，尝试从映射表补充
+    if (!moduleDetail.lecturers?.length) {
+      const moduleRes: any = await getModule(moduleId.value);
+      const lecturerId = moduleRes?.lecturer;
+      if (lecturerId && lecturerOptionsMap.value.has(lecturerId)) {
+        moduleDetail.lecturers = [lecturerOptionsMap.value.get(lecturerId) || '-'];
+      }
+    }
+  } catch (error) {
+    console.error('Failed to load lecturer options:', error);
+  }
+};
+
+const handleClassRowClick = async (row: ModuleClass) => {
   selectedClass.value = row;
-  studentList.value = classStudentMap[row.id] || [];
+  await loadStudentsForSession(row.id);
   highlightSelectedClass();
 };
 
 const goBack = () => {
   router.push('/modules');
+};
+
+const formatDuration = (seconds?: number | null) => {
+  if (!seconds || seconds <= 0) {
+    return '-';
+  }
+  const total = Math.floor(seconds);
+  const hrs = Math.floor(total / 3600);
+  const mins = Math.floor((total % 3600) / 60);
+  const secs = total % 60;
+  const pad = (value: number) => String(value).padStart(2, '0');
+  return `${pad(hrs)}:${pad(mins)}:${pad(secs)}`;
 };
 
 watch(

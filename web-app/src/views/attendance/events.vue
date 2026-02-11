@@ -4,8 +4,8 @@
       <div v-show="showSearch" class="mb-[10px]">
         <el-card shadow="hover">
           <el-form ref="queryFormRef" :model="queryParams" :inline="true">
-            <el-form-item label="Event Name" prop="eventName" label-width="100px">
-              <el-input v-model="queryParams.eventName" placeholder="Enter event name" clearable @keyup.enter="handleQuery" />
+            <el-form-item label="Search" prop="keyword">
+              <el-input v-model="queryParams.keyword" placeholder="Search by event name, organizer, venue..." clearable style="width: 300px" @keyup.enter="handleQuery" />
             </el-form-item>
             <el-form-item label="Date/Time" style="width: 308px">
               <el-date-picker
@@ -45,37 +45,33 @@
         <div class="event-summary-item">
           <p class="event-summary-label">Date / Time</p>
           <p class="event-summary-value">
-            <span v-if="eventDetail.dateRange[0] && eventDetail.dateRange[1]">
-              {{ formatDateRange(eventDetail.dateRange) }} · {{ formatTimeRange(eventDetail.dateRange) }}
+            <span v-if="eventDetail.eventDate">
+              {{ formatEventDate(eventDetail.eventDate) }} · {{ formatEventTime(eventDetail.eventDate) }}
             </span>
             <span v-else>-</span>
           </p>
         </div>
         <div class="event-summary-item status-item">
           <p class="event-summary-label">Current Status</p>
-          <p class="event-summary-status">{{ eventDetail.status || '-' }}</p>
+          <p class="event-summary-status">{{ getStatusLabel(eventDetail.status) }}</p>
         </div>
       </div>
       <div class="event-summary-row">
         <div class="event-summary-item">
-          <p class="event-summary-label">Total</p>
-          <p class="event-summary-value">{{ eventDetail.total }}</p>
+          <p class="event-summary-label">Slot Limit</p>
+          <p class="event-summary-value">{{ eventDetail.id ? formatSlotLimit(eventDetail.slotLimit) : '-' }}</p>
         </div>
         <div class="event-summary-item">
-          <p class="event-summary-label">Present</p>
-          <p class="event-summary-value">{{ eventDetail.present }}</p>
+          <p class="event-summary-label">Total Students</p>
+          <p class="event-summary-value">{{ eventDetail.id ? eventDetail.totalStudent : '-' }}</p>
         </div>
         <div class="event-summary-item">
-          <p class="event-summary-label">Late</p>
-          <p class="event-summary-value">{{ eventDetail.late }}</p>
+          <p class="event-summary-label">Slots Remaining</p>
+          <p class="event-summary-value">{{ eventDetail.id ? formatSlotsRemaining(eventDetail.slotsRemaining, eventDetail.slotLimit) : '-' }}</p>
         </div>
         <div class="event-summary-item">
-          <p class="event-summary-label">Absent</p>
-          <p class="event-summary-value">{{ eventDetail.absent }}</p>
-        </div>
-        <div class="event-summary-item">
-          <p class="event-summary-label">Attendance Rate</p>
-          <p class="event-summary-value">{{ eventDetail.rate || '0%' }}</p>
+          <p class="event-summary-label">Is Full</p>
+          <p class="event-summary-value">{{ eventDetail.id ? formatIsFull(eventDetail.isFull, eventDetail.slotLimit) : '-' }}</p>
         </div>
       </div>
     </el-card>
@@ -100,7 +96,7 @@
         class="attendify-table"
         ref="eventTableRef"
         v-loading="loading"
-        :data="eventList"
+        :data="pagedEventList"
         border
         @selection-change="handleSelectionChange"
         @row-click="handleRowClick"
@@ -108,22 +104,45 @@
         <el-table-column type="selection" width="55" align="center" />
         <el-table-column label="Event" prop="eventName" :show-overflow-tooltip="true" min-width="200" />
         <el-table-column label="Organizer" prop="organizer" :show-overflow-tooltip="true" min-width="160" />
-        <el-table-column label="Date / Time" min-width="240">
+        <el-table-column label="Media" min-width="140">
           <template #default="scope">
-            <div class="event-date">{{ formatDateRange(scope.row.dateRange) }}</div>
-            <div class="event-time">{{ formatTimeRange(scope.row.dateRange) }}</div>
+            <div class="media-cell">
+              <el-image
+                v-if="isImageUrl(scope.row.imageUrl)"
+                :src="scope.row.imageUrl"
+                class="media-thumb"
+                fit="cover"
+                :preview-teleported="true"
+                :hide-on-click-modal="true"
+                :z-index="10000"
+                :preview-src-list="[scope.row.imageUrl]"
+              />
+              <span v-else>-</span>
+            </div>
           </template>
         </el-table-column>
-        <el-table-column label="Rate" prop="rate" min-width="100" />
-        <el-table-column label="Total" prop="total" min-width="80" />
-        <el-table-column label="Present" prop="present" min-width="90" />
-        <el-table-column label="Late" prop="late" min-width="80" />
-        <el-table-column label="Absent" prop="absent" min-width="90" />
+        <el-table-column label="Date / Time" min-width="240">
+          <template #default="scope">
+            <div class="event-date">{{ formatEventDate(scope.row.eventDate) }}</div>
+            <div class="event-time">{{ formatEventTime(scope.row.eventDate) }}</div>
+          </template>
+        </el-table-column>
+        <el-table-column label="Slot Limit" prop="slotLimit" min-width="110">
+          <template #default="scope">{{ formatSlotLimit(scope.row.slotLimit) }}</template>
+        </el-table-column>
+        <el-table-column label="Total Students" prop="totalStudent" min-width="130" />
+        <el-table-column label="Slots Remaining" prop="slotsRemaining" min-width="130">
+          <template #default="scope">{{ formatSlotsRemaining(scope.row.slotsRemaining, scope.row.slotLimit) }}</template>
+        </el-table-column>
+        <el-table-column label="Full" prop="isFull" min-width="90">
+          <template #default="scope">
+            <el-tag v-if="scope.row.isFull" type="danger">Yes</el-tag>
+            <el-tag v-else type="success">No</el-tag>
+          </template>
+        </el-table-column>
         <el-table-column label="Status" prop="status" min-width="130">
           <template #default="scope">
-            <el-tag v-if="scope.row.status === 'Not Started'" type="info">Not Started</el-tag>
-            <el-tag v-else-if="scope.row.status === 'Pending'" type="warning">Pending</el-tag>
-            <el-tag v-else type="success">Completed</el-tag>
+            <el-tag :type="getStatusTagType(scope.row.status)">{{ getStatusLabel(scope.row.status) }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column label="Actions" width="140" class-name="small-padding fixed-width">
@@ -144,42 +163,60 @@
           <el-input v-model="addForm.eventName" placeholder="Enter event name" />
         </el-form-item>
         <el-form-item label="Organizer" prop="organizer">
-          <el-input v-model="addForm.organizer" placeholder="Enter organizer" />
+          <el-select v-model="addForm.organizer" placeholder="Select organizer" filterable allow-create style="width: 100%">
+            <el-option v-for="org in organizerOptions" :key="org.value" :label="org.label" :value="org.value" />
+          </el-select>
         </el-form-item>
         <el-form-item label="Venue" prop="venue">
           <el-input v-model="addForm.venue" placeholder="Enter venue" />
         </el-form-item>
-        <el-form-item label="Date / Time" prop="dateRange">
+        <el-form-item label="Date / Time" prop="eventDate">
           <el-date-picker
-            v-model="addForm.dateRange"
-            type="datetimerange"
+            v-model="addForm.eventDate"
+            type="datetime"
             value-format="YYYY-MM-DDTHH:mm"
-            start-placeholder="Start"
-            end-placeholder="End"
+            placeholder="Select date/time"
             style="width: 100%"
           />
         </el-form-item>
-        <el-form-item label="Attendance Rate" prop="rate">
-          <el-input v-model="addForm.rate" placeholder="Enter rate (e.g. 97.65%)" />
-        </el-form-item>
-        <el-form-item label="Total" prop="total">
-          <el-input v-model.number="addForm.total" type="number" placeholder="Enter total" />
-        </el-form-item>
-        <el-form-item label="Present" prop="present">
-          <el-input v-model.number="addForm.present" type="number" placeholder="Enter present" />
-        </el-form-item>
-        <el-form-item label="Late" prop="late">
-          <el-input v-model.number="addForm.late" type="number" placeholder="Enter late" />
-        </el-form-item>
-        <el-form-item label="Absent" prop="absent">
-          <el-input v-model.number="addForm.absent" type="number" placeholder="Enter absent" />
+        <el-form-item label="Slot Limit" prop="slotLimit">
+          <el-input v-model="addForm.slotLimit" type="number" clearable placeholder="Leave empty for unlimited" />
         </el-form-item>
         <el-form-item label="Description" prop="description">
           <el-input v-model="addForm.description" type="textarea" :autosize="{ minRows: 4, maxRows: 8 }" placeholder="Enter description" />
         </el-form-item>
+        <el-form-item label="Media">
+          <el-upload
+            class="upload-block"
+            action="#"
+            :auto-upload="false"
+            :file-list="addUploadFileList"
+            :limit="1"
+            accept="image/*"
+            :on-change="handleAddUploadChange"
+            :on-remove="handleAddUploadRemove"
+          >
+            <el-button type="primary" icon="Upload">Select Image</el-button>
+            <template #tip>
+              <div class="el-upload__tip">Supports image files.</div>
+            </template>
+          </el-upload>
+          <div v-if="addMediaPreviewUrl" class="media-preview">
+            <el-image
+              v-if="addMediaPreviewIsImage"
+              :src="addMediaPreviewUrl"
+              class="media-thumb"
+              fit="cover"
+              :preview-teleported="true"
+              :hide-on-click-modal="true"
+              :z-index="10000"
+              :preview-src-list="[addMediaPreviewUrl]"
+            />
+          </div>
+        </el-form-item>
         <el-form-item label="Status" prop="status">
           <el-select v-model="addForm.status" placeholder="Select status">
-            <el-option v-for="status in statusOptions" :key="status" :label="status" :value="status" />
+            <el-option v-for="status in statusOptions" :key="status.value" :label="status.label" :value="status.value" />
           </el-select>
         </el-form-item>
       </el-form>
@@ -201,8 +238,8 @@
                 <el-input v-model="form.eventName" placeholder="Enter event name" />
               </el-form-item>
               <el-form-item label="Organizer" prop="organizer">
-                <el-select v-model="form.organizer" placeholder="Select organizer" filterable>
-                  <el-option v-for="org in organizerOptions" :key="org" :label="org" :value="org" />
+                <el-select v-model="form.organizer" placeholder="Select organizer" filterable allow-create>
+                  <el-option v-for="org in organizerOptions" :key="org.value" :label="org.label" :value="org.value" />
                 </el-select>
               </el-form-item>
               <el-form-item label="Venue" prop="venue">
@@ -212,47 +249,73 @@
               </el-form-item>
             </div>
             <div class="event-form-column">
-              <el-form-item label="Date / Time" prop="dateRange">
+              <el-form-item label="Date / Time" prop="eventDate">
                 <el-date-picker
-                  v-model="form.dateRange"
-                  type="datetimerange"
+                  v-model="form.eventDate"
+                  type="datetime"
                   value-format="YYYY-MM-DDTHH:mm"
-                  :default-time="defaultDateTimeRange"
-                  start-placeholder="Start"
-                  end-placeholder="End"
+                  placeholder="Select date/time"
                   style="width: 100%"
                 />
               </el-form-item>
+              <el-form-item label="Slot Limit" prop="slotLimit">
+                <el-input v-model="form.slotLimit" type="number" clearable placeholder="Leave empty for unlimited" />
+              </el-form-item>
               <el-form-item label="Current Status" prop="status">
                 <el-select v-model="form.status" placeholder="Select status">
-                  <el-option v-for="status in statusOptions" :key="status" :label="status" :value="status" />
+                  <el-option v-for="status in statusOptions" :key="status.value" :label="status.label" :value="status.value" />
                 </el-select>
               </el-form-item>
+              <el-form-item label="Media">
+                <el-upload
+                  class="upload-block"
+                  action="#"
+                  :auto-upload="false"
+                  :file-list="editUploadFileList"
+                  :limit="1"
+                  accept="image/*"
+                  :on-change="handleEditUploadChange"
+                  :on-remove="handleEditUploadRemove"
+                >
+                  <el-button type="primary" icon="Upload">Select Image</el-button>
+                  <template #tip>
+                    <div class="el-upload__tip">Supports image files.</div>
+                  </template>
+                </el-upload>
+                <div v-if="editMediaPreviewUrl" class="media-preview">
+                  <el-image
+                    v-if="editMediaPreviewIsImage"
+                    :src="editMediaPreviewUrl"
+                    class="media-thumb"
+                    fit="cover"
+                    :preview-teleported="true"
+                    :hide-on-click-modal="true"
+                    :z-index="10000"
+                    :preview-src-list="[editMediaPreviewUrl]"
+                  />
+                </div>
+              </el-form-item>
             </div>
-          </div>
+            </div>
 
-          <div class="event-stats-grid">
-            <div class="stat-item">
-              <span>Total</span>
-              <span>{{ form.total }}</span>
+            <div class="event-stats-grid">
+              <div class="stat-item">
+                <span>Slot Limit</span>
+                <span>{{ formatSlotLimit(form.slotLimit) }}</span>
+              </div>
+              <div class="stat-item">
+                <span>Total Students</span>
+                <span>{{ form.totalStudent }}</span>
+              </div>
+              <div class="stat-item">
+                <span>Slots Remaining</span>
+                <span>{{ formatSlotsRemaining(form.slotsRemaining, form.slotLimit) }}</span>
+              </div>
+              <div class="stat-item">
+                <span>Is Full</span>
+                <span>{{ formatIsFull(form.isFull, form.slotLimit) }}</span>
+              </div>
             </div>
-            <div class="stat-item">
-              <span>Present</span>
-              <span>{{ form.present }}</span>
-            </div>
-            <div class="stat-item">
-              <span>Late</span>
-              <span>{{ form.late }}</span>
-            </div>
-            <div class="stat-item">
-              <span>Absent</span>
-              <span>{{ form.absent }}</span>
-            </div>
-            <div class="stat-item">
-              <span>Attendance Rate</span>
-              <span>{{ form.rate }}</span>
-            </div>
-          </div>
 
           <el-form-item prop="description" class="event-description-item" label-width="0">
             <div class="event-description-label">Description</div>
@@ -271,6 +334,7 @@
 <script setup name="EventsAttendance" lang="ts">
 import type { ComponentInternalInstance } from 'vue';
 import type { FormInstance, TableInstance } from 'element-plus';
+import { listEvents, addEvent, updateEvent, delEvent, listAdminUsers } from '@/api/admin';
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 
@@ -279,17 +343,20 @@ type EventItem = {
   eventName: string;
   organizer: string;
   venue: string;
-  dateRange: [string, string];
-  rate: string;
-  total: number;
-  present: number;
-  late: number;
-  absent: number;
+  eventDate: string;
+  slotLimit: number | null | string;
+  totalStudent: number;
+  slotsRemaining?: number | null;
+  isFull?: boolean;
+  present?: number;
+  absent?: number;
   status: string;
   description: string;
+  imageUrl: string;
 };
 
 const eventList = ref<EventItem[]>([]);
+const allEventList = ref<EventItem[]>([]);
 const loading = ref(true);
 const showSearch = ref(true);
 const ids = ref<Array<number | string>>([]);
@@ -304,14 +371,16 @@ const eventDetail = reactive<EventItem>({
   eventName: '',
   organizer: '',
   venue: '',
-  dateRange: ['', ''],
-  rate: '0%',
-  total: 0,
+  eventDate: '',
+  slotLimit: null,
+  totalStudent: 0,
+  slotsRemaining: null,
+  isFull: false,
   present: 0,
-  late: 0,
   absent: 0,
   status: '',
-  description: ''
+  description: '',
+  imageUrl: ''
 });
 
 const queryFormRef = ref<FormInstance>();
@@ -329,53 +398,85 @@ const addForm = ref<EventItem>({
   eventName: '',
   organizer: '',
   venue: '',
-  dateRange: ['', ''],
-  rate: '',
-  total: 0,
+  eventDate: '',
+  slotLimit: null,
+  totalStudent: 0,
+  slotsRemaining: null,
+  isFull: false,
   present: 0,
-  late: 0,
   absent: 0,
   status: '',
-  description: ''
+  description: '',
+  imageUrl: ''
 });
+const validateSlotLimit = (_rule: any, value: any, callback: (error?: Error) => void) => {
+  if (value === '' || value === null || value === undefined) {
+    callback();
+    return;
+  }
+  const num = Number(value);
+  if (!Number.isInteger(num) || num <= 0) {
+    callback(new Error('Slot limit must be a positive integer'));
+    return;
+  }
+  callback();
+};
+const normalizeSlotLimitValue = (value: EventItem['slotLimit']) => {
+  if (value === '' || value === null || value === undefined) return null;
+  const num = Number(value);
+  return Number.isNaN(num) ? null : num;
+};
 const addRules = {
   eventName: [{ required: true, message: 'Event is required', trigger: 'blur' }],
   organizer: [{ required: true, message: 'Organizer is required', trigger: 'blur' }],
   venue: [{ required: true, message: 'Venue is required', trigger: 'blur' }],
-  dateRange: [{ required: true, message: 'Date/Time is required', trigger: 'change' }],
-  rate: [{ required: true, message: 'Attendance rate is required', trigger: 'blur' }],
-  total: [{ required: true, message: 'Total is required', trigger: 'blur' }],
-  present: [{ required: true, message: 'Present is required', trigger: 'blur' }],
-  late: [{ required: true, message: 'Late is required', trigger: 'blur' }],
-  absent: [{ required: true, message: 'Absent is required', trigger: 'blur' }],
+  eventDate: [{ required: true, message: 'Date/Time is required', trigger: 'change' }],
+  slotLimit: [{ validator: validateSlotLimit, trigger: 'blur' }],
+  description: [{ required: true, message: 'Description is required', trigger: 'blur' }],
   status: [{ required: true, message: 'Status is required', trigger: 'change' }]
 };
 
-const organizerOptions = ref(['ICT Department', 'Baseball Club', 'Dance Club']);
-const venueOptions = ref(['LT A1.17', 'LT B2.05', 'Field B2', 'Auditorium C3']);
-const statusOptions = ref(['Not Started', 'Pending', 'Completed']);
-const defaultDateTimeRange: [Date, Date] = [new Date(0, 0, 0, 12, 0, 0), new Date(0, 0, 0, 15, 0, 0)];
+const addUploadFileList = ref<any[]>([]);
+const addUploadFile = ref<File | null>(null);
+const addUploadPreviewUrl = ref('');
+const addUploadPreviewType = ref('');
 
+const editUploadFileList = ref<any[]>([]);
+const editUploadFile = ref<File | null>(null);
+const editUploadPreviewUrl = ref('');
+const editUploadPreviewType = ref('');
+
+const organizerOptions = ref<Array<{label: string; value: string}>>([]);
+const venueOptions = ref(['LT A1.17', 'LT B2.05', 'Field B2', 'Auditorium C3']);
+const statusOptions = ref([
+  { label: 'Upcoming', value: 'upcoming' },
+  { label: 'Happening Today', value: 'happening_today' },
+  { label: 'Completed', value: 'completed' },
+  { label: 'Cancelled', value: 'cancelled' }
+]);
 const form = ref<EventItem>({
   id: '',
   eventName: '',
   organizer: '',
   venue: '',
-  dateRange: ['', ''],
-  rate: '0%',
-  total: 0,
+  eventDate: '',
+  slotLimit: null,
+  totalStudent: 0,
+  slotsRemaining: null,
+  isFull: false,
   present: 0,
-  late: 0,
   absent: 0,
   status: '',
-  description: ''
+  description: '',
+  imageUrl: ''
 });
 
 const rules = {
   eventName: [{ required: true, message: 'Event is required', trigger: 'change' }],
   organizer: [{ required: true, message: 'Organizer is required', trigger: 'change' }],
   venue: [{ required: true, message: 'Venue is required', trigger: 'change' }],
-  dateRange: [{ required: true, message: 'Date/Time is required', trigger: 'change' }],
+  eventDate: [{ required: true, message: 'Date/Time is required', trigger: 'change' }],
+  slotLimit: [{ validator: validateSlotLimit, trigger: 'blur' }],
   status: [{ required: true, message: 'Status is required', trigger: 'change' }]
 };
 
@@ -383,20 +484,202 @@ const rules = {
 const queryParams = ref({
   pageNum: 1,
   pageSize: 10,
-  eventName: ''
+  keyword: ''
 });
 
-const formatDateRange = (range?: EventItem['dateRange']) => {
-  if (!range?.length) return '-';
-  const [start, end] = range;
-  const formatter = (value: string) => new Date(value).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
-  return `${formatter(start)} - ${formatter(end)}`;
+const isFiltering = computed(() => {
+  return !!queryParams.value.keyword || !!dateRange.value?.[0] || !!dateRange.value?.[1];
+});
+
+// 前端关键字过滤（不区分大小写）
+const filteredEventList = computed(() => {
+  let result = isFiltering.value ? allEventList.value : eventList.value;
+  
+  // 关键字搜索（不区分大小写）
+  if (queryParams.value.keyword) {
+    const keyword = queryParams.value.keyword.toLowerCase();
+    result = result.filter(event => {
+      return (
+        (event.eventName && event.eventName.toLowerCase().includes(keyword)) ||
+        (event.organizer && event.organizer.toLowerCase().includes(keyword)) ||
+        (event.venue && event.venue.toLowerCase().includes(keyword)) ||
+        (event.description && event.description.toLowerCase().includes(keyword)) ||
+        (event.status && event.status.toLowerCase().includes(keyword))
+      );
+    });
+  }
+  
+  if (dateRange.value?.[0] || dateRange.value?.[1]) {
+    const start = dateRange.value[0] ? new Date(dateRange.value[0]) : null;
+    const end = dateRange.value[1] ? new Date(dateRange.value[1]) : null;
+    if (end) {
+      end.setHours(23, 59, 59, 999);
+    }
+    result = result.filter(event => {
+      if (!event.eventDate) return false;
+      const eventTime = new Date(event.eventDate);
+      if (Number.isNaN(eventTime.getTime())) return false;
+      if (start && eventTime < start) return false;
+      if (end && eventTime > end) return false;
+      return true;
+    });
+  }
+
+  return result;
+});
+
+const pagedEventList = computed(() => {
+  if (!isFiltering.value) return filteredEventList.value;
+  const start = (queryParams.value.pageNum - 1) * queryParams.value.pageSize;
+  return filteredEventList.value.slice(start, start + queryParams.value.pageSize);
+});
+
+const isImageUrl = (value?: string) => {
+  if (!value) return false;
+  const lower = value.toLowerCase();
+  return lower.startsWith('data:image/') || /\.(png|jpe?g|gif|webp|bmp)(\?|#|$)/.test(lower);
 };
 
-const formatTimeRange = (range?: EventItem['dateRange']) => {
-  if (!range?.length) return '-';
-  const formatter = (value: string) => new Date(value).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-  return `${formatter(range[0])} - ${formatter(range[1])}`;
+const addMediaPreviewUrl = computed(() => addUploadPreviewUrl.value || addForm.value.imageUrl || '');
+const editMediaPreviewUrl = computed(() => editUploadPreviewUrl.value || form.value.imageUrl || '');
+
+const addMediaPreviewIsImage = computed(() => {
+  if (addUploadPreviewUrl.value) {
+    return addUploadPreviewType.value.startsWith('image/');
+  }
+  return isImageUrl(addForm.value.imageUrl);
+});
+
+const editMediaPreviewIsImage = computed(() => {
+  if (editUploadPreviewUrl.value) {
+    return editUploadPreviewType.value.startsWith('image/');
+  }
+  return isImageUrl(form.value.imageUrl);
+});
+
+const normalizeEventStatus = (status?: string) => {
+  if (!status) return '';
+  if (status === 'in_progress') return 'happening_today';
+  return status;
+};
+
+const statusLabelMap: Record<string, string> = {
+  upcoming: 'Upcoming',
+  happening_today: 'Happening Today',
+  completed: 'Completed',
+  cancelled: 'Cancelled',
+  in_progress: 'In Progress'
+};
+
+const getStatusLabel = (status?: string) => statusLabelMap[status || ''] || status || '-';
+
+const getStatusTagType = (status?: string) => {
+  const value = normalizeEventStatus(status);
+  if (value === 'upcoming') return 'info';
+  if (value === 'happening_today' || value === 'in_progress') return 'warning';
+  if (value === 'completed') return 'success';
+  if (value === 'cancelled') return 'danger';
+  return 'info';
+};
+
+const isAllowedUpload = (file: File) => {
+  const type = (file.type || '').toLowerCase();
+  if (type.startsWith('image/')) return true;
+  const name = (file.name || '').toLowerCase();
+  return /\.(png|jpe?g|gif|webp|bmp)$/.test(name);
+};
+
+const resetAddUploadState = () => {
+  if (addUploadPreviewUrl.value.startsWith('blob:')) {
+    URL.revokeObjectURL(addUploadPreviewUrl.value);
+  }
+  addUploadFileList.value = [];
+  addUploadFile.value = null;
+  addUploadPreviewUrl.value = '';
+  addUploadPreviewType.value = '';
+};
+
+const resetEditUploadState = () => {
+  if (editUploadPreviewUrl.value.startsWith('blob:')) {
+    URL.revokeObjectURL(editUploadPreviewUrl.value);
+  }
+  editUploadFileList.value = [];
+  editUploadFile.value = null;
+  editUploadPreviewUrl.value = '';
+  editUploadPreviewType.value = '';
+};
+
+const handleAddUploadChange = (file: any, fileList: any[]) => {
+  const rawFile = file?.raw as File | undefined;
+  if (!rawFile) return;
+  if (!isAllowedUpload(rawFile)) {
+    proxy?.$modal?.msgError?.('Only image files are allowed.');
+    resetAddUploadState();
+    return;
+  }
+  if (addUploadPreviewUrl.value.startsWith('blob:')) {
+    URL.revokeObjectURL(addUploadPreviewUrl.value);
+  }
+  addUploadFile.value = rawFile;
+  addUploadPreviewUrl.value = URL.createObjectURL(rawFile);
+  addUploadPreviewType.value = rawFile.type || '';
+  addUploadFileList.value = fileList.slice(-1);
+};
+
+const handleAddUploadRemove = () => {
+  resetAddUploadState();
+};
+
+const handleEditUploadChange = (file: any, fileList: any[]) => {
+  const rawFile = file?.raw as File | undefined;
+  if (!rawFile) return;
+  if (!isAllowedUpload(rawFile)) {
+    proxy?.$modal?.msgError?.('Only image files are allowed.');
+    resetEditUploadState();
+    return;
+  }
+  if (editUploadPreviewUrl.value.startsWith('blob:')) {
+    URL.revokeObjectURL(editUploadPreviewUrl.value);
+  }
+  editUploadFile.value = rawFile;
+  editUploadPreviewUrl.value = URL.createObjectURL(rawFile);
+  editUploadPreviewType.value = rawFile.type || '';
+  editUploadFileList.value = fileList.slice(-1);
+};
+
+const handleEditUploadRemove = () => {
+  resetEditUploadState();
+};
+
+const formatEventDate = (value?: string) => {
+  if (!value) return '-';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '-';
+  return date.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
+};
+
+const formatEventTime = (value?: string) => {
+  if (!value) return '-';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '-';
+  return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+};
+
+const formatSlotLimit = (value: EventItem['slotLimit']) => {
+  if (value === '' || value === null || value === undefined) return 'Unlimited';
+  const num = Number(value);
+  return Number.isNaN(num) ? '-' : String(num);
+};
+
+const formatSlotsRemaining = (value: EventItem['slotsRemaining'], slotLimit: EventItem['slotLimit']) => {
+  if (slotLimit === '' || slotLimit === null || slotLimit === undefined) return 'Unlimited';
+  if (value === null || value === undefined) return '-';
+  return String(value);
+};
+
+const formatIsFull = (value?: boolean, slotLimit?: EventItem['slotLimit']) => {
+  if (slotLimit === '' || slotLimit === null || slotLimit === undefined) return 'No';
+  return value ? 'Yes' : 'No';
 };
 
 const populateMockData = (): EventItem[] => [
@@ -405,53 +688,127 @@ const populateMockData = (): EventItem[] => [
     eventName: 'Coding Workshop',
     organizer: 'ICT Department',
     venue: 'LT A1.17',
-    dateRange: ['2025-10-11T12:00', '2025-11-15T15:00'],
-    rate: '97.65%',
-    total: 213,
+    eventDate: '2025-10-11T12:00',
+    slotLimit: 300,
+    totalStudent: 213,
+    slotsRemaining: 87,
+    isFull: false,
     present: 205,
-    late: 3,
-    absent: 5,
-    status: 'Not Started',
-    description: 'Introductory workshop for new coders.'
+    absent: 8,
+    status: 'upcoming',
+    description: 'Introductory workshop for new coders.',
+    imageUrl: ''
   },
   {
     id: 2,
     eventName: 'Baseball Trial',
     organizer: 'Baseball Club',
     venue: 'Field B2',
-    dateRange: ['2025-10-08T09:00', '2025-10-08T18:00'],
-    rate: '97.65%',
-    total: 213,
+    eventDate: '2025-10-08T09:00',
+    slotLimit: null,
+    totalStudent: 213,
+    slotsRemaining: null,
+    isFull: false,
     present: 205,
-    late: 3,
-    absent: 5,
-    status: 'Pending',
-    description: 'Open tryouts for the baseball team.'
+    absent: 8,
+    status: 'happening_today',
+    description: 'Open tryouts for the baseball team.',
+    imageUrl: ''
   },
   {
     id: 3,
     eventName: 'Dance Club Entry Audition',
     organizer: 'Dance Club',
     venue: 'Auditorium C3',
-    dateRange: ['2025-10-02T19:00', '2025-10-02T21:00'],
-    rate: '97.65%',
-    total: 213,
+    eventDate: '2025-10-02T19:00',
+    slotLimit: 250,
+    totalStudent: 213,
+    slotsRemaining: 37,
+    isFull: false,
     present: 205,
-    late: 3,
-    absent: 5,
-    status: 'Completed',
-    description: 'Auditions for new dance club members.'
+    absent: 8,
+    status: 'completed',
+    description: 'Auditions for new dance club members.',
+    imageUrl: ''
   }
 ];
+
+const normalizeEvent = (item: any): EventItem => ({
+  id: item.id,
+  eventName: item.name || item.title || '',
+  organizer: item.organizer || '',
+  venue: item.venue || item.location || '',
+  eventDate: item.event_date || item.start_time || item.start_date || '',
+  slotLimit: item.slot_limit ?? null,
+  totalStudent: item.total_student || item.total_participants || 0,
+  slotsRemaining: item.slots_remaining ?? null,
+  isFull: item.is_full ?? false,
+  present: item.present_student || item.present_count || 0,
+  absent: item.absent_student || item.absent_count || 0,
+  status: normalizeEventStatus(item.status || 'upcoming'),
+  description: item.description || '',
+  imageUrl: item.image_url || item.imageUrl || ''
+});
+
+const buildEventQuery = () => {
+  const params: Record<string, any> = {
+    page: queryParams.value.pageNum,
+    page_size: queryParams.value.pageSize
+  };
+  if (dateRange.value[0]) params.event_date__gte = dateRange.value[0];
+  if (dateRange.value[1]) params.event_date__lte = dateRange.value[1];
+  return params;
+};
+
+const fetchAllEvents = async () => {
+  const results: EventItem[] = [];
+  let page = 1;
+  const pageSize = queryParams.value.pageSize || 10;
+  let totalCount: number | null = null;
+  const baseParams = buildEventQuery();
+
+  while (true) {
+    const payload: any = await listEvents({ ...baseParams, page });
+    const rows = payload?.data?.results ?? payload?.results ?? payload?.data ?? payload ?? [];
+    const count = payload?.data?.count ?? payload?.count;
+    if (typeof count === 'number') totalCount = count;
+    if (!Array.isArray(rows) || rows.length === 0) break;
+    results.push(...rows.map(normalizeEvent));
+    if (totalCount !== null && results.length >= totalCount) break;
+    if (rows.length < pageSize) break;
+    page += 1;
+    if (page > 200) break;
+  }
+
+  return results;
+};
 
 /** Query event list */
 const getList = async () => {
   loading.value = true;
-  setTimeout(() => {
-    eventList.value = populateMockData();
-    total.value = eventList.value.length;
+  try {
+    if (isFiltering.value) {
+      allEventList.value = await fetchAllEvents();
+      eventList.value = [];
+      total.value = filteredEventList.value.length;
+    } else {
+      allEventList.value = [];
+      const params = buildEventQuery();
+      const payload: any = await listEvents(params);
+      const pagination = payload?.data?.pagination ?? payload?.pagination;
+      const rows = payload?.data?.results ?? payload?.results ?? payload?.data ?? payload ?? [];
+      
+      eventList.value = Array.isArray(rows) ? rows.map(normalizeEvent) : [];
+      total.value = pagination?.total_items ?? payload?.count ?? eventList.value.length ?? 0;
+    }
+  } catch (error: any) {
+    eventList.value = [];
+    allEventList.value = [];
+    total.value = 0;
+    proxy?.$modal?.msgError?.(error?.message || 'Failed to load events');
+  } finally {
     loading.value = false;
-  }, 300);
+  }
 };
 
 /** Search button action */
@@ -459,6 +816,19 @@ const handleQuery = () => {
   queryParams.value.pageNum = 1;
   getList();
 };
+
+let keywordSearchTimer: number | null = null;
+watch(
+  () => queryParams.value.keyword,
+  () => {
+    if (keywordSearchTimer !== null) {
+      window.clearTimeout(keywordSearchTimer);
+    }
+    keywordSearchTimer = window.setTimeout(() => {
+      handleQuery();
+    }, 300);
+  }
+);
 
 /** Reset button action */
 const resetQuery = () => {
@@ -495,15 +865,18 @@ const handleAdd = () => {
     eventName: '',
     organizer: '',
     venue: '',
-    dateRange: ['', ''],
-    rate: '',
-    total: 0,
+    eventDate: '',
+    slotLimit: null,
+    totalStudent: 0,
+    slotsRemaining: null,
+    isFull: false,
     present: 0,
-    late: 0,
     absent: 0,
-    status: '',
-    description: ''
+    status: 'upcoming',
+    description: '',
+    imageUrl: ''
   };
+  resetAddUploadState();
   addDialogVisible.value = true;
 };
 
@@ -514,39 +887,90 @@ const handleUpdate = (row?: any) => {
     proxy?.$modal.msgWarning('Please select an event to edit.');
     return;
   }
-  form.value = { ...target, dateRange: [...target.dateRange] };
+  form.value = { ...target, status: normalizeEventStatus(target.status) };
+  resetEditUploadState();
   openDrawer('Edit Event Information');
 };
 
 /** Submit button */
 const submitForm = () => {
-  eventFormRef.value?.validate((valid) => {
+  eventFormRef.value?.validate(async (valid) => {
     if (!valid) return;
-    const index = eventList.value.findIndex((item) => item.id === form.value.id);
-    if (index >= 0) {
-      eventList.value[index] = { ...form.value };
-    } else {
-      eventList.value.unshift({ ...form.value });
-      total.value = eventList.value.length;
+    try {
+      const slotLimitValue = normalizeSlotLimitValue(form.value.slotLimit);
+      if (editUploadFile.value) {
+        const eventData = new FormData();
+        eventData.append('title', form.value.eventName || '');
+        eventData.append('message', form.value.eventName || '');
+        eventData.append('organizer', form.value.organizer || '');
+        eventData.append('venue', form.value.venue || '');
+        eventData.append('event_date', form.value.eventDate || '');
+        eventData.append('status', form.value.status || '');
+        eventData.append('description', form.value.description || '');
+        if (slotLimitValue !== null) {
+          eventData.append('slot_limit', String(slotLimitValue));
+        }
+        eventData.append('upload_image', editUploadFile.value);
+        await updateEvent(form.value.id, eventData);
+      } else {
+        await updateEvent(form.value.id, {
+          title: form.value.eventName || '',
+          message: form.value.eventName || '',
+          organizer: form.value.organizer || '',
+          venue: form.value.venue || '',
+          event_date: form.value.eventDate || '',
+          status: form.value.status || '',
+          description: form.value.description || '',
+          slot_limit: slotLimitValue
+        });
+      }
+      proxy?.$modal.msgSuccess('Event updated successfully');
+      drawerVisible.value = false;
+      await getList();
+    } catch (error: any) {
+      proxy?.$modal.msgError(error?.message || 'Operation failed');
     }
-    proxy?.$modal.msgSuccess('Event information saved');
-    drawerVisible.value = false;
   });
 };
 
 /** Submit Add dialog */
 const submitAdd = () => {
-  addFormRef.value?.validate((valid) => {
+  addFormRef.value?.validate(async (valid) => {
     if (!valid) return;
-    const newItem: EventItem = {
-      ...addForm.value,
-      // ensure dateRange is copied
-      dateRange: [...addForm.value.dateRange] as [string, string]
-    };
-    eventList.value.unshift(newItem);
-    total.value = eventList.value.length;
-    proxy?.$modal.msgSuccess('Event added');
-    addDialogVisible.value = false;
+    try {
+      const slotLimitValue = normalizeSlotLimitValue(addForm.value.slotLimit);
+      if (addUploadFile.value) {
+        const eventData = new FormData();
+        eventData.append('title', addForm.value.eventName || '');
+        eventData.append('message', addForm.value.eventName || '');
+        eventData.append('organizer', addForm.value.organizer || '');
+        eventData.append('venue', addForm.value.venue || '');
+        eventData.append('event_date', addForm.value.eventDate || '');
+        eventData.append('status', addForm.value.status || '');
+        eventData.append('description', addForm.value.description || '');
+        if (slotLimitValue !== null) {
+          eventData.append('slot_limit', String(slotLimitValue));
+        }
+        eventData.append('upload_image', addUploadFile.value);
+        await addEvent(eventData);
+      } else {
+        await addEvent({
+          title: addForm.value.eventName || '',
+          message: addForm.value.eventName || '',
+          organizer: addForm.value.organizer || '',
+          venue: addForm.value.venue || '',
+          event_date: addForm.value.eventDate || '',
+          status: addForm.value.status || '',
+          description: addForm.value.description || '',
+          slot_limit: slotLimitValue
+        });
+      }
+      proxy?.$modal.msgSuccess('Event added successfully');
+      addDialogVisible.value = false;
+      await getList();
+    } catch (error: any) {
+      proxy?.$modal.msgError(error?.message || 'Operation failed');
+    }
   });
 };
 
@@ -554,27 +978,70 @@ const submitAdd = () => {
 const cancelAdd = () => {
   addDialogVisible.value = false;
   addFormRef.value?.resetFields();
+  resetAddUploadState();
 };
 
 /** Delete button action */
 const handleDelete = async (row?: any) => {
   const eventIds = row?.id || ids.value;
   await proxy?.$modal.confirm('Are you sure you want to delete event ID "' + eventIds + '"?');
-  if (Array.isArray(eventIds)) {
-    eventList.value = eventList.value.filter((item) => !eventIds.includes(item.id));
-  } else {
-    eventList.value = eventList.value.filter((item) => item.id !== eventIds);
+  try {
+    if (Array.isArray(eventIds)) {
+      for (const id of eventIds) {
+        await delEvent(id);
+      }
+    } else {
+      await delEvent(eventIds);
+    }
+    await getList();
+    proxy?.$modal.msgSuccess('Delete successful');
+  } catch (error: any) {
+    proxy?.$modal.msgError(error?.message || 'Delete failed');
   }
-  total.value = eventList.value.length;
-  proxy?.$modal.msgSuccess('Delete successful (mock)');
 };
 
 const cancel = () => {
   drawerVisible.value = false;
+  resetEditUploadState();
+};
+
+/** 加载组织者选项（从后端获取用户列表） */
+const loadOrganizerOptions = async () => {
+  try {
+    const payload: any = await listAdminUsers({ page_size: 100 });
+    const users = payload?.data?.results ?? payload?.results ?? payload?.data ?? payload ?? [];
+    
+    // 生成组织者选项：使用用户全名
+    const userOptions = Array.isArray(users) ? users.map((user: any) => {
+      const fullName = [user.first_name, user.last_name].filter(Boolean).join(' ') || user.username;
+      return {
+        label: fullName,
+        value: fullName
+      };
+    }) : [];
+    
+    // 添加一些默认组织/部门选项
+    const defaultOrgs = [
+      { label: 'ICT Department', value: 'ICT Department' },
+      { label: 'Student Affairs', value: 'Student Affairs' },
+      { label: 'Academic Office', value: 'Academic Office' }
+    ];
+    
+    organizerOptions.value = [...defaultOrgs, ...userOptions];
+  } catch (error) {
+    console.error('Failed to load organizer options:', error);
+    // 如果加载失败，使用默认选项
+    organizerOptions.value = [
+      { label: 'ICT Department', value: 'ICT Department' },
+      { label: 'Student Affairs', value: 'Student Affairs' },
+      { label: 'Academic Office', value: 'Academic Office' }
+    ];
+  }
 };
 
 onMounted(() => {
   getList();
+  loadOrganizerOptions();
 });
 </script>
 
@@ -645,6 +1112,32 @@ onMounted(() => {
 .event-time {
   color: #6b7280;
   font-size: 12px;
+}
+
+.media-cell {
+  display: flex;
+  align-items: center;
+  min-height: 40px;
+}
+
+.media-preview {
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.media-thumb {
+  width: 72px;
+  height: 48px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #f3f4f6;
+}
+
+
+.upload-block {
+  width: 100%;
 }
 
 .event-drawer {

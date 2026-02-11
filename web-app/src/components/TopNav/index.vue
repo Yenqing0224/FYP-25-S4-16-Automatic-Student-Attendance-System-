@@ -32,7 +32,7 @@ const visibleNumber = ref<number>(-1);
 // 当前激活菜单的 index
 const currentIndex = ref<string>();
 // 隐藏侧边栏路由
-const hideList = ['/index', '/user/profile'];
+const hideList = ['/index'];
 
 const appStore = useAppStore();
 const settingsStore = useSettingsStore();

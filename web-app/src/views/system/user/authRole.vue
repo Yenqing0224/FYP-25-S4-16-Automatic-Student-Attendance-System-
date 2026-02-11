@@ -16,7 +16,7 @@
           </el-col>
           <el-col :span="2.5">
             <el-form-item label="Settings">
-              <el-button type="primary" @click="goToSettings">Go to Settings</el-button>
+              <span>-</span>
             </el-form-item>
           </el-col>
         </el-row>
@@ -67,7 +67,6 @@ import { UserForm } from '@/api/system/user/types';
 import { parseTime } from '@/utils/ruoyi';
 
 const route = useRoute();
-const router = useRouter();
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 
 const loading = ref(true);
@@ -125,10 +124,6 @@ const submitForm = async () => {
   await updateAuthRole({ userId: userId as string, roleIds: rIds });
   proxy?.$modal.msgSuccess('Authorization updated successfully');
   close();
-};
-
-const goToSettings = () => {
-  router.push('/settings');
 };
 
 const getList = async () => {

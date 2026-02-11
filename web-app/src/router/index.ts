@@ -27,6 +27,12 @@ import Layout from '@/layout/index.vue';
 // 公共路由
 export const constantRoutes: RouteRecordRaw[] = [
   {
+    path: '/landing',
+    component: () => import('@/views/landing/index.vue'),
+    hidden: true,
+    meta: { requiresAuth: false }
+  },
+  {
     path: '/redirect',
     component: Layout,
     hidden: true,
@@ -115,6 +121,7 @@ export const constantRoutes: RouteRecordRaw[] = [
       }
     ]
   },
+
   {
     path: '/modules',
     component: Layout,
@@ -136,13 +143,39 @@ export const constantRoutes: RouteRecordRaw[] = [
     ]
   },
   {
+    path: '/classrooms',
+    component: Layout,
+    redirect: '/classrooms',
+    children: [
+      {
+        path: '',
+        component: () => import('@/views/classrooms/index.vue'),
+        name: 'Classrooms',
+        meta: { title: 'Classroom', icon: 'list' }
+      }
+    ]
+  },
+  {
+    path: '/news',
+    component: Layout,
+    redirect: '/news',
+    children: [
+      {
+        path: '',
+        component: () => import('@/views/announcements/index.vue'),
+        name: 'News',
+        meta: { title: 'News', icon: 'message' }
+      }
+    ]
+  },
+  {
     path: '/announcements',
     component: Layout,
     redirect: '/announcements',
     children: [
       {
         path: '',
-        component: () => import('@/views/announcements/index.vue'),
+        component: () => import('@/views/announcements/admin.vue'),
         name: 'Announcements',
         meta: { title: 'Announcements', icon: 'message' }
       }
@@ -155,7 +188,7 @@ export const constantRoutes: RouteRecordRaw[] = [
     children: [
       {
         path: '',
-        component: () => import('@/views/announcements/index.vue'),
+        component: () => import('@/views/appeal/index.vue'),
         name: 'AppealPage',
         meta: { title: 'Appeal', icon: 'list' }
       }
@@ -168,36 +201,9 @@ export const constantRoutes: RouteRecordRaw[] = [
     children: [
       {
         path: '',
-        component: () => import('@/views/announcements/index.vue'),
+        component: () => import('@/views/leave/index.vue'),
         name: 'LeavePage',
         meta: { title: 'Leave', icon: 'list' }
-      }
-    ]
-  },
-  {
-    path: '/settings',
-    component: Layout,
-    redirect: '/settings',
-    children: [
-      {
-        path: '',
-        component: () => import('@/views/settings/index.vue'),
-        name: 'SettingsPage',
-        meta: { title: 'Settings', icon: 'system' }
-      }
-    ]
-  },
-  {
-    path: '/user',
-    component: Layout,
-    hidden: true,
-    redirect: 'noredirect',
-    children: [
-      {
-        path: 'profile',
-        component: () => import('@/views/system/user/profile/index.vue'),
-        name: 'Profile',
-        meta: { title: 'Profile', icon: 'user' }
       }
     ]
   }

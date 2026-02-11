@@ -4,22 +4,8 @@
       <div v-show="showSearch" class="mb-[10px]">
         <el-card shadow="hover">
           <el-form ref="queryFormRef" :model="queryParams" :inline="true">
-            <el-form-item label="Title" prop="title">
-              <el-input v-model="queryParams.title" placeholder="Enter announcement title" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="Type" prop="type">
-              <el-select v-model="queryParams.type" placeholder="Select type" clearable>
-                <el-option label="Notice" value="notice" />
-                <el-option label="Announcement" value="announcement" />
-                <el-option label="Activity" value="activity" />
-              </el-select>
-            </el-form-item>
-            <el-form-item label="Status" prop="status">
-              <el-select v-model="queryParams.status" placeholder="Select status" clearable>
-                <el-option label="Published" value="published" />
-                <el-option label="Draft" value="draft" />
-                <el-option label="Revoked" value="revoked" />
-              </el-select>
+            <el-form-item label="Search" prop="keyword">
+              <el-input v-model="queryParams.keyword" placeholder="Search by title, content..." clearable style="width: 300px" @keyup.enter="handleQuery" />
             </el-form-item>
             <el-form-item>
               <el-button type="primary" icon="Search" @click="handleQuery">Search</el-button>
@@ -50,28 +36,31 @@
         class="attendify-table"
         ref="announcementTableRef"
         v-loading="loading"
-        :data="announcementList"
+        :data="pagedAnnouncementList"
         border
         @selection-change="handleSelectionChange"
       >
         <el-table-column type="selection" width="55" align="center" />
         <el-table-column label="Title" prop="title" :show-overflow-tooltip="true" min-width="200" />
-        <el-table-column label="Type" prop="type" width="140">
+        <el-table-column label="Content" prop="content" :show-overflow-tooltip="true" min-width="300" />
+        <el-table-column label="Media" min-width="140">
           <template #default="scope">
-            <el-tag v-if="scope.row.type === 'notice'" type="info">Notice</el-tag>
-            <el-tag v-else-if="scope.row.type === 'announcement'" type="primary">Announcement</el-tag>
-            <el-tag v-else type="success">Activity</el-tag>
+            <div class="media-cell">
+              <el-image
+                v-if="isImageUrl(scope.row.imageUrl)"
+                :src="scope.row.imageUrl"
+                class="media-thumb"
+                fit="cover"
+                :preview-teleported="true"
+                :hide-on-click-modal="true"
+                :z-index="10000"
+                :preview-src-list="[scope.row.imageUrl]"
+              />
+              <span v-else>-</span>
+            </div>
           </template>
         </el-table-column>
-        <el-table-column label="Author" prop="author" :show-overflow-tooltip="true" min-width="160" />
         <el-table-column label="Publish Time" prop="publishTime" width="200" />
-        <el-table-column label="Status" prop="status" width="130">
-          <template #default="scope">
-            <el-tag v-if="scope.row.status === 'published'" type="success">Published</el-tag>
-            <el-tag v-else-if="scope.row.status === 'draft'" type="warning">Draft</el-tag>
-            <el-tag v-else type="danger">Revoked</el-tag>
-          </template>
-        </el-table-column>
         <el-table-column label="Actions" width="200" class-name="small-padding fixed-width">
           <template #default="scope">
             <el-button link type="primary" icon="Edit" @click="handleUpdate(scope.row)">Edit</el-button>
@@ -83,46 +72,43 @@
       <pagination v-show="total > 0" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" :total="total" @pagination="getList" />
     </el-card>
 
-    <!-- Add or Edit Announcement Dialog -->
+    <!-- Add or Edit News Dialog -->
     <el-dialog :title="title" v-model="open" width="800px" append-to-body>
       <el-form ref="announcementFormRef" :model="form" :rules="rules" label-width="120px">
         <el-form-item label="Title" prop="title">
-          <el-input v-model="form.title" placeholder="Enter announcement title" />
-        </el-form-item>
-        <el-form-item label="Type" prop="type">
-          <el-select v-model="form.type" placeholder="Select type" style="width: 100%">
-            <el-option label="Notice" value="notice" />
-            <el-option label="Announcement" value="announcement" />
-            <el-option label="Activity" value="activity" />
-          </el-select>
+          <el-input v-model="form.title" placeholder="Enter news title" />
         </el-form-item>
         <el-form-item label="Content" prop="content">
-          <el-input v-model="form.content" type="textarea" :rows="8" placeholder="Enter announcement content" />
+          <el-input v-model="form.content" type="textarea" :rows="8" placeholder="Enter news content" />
         </el-form-item>
-        <el-form-item label="Attachments">
+        <el-form-item label="Media">
           <el-upload
             class="upload-block"
             action="#"
             :auto-upload="false"
-            :file-list="attachmentList"
-            multiple
-            accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
-            :before-upload="handleBeforeUpload"
-            @change="handleAttachmentChange"
-            @remove="handleAttachmentChange"
+            :file-list="uploadFileList"
+            :limit="1"
+            accept="image/*"
+            :on-change="handleUploadChange"
+            :on-remove="handleUploadRemove"
           >
-            <el-button type="primary" icon="Upload">Select Files</el-button>
+          <el-button type="primary" icon="Upload">Select Image</el-button>
             <template #tip>
-              <div class="el-upload__tip">Supports pdf/doc/image files up to 5MB each.</div>
+              <div class="el-upload__tip">Supports image files.</div>
             </template>
           </el-upload>
-        </el-form-item>
-        <el-form-item label="Status" prop="status">
-          <el-radio-group v-model="form.status">
-            <el-radio label="published">Published</el-radio>
-            <el-radio label="draft">Draft</el-radio>
-            <el-radio label="revoked">Revoked</el-radio>
-          </el-radio-group>
+          <div v-if="mediaPreviewUrl" class="media-preview">
+            <el-image
+              v-if="mediaPreviewIsImage"
+              :src="mediaPreviewUrl"
+              class="media-thumb"
+              fit="cover"
+              :preview-teleported="true"
+              :hide-on-click-modal="true"
+              :z-index="10000"
+              :preview-src-list="[mediaPreviewUrl]"
+            />
+          </div>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -135,10 +121,12 @@
   </div>
 </template>
 
-<script setup name="Announcements" lang="ts">
+<script setup name="News" lang="ts">
+import { listNews, addNews, updateNews, delNews } from '@/api/admin';
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 
 const announcementList = ref<any[]>([]);
+const allAnnouncementList = ref<any[]>([]);
 const loading = ref(true);
 const showSearch = ref(true);
 const ids = ref<Array<number | string>>([]);
@@ -150,37 +138,169 @@ const title = ref('');
 const queryFormRef = ref<ElFormInstance>();
 const announcementFormRef = ref<ElFormInstance>();
 const announcementTableRef = ref<ElTableInstance>();
-const attachmentList = ref<any[]>([]);
+const uploadFileList = ref<any[]>([]);
+const uploadFile = ref<File | null>(null);
+const uploadPreviewUrl = ref('');
+const uploadPreviewType = ref('');
+const existingMediaUrl = ref('');
 
 // Query parameters
 const queryParams = ref({
   pageNum: 1,
   pageSize: 10,
-  title: '',
-  type: '',
-  status: ''
+  keyword: ''
 });
+
+const isFiltering = computed(() => !!queryParams.value.keyword);
+
+// 前端关键字过滤（不区分大小写）
+const filteredAnnouncementList = computed(() => {
+  let result = isFiltering.value ? allAnnouncementList.value : announcementList.value;
+  
+  // 关键字搜索（不区分大小写）
+  if (queryParams.value.keyword) {
+    const keyword = queryParams.value.keyword.toLowerCase();
+    result = result.filter(announcement => {
+      return (
+        (announcement.title && announcement.title.toLowerCase().includes(keyword)) ||
+        (announcement.content && announcement.content.toLowerCase().includes(keyword)) ||
+        (announcement.message && announcement.message.toLowerCase().includes(keyword))
+      );
+    });
+  }
+  
+  return result;
+});
+
+const pagedAnnouncementList = computed(() => {
+  if (!isFiltering.value) return filteredAnnouncementList.value;
+  const start = (queryParams.value.pageNum - 1) * queryParams.value.pageSize;
+  return filteredAnnouncementList.value.slice(start, start + queryParams.value.pageSize);
+});
+
+const isImageUrl = (value?: string) => {
+  if (!value) return false;
+  const lower = value.toLowerCase();
+  return lower.startsWith('data:image/') || /\.(png|jpe?g|gif|webp|bmp)(\?|#|$)/.test(lower);
+};
+
+const mediaPreviewUrl = computed(() => uploadPreviewUrl.value || existingMediaUrl.value);
+
+const mediaPreviewIsImage = computed(() => {
+  if (uploadPreviewUrl.value) {
+    return uploadPreviewType.value.startsWith('image/');
+  }
+  return isImageUrl(existingMediaUrl.value);
+});
+
+const resetUploadState = () => {
+  if (uploadPreviewUrl.value.startsWith('blob:')) {
+    URL.revokeObjectURL(uploadPreviewUrl.value);
+  }
+  uploadFileList.value = [];
+  uploadFile.value = null;
+  uploadPreviewUrl.value = '';
+  uploadPreviewType.value = '';
+};
+
+const isAllowedUpload = (file: File) => {
+  const type = (file.type || '').toLowerCase();
+  if (type.startsWith('image/')) return true;
+  const name = (file.name || '').toLowerCase();
+  return /\.(png|jpe?g|gif|webp|bmp)$/.test(name);
+};
+
+const handleUploadChange = (file: any, fileList: any[]) => {
+  const rawFile = file?.raw as File | undefined;
+  if (!rawFile) return;
+  if (!isAllowedUpload(rawFile)) {
+    proxy?.$modal?.msgError?.('Only image files are allowed.');
+    resetUploadState();
+    return;
+  }
+  if (uploadPreviewUrl.value.startsWith('blob:')) {
+    URL.revokeObjectURL(uploadPreviewUrl.value);
+  }
+  uploadFile.value = rawFile;
+  uploadPreviewUrl.value = URL.createObjectURL(rawFile);
+  uploadPreviewType.value = rawFile.type || '';
+  uploadFileList.value = fileList.slice(-1);
+};
+
+const handleUploadRemove = () => {
+  resetUploadState();
+};
 
 // Form parameters
 const form = ref<any>({});
 const rules = {
   title: [{ required: true, message: 'Title is required', trigger: 'blur' }],
-  type: [{ required: true, message: 'Type is required', trigger: 'change' }],
-  content: [{ required: true, message: 'Content is required', trigger: 'blur' }],
-  status: [{ required: true, message: 'Status is required', trigger: 'change' }]
+  content: [{ required: true, message: 'Content is required', trigger: 'blur' }]
 };
 
 const open = ref(false);
 
+const normalizeNews = (item: any) => ({
+  id: item.id,
+  title: item.title || '',
+  content: item.description || item.message || '',
+  message: item.message || '',
+  publishTime: item.news_date || '',
+  imageUrl: item.image_url || item.imageUrl || ''
+});
+
+const fetchAllNews = async () => {
+  const results: any[] = [];
+  let page = 1;
+  const pageSize = queryParams.value.pageSize || 10;
+  let totalCount: number | null = null;
+
+  while (true) {
+    const payload: any = await listNews({ page });
+    const rows = payload?.data?.results ?? payload?.results ?? payload?.data ?? payload ?? [];
+    const count = payload?.data?.count ?? payload?.count;
+    if (typeof count === 'number') totalCount = count;
+    if (!Array.isArray(rows) || rows.length === 0) break;
+    results.push(...rows.map(normalizeNews));
+    if (totalCount !== null && results.length >= totalCount) break;
+    if (rows.length < pageSize) break;
+    page += 1;
+    if (page > 200) break;
+  }
+
+  return results;
+};
+
 /** Query announcement list */
 const getList = async () => {
   loading.value = true;
-  // TODO: Call actual API here
-  setTimeout(() => {
+  try {
+    if (isFiltering.value) {
+      allAnnouncementList.value = await fetchAllNews();
+      announcementList.value = [];
+      total.value = filteredAnnouncementList.value.length;
+    } else {
+      allAnnouncementList.value = [];
+      const params = {
+        page: queryParams.value.pageNum,
+        page_size: queryParams.value.pageSize
+      };
+      // 后端获取所有数据，前端进行过滤
+      const payload: any = await listNews(params);
+      const pagination = payload?.data?.pagination ?? payload?.pagination;
+      const rows = payload?.data?.results ?? payload?.results ?? payload?.data ?? payload ?? [];
+      
+      announcementList.value = Array.isArray(rows) ? rows.map(normalizeNews) : [];
+      total.value = pagination?.total_items ?? payload?.count ?? announcementList.value.length ?? 0;
+    }
+  } catch (error: any) {
     announcementList.value = [];
+    allAnnouncementList.value = [];
     total.value = 0;
+    proxy?.$modal?.msgError?.(error?.message || 'Failed to load news');
+  } finally {
     loading.value = false;
-  }, 500);
+  }
 };
 
 /** Search button action */
@@ -188,6 +308,19 @@ const handleQuery = () => {
   queryParams.value.pageNum = 1;
   getList();
 };
+
+let keywordSearchTimer: number | null = null;
+watch(
+  () => queryParams.value.keyword,
+  () => {
+    if (keywordSearchTimer !== null) {
+      window.clearTimeout(keywordSearchTimer);
+    }
+    keywordSearchTimer = window.setTimeout(() => {
+      handleQuery();
+    }, 300);
+  }
+);
 
 /** Reset button action */
 const resetQuery = () => {
@@ -207,40 +340,49 @@ const handleSelectionChange = (selection: any[]) => {
 const handleAdd = () => {
   reset();
   open.value = true;
-  title.value = 'Add Announcement';
+  title.value = 'Add News';
 };
 
 /** Edit button action */
 const handleUpdate = (row?: any) => {
   reset();
   const id = row?.id || ids.value[0];
-  // TODO: Call actual API to get announcement details
+  // 使用从列表中获取的数据，包含完整的 content
   form.value = {
     id: row?.id || '',
     title: row?.title || '',
-    type: row?.type || 'notice',
-    content: row?.content || '',
-    status: row?.status || 'draft',
-    attachments: row?.attachments || []
+    content: row?.content || ''  // 这里 content 来自 getList 中映射的 description
   };
-  attachmentList.value = (form.value.attachments || []).map((name: string, index: number) => ({
-    name,
-    url: '',
-    status: 'success',
-    uid: `${id || 'temp'}-${index}`
-  }));
+  existingMediaUrl.value = row?.imageUrl || '';
   open.value = true;
-  title.value = 'Edit Announcement';
+  title.value = 'Edit News';
 };
 
 /** Submit button */
 const submitForm = () => {
   announcementFormRef.value?.validate(async (valid: boolean) => {
     if (valid) {
-      // TODO: Call actual API to save announcement information
-      proxy?.$modal.msgSuccess('Operation successful');
-      open.value = false;
-      await getList();
+      try {
+        const newsData = new FormData();
+        newsData.append('title', form.value.title || '');
+        newsData.append('message', form.value.title || '');
+        newsData.append('description', form.value.content || '');
+        if (uploadFile.value) {
+          newsData.append('upload_image', uploadFile.value);
+        }
+        
+        if (title.value === 'Add News') {
+          await addNews(newsData);
+          proxy?.$modal.msgSuccess('News added successfully');
+        } else {
+          await updateNews(form.value.id, newsData);
+          proxy?.$modal.msgSuccess('News updated successfully');
+        }
+        open.value = false;
+        await getList();
+      } catch (error: any) {
+        proxy?.$modal.msgError(error?.message || 'Operation failed');
+      }
     }
   });
 };
@@ -248,10 +390,20 @@ const submitForm = () => {
 /** Delete button action */
 const handleDelete = async (row?: any) => {
   const announcementIds = row?.id || ids.value;
-  await proxy?.$modal.confirm('Are you sure you want to delete announcement ID "' + announcementIds + '"?');
-  // TODO: Call actual API to delete announcement
-  await getList();
-  proxy?.$modal.msgSuccess('Delete successful');
+  await proxy?.$modal.confirm('Are you sure you want to delete news ID "' + announcementIds + '"?');
+  try {
+    if (row?.id) {
+      await delNews(row.id);
+    } else {
+      for (const id of ids.value) {
+        await delNews(id);
+      }
+    }
+    await getList();
+    proxy?.$modal.msgSuccess('Delete successful');
+  } catch (error: any) {
+    proxy?.$modal.msgError(error?.message || 'Delete failed');
+  }
 };
 
 /** Cancel button */
@@ -265,26 +417,11 @@ const reset = () => {
   form.value = {
     id: '',
     title: '',
-    type: 'notice',
-    content: '',
-    status: 'draft',
-    attachments: []
+    content: ''
   };
-  attachmentList.value = [];
+  existingMediaUrl.value = '';
+  resetUploadState();
   announcementFormRef.value?.resetFields();
-};
-
-const handleAttachmentChange = (_file: any, fileList: any[]) => {
-  attachmentList.value = fileList;
-  form.value.attachments = fileList.map((item: any) => item.name);
-};
-
-const handleBeforeUpload = (file: any) => {
-  const isLt5M = file.size / 1024 / 1024 < 5;
-  if (!isLt5M) {
-    proxy?.$modal.msgWarning?.('Each file must be smaller than 5MB');
-  }
-  return isLt5M;
 };
 
 onMounted(() => {
@@ -296,4 +433,26 @@ onMounted(() => {
 .upload-block {
   width: 100%;
 }
+
+.media-cell {
+  display: flex;
+  align-items: center;
+  min-height: 40px;
+}
+
+.media-preview {
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.media-thumb {
+  width: 72px;
+  height: 48px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #f3f4f6;
+}
+
 </style>

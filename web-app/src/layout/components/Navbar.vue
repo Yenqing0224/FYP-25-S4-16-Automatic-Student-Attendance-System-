@@ -27,22 +27,6 @@
             <svg-icon class-name="search-icon" icon-class="search" />
           </div>
         </el-tooltip> -->
-        <!-- Message -->
-        <el-tooltip :content="proxy.$t('navbar.message')" effect="dark" placement="bottom">
-          <div>
-            <el-popover placement="bottom" trigger="click" transition="el-zoom-in-top" :width="300" :persistent="false">
-              <template #reference>
-                <el-badge :value="newNotice > 0 ? newNotice : ''" :max="99">
-                  <div class="right-menu-item hover-effect" style="display: block"><svg-icon icon-class="message" /></div>
-                </el-badge>
-              </template>
-              <template #default>
-                <notice></notice>
-              </template>
-            </el-popover>
-          </div>
-        </el-tooltip>
-
         <!-- Current user name -->
         <span class="right-menu-item user-name" v-if="userStore.nickname">
           {{ userStore.nickname }}
@@ -56,15 +40,9 @@
           </div>
           <template #dropdown>
             <el-dropdown-menu>
-              <router-link v-if="!dynamic" to="/user/profile">
-                <el-dropdown-item>{{ proxy.$t('navbar.personalCenter') }}</el-dropdown-item>
-              </router-link>
               <!-- <el-dropdown-item v-if="settingsStore.showSettings" command="setLayout">
                 <span>{{ proxy.$t('navbar.layoutSetting') }}</span>
               </el-dropdown-item> -->
-              <el-dropdown-item command="settings">
-                <span>Settings</span>
-              </el-dropdown-item>
               <el-dropdown-item divided command="logout">
                 <span>{{ proxy.$t('navbar.logout') }}</span>
               </el-dropdown-item>
@@ -81,19 +59,15 @@ import SearchMenu from './TopBar/search.vue';
 import { useAppStore } from '@/store/modules/app';
 import { useUserStore } from '@/store/modules/user';
 import { useSettingsStore } from '@/store/modules/settings';
-import { useNoticeStore } from '@/store/modules/notice';
 import { getTenantList } from '@/api/login';
 import { dynamicClear, dynamicTenant } from '@/api/system/tenant';
 import { TenantVO } from '@/api/types';
-import notice from './notice/index.vue';
 import router from '@/router';
 // import { ElMessageBoxOptions } from 'element-plus/es/components/message-box/src/message-box.type';
 
 const appStore = useAppStore();
 const userStore = useUserStore();
 const settingsStore = useSettingsStore();
-const noticeStore = storeToRefs(useNoticeStore());
-const newNotice = ref(<number>0);
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 
@@ -132,10 +106,22 @@ const dynamicClearEvent = async () => {
 
 /** Fetch tenant list */
 const initTenantList = async () => {
-  const { data } = await getTenantList(true);
-  tenantEnabled.value = data.tenantEnabled === undefined ? true : data.tenantEnabled;
-  if (tenantEnabled.value) {
-    tenantList.value = data.voList;
+  // 当前后端未提供租户接口时跳过请求，避免无意义报错
+  if (import.meta.env.VITE_APP_ENABLE_TENANT !== 'true') {
+    tenantEnabled.value = false;
+    tenantList.value = [];
+    return;
+  }
+  try {
+    const { data } = await getTenantList(true);
+    tenantEnabled.value = data.tenantEnabled === undefined ? true : data.tenantEnabled;
+    if (tenantEnabled.value) {
+      tenantList.value = data.voList;
+    }
+  } catch (error) {
+    console.warn('Failed to load tenant list:', error);
+    tenantEnabled.value = false;
+    tenantList.value = [];
   }
 };
 
@@ -169,13 +155,9 @@ const emits = defineEmits(['setLayout']);
 const setLayout = () => {
   emits('setLayout');
 };
-const goToSettings = () => {
-  router.push('/settings');
-};
 // Command mappings
 const commandMap: { [key: string]: any } = {
   setLayout,
-  settings: goToSettings,
   logout
 };
 const handleCommand = (command: string) => {
@@ -184,14 +166,6 @@ const handleCommand = (command: string) => {
     commandMap[command]();
   }
 };
-// Deeply watch notice store updates
-watch(
-  () => noticeStore.state.value.notices,
-  (newVal) => {
-    newNotice.value = newVal.filter((item: any) => !item.read).length;
-  },
-  { deep: true }
-);
 </script>
 
 <style lang="scss" scoped>

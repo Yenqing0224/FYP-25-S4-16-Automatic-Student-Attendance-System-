@@ -280,3 +280,17 @@ aside {
     margin-bottom: 10px;
   }
 }
+
+.el-image-viewer__mask {
+  background: #fff !important;
+  opacity: 1 !important;
+}
+
+.el-image-viewer__wrapper {
+  background: #fff !important;
+  z-index: 10000 !important;
+}
+
+.el-image-viewer__progress {
+  color: #111 !important;
+}

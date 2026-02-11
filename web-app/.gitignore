@@ -23,3 +23,21 @@ selenium-debug.log
 # 编译生成的文件
 auto-imports.d.ts
 components.d.ts
+
+# Vite cache
+.vite/
+
+# Env files (keep shared envs committed if needed)
+.env.local
+.env.*.local
+
+# Test reports
+test-results/
+playwright-report/
+
+# Misc archives
+*.zip
+*.tgz
+
+# Netlify CLI
+.netlify/

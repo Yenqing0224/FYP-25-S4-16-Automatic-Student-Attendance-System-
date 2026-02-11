@@ -4,11 +4,8 @@
       <div v-show="showSearch" class="mb-[10px]">
         <el-card shadow="hover">
           <el-form ref="queryFormRef" :model="queryParams" :inline="true">
-            <el-form-item label="Module Name" prop="moduleName">
-              <el-input v-model="queryParams.moduleName" placeholder="Enter module name" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="Module Code" prop="moduleCode">
-              <el-input v-model="queryParams.moduleCode" placeholder="Enter module code" clearable @keyup.enter="handleQuery" />
+            <el-form-item label="Search" prop="keyword">
+              <el-input v-model="queryParams.keyword" placeholder="Search by module name, code, lecturer..." clearable style="width: 300px" @keyup.enter="handleQuery" />
             </el-form-item>
             <el-form-item label="Status" prop="status">
               <el-select v-model="queryParams.status" placeholder="Select status" clearable>
@@ -41,7 +38,7 @@
         </el-row>
       </template>
 
-      <el-table class="attendify-table" ref="moduleTableRef" v-loading="loading" :data="moduleList" border @selection-change="handleSelectionChange">
+      <el-table class="attendify-table" ref="moduleTableRef" v-loading="loading" :data="pagedModuleList" border @selection-change="handleSelectionChange">
         <el-table-column type="selection" width="55" align="center" />
         <el-table-column label="Module Code" prop="moduleCode" sortable="custom" min-width="140" />
         <el-table-column label="Module Name" prop="moduleName" :show-overflow-tooltip="true" min-width="200" />
@@ -52,7 +49,7 @@
         </el-table-column>
         <el-table-column label="Lecturer/Tutor" min-width="220">
           <template #default="scope">
-            <div v-for="(name, index) in scope.row.lecturers" :key="name" class="lecturer-row">{{ index + 1 }}. {{ name }}</div>
+            <div v-for="(name, idx) in (scope.row.lecturers as string[])" :key="idx" class="lecturer-row">{{ idx + 1 }}. {{ name }}</div>
           </template>
         </el-table-column>
         <el-table-column label="Status" prop="status" sortable="custom" min-width="130">
@@ -71,7 +68,7 @@
       </el-table>
 
       <div v-if="total > 0" class="table-footer">
-        <span class="results-summary">Showing {{ moduleList.length }} of {{ total }} results</span>
+        <span class="results-summary">Showing {{ pagedModuleList.length }} of {{ total }} results</span>
         <pagination v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" :total="total" @pagination="getList" float="right" />
       </div>
     </el-card>
@@ -85,29 +82,18 @@
         <el-form-item label="Module Name" prop="moduleName">
           <el-input v-model="form.moduleName" placeholder="Enter module name" />
         </el-form-item>
-        <el-form-item label="Description" prop="description">
-          <el-input v-model="form.description" type="textarea" :rows="3" placeholder="Enter description" />
-        </el-form-item>
-        <el-form-item label="Attachments">
-          <el-upload
-            class="upload-block"
-            action="#"
-            :auto-upload="false"
-            :file-list="moduleAttachmentList"
-            multiple
-            accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
-            :before-upload="handleModuleBeforeUpload"
-            @change="handleModuleAttachmentChange"
-            @remove="handleModuleAttachmentChange"
-          >
-            <el-button type="primary" icon="Upload">Select Files</el-button>
-            <template #tip>
-              <div class="el-upload__tip">Supports pdf/doc/image files up to 5MB each.</div>
-            </template>
-          </el-upload>
-        </el-form-item>
         <el-form-item label="Credit Points" prop="credits">
           <el-input-number v-model="form.credits" :min="0" :max="10" placeholder="Enter credit points" style="width: 100%" />
+        </el-form-item>
+        <el-form-item label="Semester" prop="semester">
+          <el-select v-model="form.semester" placeholder="Select semester" style="width: 100%">
+            <el-option v-for="sem in semesterOptions" :key="sem.id" :label="sem.name" :value="sem.id" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="Lecturer" prop="lecturer">
+          <el-select v-model="form.lecturer" placeholder="Select lecturer" style="width: 100%" filterable>
+            <el-option v-for="lec in lecturerOptions" :key="lec.id" :label="lec.name" :value="lec.id" />
+          </el-select>
         </el-form-item>
         <el-form-item label="Status" prop="status">
           <el-radio-group v-model="form.status">
@@ -127,10 +113,12 @@
 </template>
 
 <script setup name="Modules" lang="ts">
+import { listModules, addModule, updateModule, delModule, listAdminLecturers, listSemesters } from '@/api/admin';
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 const router = useRouter();
 
 const moduleList = ref<any[]>([]);
+const allModuleList = ref<any[]>([]);
 const loading = ref(true);
 const showSearch = ref(true);
 const ids = ref<Array<number | string>>([]);
@@ -139,18 +127,59 @@ const multiple = ref(true);
 const total = ref(0);
 const title = ref('');
 
+// Dropdown options
+const semesterOptions = ref<Array<{id: number, name: string}>>([]);
+const lecturerOptions = ref<Array<{id: number, name: string}>>([]);
+
 const queryFormRef = ref<ElFormInstance>();
 const moduleFormRef = ref<ElFormInstance>();
 const moduleTableRef = ref<ElTableInstance>();
-const moduleAttachmentList = ref<any[]>([]);
 
 // Query parameters
 const queryParams = ref({
   pageNum: 1,
   pageSize: 10,
-  moduleName: '',
-  moduleCode: '',
+  keyword: '',
   status: ''
+});
+
+// 前端关键字过滤（不区分大小写）
+const isFiltering = computed(() => !!queryParams.value.keyword || !!queryParams.value.status);
+
+const filteredModuleList = computed(() => {
+  let result = isFiltering.value ? allModuleList.value : moduleList.value;
+  
+  // 关键字搜索（不区分大小写）
+  if (queryParams.value.keyword) {
+    const keyword = queryParams.value.keyword.toLowerCase();
+    result = result.filter(module => {
+      const lecturerNames = (module.lecturers || []).join(' ').toLowerCase();
+      return (
+        (module.moduleName && module.moduleName.toLowerCase().includes(keyword)) ||
+        (module.moduleCode && module.moduleCode.toLowerCase().includes(keyword)) ||
+        lecturerNames.includes(keyword)
+      );
+    });
+  }
+  
+  // 状态过滤
+  if (queryParams.value.status) {
+    result = result.filter(module => {
+      if (queryParams.value.status === '1') {
+        return module.status === '1' || module.status === 'Active';
+      } else {
+        return module.status === '0' || module.status === 'Inactive';
+      }
+    });
+  }
+  
+  return result;
+});
+
+const pagedModuleList = computed(() => {
+  if (!isFiltering.value) return filteredModuleList.value;
+  const start = (queryParams.value.pageNum - 1) * queryParams.value.pageSize;
+  return filteredModuleList.value.slice(start, start + queryParams.value.pageSize);
 });
 
 // Form parameters
@@ -159,60 +188,81 @@ const rules = {
   moduleCode: [{ required: true, message: 'Module code is required', trigger: 'blur' }],
   moduleName: [{ required: true, message: 'Module name is required', trigger: 'blur' }],
   credits: [{ required: true, message: 'Credit points is required', trigger: 'blur' }],
+  semester: [{ required: true, message: 'Semester is required', trigger: 'change' }],
+  lecturer: [{ required: true, message: 'Lecturer is required', trigger: 'change' }],
   status: [{ required: true, message: 'Status is required', trigger: 'change' }]
 };
 
 const open = ref(false);
 
+const normalizeModule = (item: any) => {
+  const lecturerOption = lecturerOptions.value.find(l => l.id === item.lecturer);
+  return {
+    id: item.id,
+    moduleCode: item.code || item.module_code || '',
+    moduleName: item.name || item.module_name || '',
+    credits: item.credit || item.credit_points || item.credits || 0,
+    semester: item.semester || '',
+    lecturer: item.lecturer || '',
+    studentsEnrolled: item.student_enrolled || item.students?.length || item.students_count || 0,
+    avgAttendance: item.average_attendance || item.avg_attendance || 0,
+    lecturers: lecturerOption ? [lecturerOption.name] : [],
+    status: item.status === 'active' ? 'Active' : 'Inactive'
+  };
+};
+
+const fetchAllModules = async () => {
+  const results: any[] = [];
+  let page = 1;
+  const pageSize = queryParams.value.pageSize || 10;
+  let totalCount: number | null = null;
+
+  while (true) {
+    const payload: any = await listModules({ page });
+    const rows = payload?.data?.results ?? payload?.results ?? payload?.data ?? payload ?? [];
+    const count = payload?.data?.count ?? payload?.count;
+    if (typeof count === 'number') totalCount = count;
+    if (!Array.isArray(rows) || rows.length === 0) break;
+    results.push(...rows.map(normalizeModule));
+    if (totalCount !== null && results.length >= totalCount) break;
+    if (rows.length < pageSize) break;
+    page += 1;
+    if (page > 200) break;
+  }
+
+  return results;
+};
+
 /** Query module list */
 const getList = async () => {
   loading.value = true;
-  setTimeout(() => {
-    moduleList.value = [
-      {
-        id: 1,
-        moduleCode: 'CSIT131',
-        moduleName: 'Intro to Python Programming',
-        credits: 6,
-        studentsEnrolled: 213,
-        avgAttendance: 78,
-        lecturers: ['Lawrence Long', 'Jamie Oliver'],
-        status: 'Inactive'
-      },
-      {
-        id: 2,
-        moduleCode: 'CSCI256',
-        moduleName: 'Advanced Programming',
-        credits: 6,
-        studentsEnrolled: 213,
-        avgAttendance: 78,
-        lecturers: ['Lawrence Long', 'Jamie Oliver'],
-        status: 'Inactive'
-      },
-      {
-        id: 3,
-        moduleCode: 'CSCI305',
-        moduleName: 'Baseball Analytics',
-        credits: 6,
-        studentsEnrolled: 213,
-        avgAttendance: 97.65,
-        lecturers: ['ICT Department'],
-        status: 'Active'
-      },
-      {
-        id: 4,
-        moduleCode: 'DNC101',
-        moduleName: 'Dance Club Entry Audition',
-        credits: 6,
-        studentsEnrolled: 213,
-        avgAttendance: 97.65,
-        lecturers: ['Dance Club'],
-        status: 'Active'
-      }
-    ];
-    total.value = moduleList.value.length;
+  try {
+    if (isFiltering.value) {
+      allModuleList.value = await fetchAllModules();
+      moduleList.value = [];
+      total.value = filteredModuleList.value.length;
+    } else {
+      allModuleList.value = [];
+      const params = {
+        page: queryParams.value.pageNum,
+        page_size: queryParams.value.pageSize
+      };
+      // 后端获取所有数据，前端进行过滤
+      const payload: any = await listModules(params);
+      const pagination = payload?.data?.pagination ?? payload?.pagination;
+      const rows = payload?.data?.results ?? payload?.results ?? payload?.data ?? payload ?? [];
+      
+      moduleList.value = Array.isArray(rows) ? rows.map(normalizeModule) : [];
+      total.value = pagination?.total_items ?? payload?.count ?? moduleList.value.length ?? 0;
+    }
+  } catch (error: any) {
+    moduleList.value = [];
+    allModuleList.value = [];
+    total.value = 0;
+    proxy?.$modal?.msgError?.(error?.message || 'Failed to load module list');
+  } finally {
     loading.value = false;
-  }, 400);
+  }
 };
 
 /** Search button action */
@@ -220,6 +270,19 @@ const handleQuery = () => {
   queryParams.value.pageNum = 1;
   getList();
 };
+
+let keywordSearchTimer: number | null = null;
+watch(
+  () => queryParams.value.keyword,
+  () => {
+    if (keywordSearchTimer !== null) {
+      window.clearTimeout(keywordSearchTimer);
+    }
+    keywordSearchTimer = window.setTimeout(() => {
+      handleQuery();
+    }, 300);
+  }
+);
 
 /** Reset button action */
 const resetQuery = () => {
@@ -281,22 +344,16 @@ const handleAdd = () => {
 const handleUpdate = (row?: any) => {
   reset();
   const id = row?.id || ids.value[0];
-  // TODO: Call actual API to get module details
+  const selected = row || moduleList.value.find((m) => m.id === id);
   form.value = {
-    id: row?.id || '',
-    moduleCode: row?.moduleCode || '',
-    moduleName: row?.moduleName || '',
-    description: row?.description || '',
-    credits: row?.credits || 0,
-    status: row?.status || '1',
-    attachments: row?.attachments || []
+    id: selected?.id || '',
+    moduleCode: selected?.moduleCode || '',
+    moduleName: selected?.moduleName || '',
+    credits: selected?.credits || 0,
+    semester: selected?.semester || '',
+    lecturer: selected?.lecturer || '',
+    status: selected?.status === 'Active' ? '1' : '0'
   };
-  moduleAttachmentList.value = (form.value.attachments || []).map((name: string, index: number) => ({
-    name,
-    url: '',
-    status: 'success',
-    uid: `${id || 'temp'}-${index}`
-  }));
   open.value = true;
   title.value = 'Edit Module';
 };
@@ -305,10 +362,28 @@ const handleUpdate = (row?: any) => {
 const submitForm = () => {
   moduleFormRef.value?.validate(async (valid: boolean) => {
     if (valid) {
-      // TODO: Call actual API to save module information
-      proxy?.$modal.msgSuccess('Operation successful');
-      open.value = false;
-      await getList();
+      try {
+        const moduleData = {
+          code: form.value.moduleCode,
+          name: form.value.moduleName,
+          credit: form.value.credits,
+          semester: form.value.semester,
+          lecturer: form.value.lecturer,
+          status: form.value.status === '1' ? 'active' : 'inactive'
+        };
+        
+        if (title.value === 'Add Module') {
+          await addModule(moduleData);
+          proxy?.$modal.msgSuccess('Module added successfully');
+        } else {
+          await updateModule(form.value.id, moduleData);
+          proxy?.$modal.msgSuccess('Module updated successfully');
+        }
+        open.value = false;
+        await getList();
+      } catch (error: any) {
+        proxy?.$modal.msgError(error?.message || 'Operation failed');
+      }
     }
   });
 };
@@ -317,9 +392,19 @@ const submitForm = () => {
 const handleDelete = async (row?: any) => {
   const moduleIds = row?.id || ids.value;
   await proxy?.$modal.confirm('Are you sure you want to delete module ID "' + moduleIds + '"?');
-  // TODO: Call actual API to delete module
-  await getList();
-  proxy?.$modal.msgSuccess('Delete successful');
+  try {
+    if (row?.id) {
+      await delModule(row.id);
+    } else {
+      for (const id of ids.value) {
+        await delModule(id);
+      }
+    }
+    await getList();
+    proxy?.$modal.msgSuccess('Delete successful');
+  } catch (error: any) {
+    proxy?.$modal.msgError(error?.message || 'Delete failed');
+  }
 };
 
 /** Cancel button */
@@ -334,31 +419,47 @@ const reset = () => {
     id: '',
     moduleCode: '',
     moduleName: '',
-    description: '',
     credits: 0,
-    status: '1',
-    attachments: []
+    semester: '',
+    lecturer: '',
+    status: '1'
   };
-  moduleAttachmentList.value = [];
   moduleFormRef.value?.resetFields();
 };
 
-const handleModuleAttachmentChange = (_file: any, fileList: any[]) => {
-  moduleAttachmentList.value = fileList;
-  form.value.attachments = fileList.map((item: any) => item.name);
-};
-
-const handleModuleBeforeUpload = (file: any) => {
-  const isLt5M = file.size / 1024 / 1024 < 5;
-  if (!isLt5M) {
-    proxy?.$modal.msgWarning?.('Each file must be smaller than 5MB');
-  }
-  return isLt5M;
-};
-
-onMounted(() => {
-  getList();
+onMounted(async () => {
+  // 先加载下拉选项，然后再加载列表（因为 getList 需要 lecturerOptions 来显示讲师名称）
+  await loadDropdownOptions();
+  await getList();
 });
+
+/** Load semester and lecturer options */
+const loadDropdownOptions = async () => {
+  try {
+    // Load semesters
+    const semPayload: any = await listSemesters({});
+    const semRows = semPayload?.data?.results ?? semPayload?.results ?? semPayload?.data ?? semPayload ?? [];
+    semesterOptions.value = Array.isArray(semRows) ? semRows.map((item: any) => ({
+      id: item.id,
+      name: item.name || `Semester ${item.id}`
+    })) : [];
+    
+    // Load lecturers
+    const lecPayload: any = await listAdminLecturers({});
+    const lecRows = lecPayload?.data?.results ?? lecPayload?.results ?? lecPayload?.data ?? lecPayload ?? [];
+    lecturerOptions.value = Array.isArray(lecRows) ? lecRows.map((item: any) => {
+      // 后端 Admin API 返回的是 user_details 嵌套对象
+      const user = item?.user_details ?? {};
+      const fullName = `${user.first_name ?? ''} ${user.last_name ?? ''}`.trim();
+      return {
+        id: item.user || user.id || item.id,
+        name: fullName || user.username || `Lecturer ${item.id}`
+      };
+    }) : [];
+  } catch (error) {
+    console.error('Failed to load dropdown options:', error);
+  }
+};
 </script>
 
 <style scoped lang="scss">

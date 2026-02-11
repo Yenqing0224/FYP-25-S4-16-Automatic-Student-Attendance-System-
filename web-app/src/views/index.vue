@@ -53,28 +53,99 @@
 </template>
 
 <script setup name="Index" lang="ts">
-const stats = [
-  { label: 'Total Students', value: '1,248', sub: 'Across all intakes' },
-  { label: 'Total Staffs', value: '86', sub: 'Lecturer and admins' },
-  { label: 'Active Modules', value: '34', sub: 'Running this semester' },
-  { label: "Today's Classes", value: '12', sub: 'Scheduled sessions' },
-  { label: 'Avg Attendance', value: '92.3%', sub: 'Last 7 days' }
-];
+import { listAdminStudents, listAdminLecturers, listAdmins, listModules, listClassSessions } from '@/api/admin';
+
+const loading = ref(true);
+
+const stats = ref([
+  { label: 'Total Students', value: '0', sub: 'Across all intakes' },
+  { label: 'Total Staffs', value: '0', sub: 'Lecturer and admins' },
+  { label: 'Active Modules', value: '0', sub: 'Running this semester' },
+  { label: "Today's Classes", value: '0', sub: 'Scheduled sessions' },
+  { label: 'Avg Attendance', value: '0%', sub: 'Last 7 days' }
+]);
 
 const alertThreshold = 75;
 
-const alerts = [
-  { id: 1, className: 'COMP1101 - Tutorial A', attendance: 71.5, module: 'Programming I', time: 'Today 9:30 AM' },
-  { id: 2, className: 'MATH2103 - Lecture 2', attendance: 68.2, module: 'Discrete Math', time: 'Yesterday 2:00 PM' },
-  { id: 3, className: 'NETW2300 - Lab B', attendance: 73.9, module: 'Networking', time: 'Yesterday 4:30 PM' }
-];
+const alerts = ref<any[]>([]);
+const activities = ref<any[]>([]);
 
-const activities = [
-  { id: 1, user: 'Aisyah', action: 'added', target: 'Event', detail: 'Coding Workshop', time: '2 mins ago' },
-  { id: 2, user: 'Justin', action: 'edited', target: 'Module', detail: 'Attendance threshold set to 75%', time: '18 mins ago' },
-  { id: 3, user: 'YQ', action: 'deleted', target: 'Event', detail: 'Dance Club Entry Audition', time: '1 hour ago' },
-  { id: 4, user: 'Admin', action: 'edited', target: 'Class', detail: 'COMP1101 - Lecture time update', time: '2 hours ago' }
-];
+const formatLocalDate = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+/** 加载Dashboard统计数据 */
+const loadDashboardStats = async () => {
+  loading.value = true;
+  try {
+    const todayStr = formatLocalDate(new Date());
+    // 并行请求所有统计数据
+    const [studentsRes, lecturersRes, adminsRes, modulesRes, sessionsRes, todaySessionsRes] = await Promise.all([
+      listAdminStudents({ page_size: 1 }),
+      listAdminLecturers({ page_size: 1 }),
+      listAdmins({ page_size: 1 }),
+      listModules({ status: 'active', page_size: 1 }),
+      listClassSessions({ page_size: 100 }),
+      listClassSessions({ date: todayStr, page_size: 1 })
+    ]);
+
+    // 提取总数 - request.ts 已经提取了 data 字段，所以直接访问 pagination
+    const totalStudents = studentsRes?.pagination?.total_items ?? studentsRes?.count ?? 0;
+    const totalLecturers = lecturersRes?.pagination?.total_items ?? lecturersRes?.count ?? 0;
+    const totalAdmins = adminsRes?.pagination?.total_items ?? adminsRes?.count ?? 0;
+    const totalModules = modulesRes?.pagination?.total_items ?? modulesRes?.count ?? 0;
+    
+    // 计算今日课程数（后端按 date 过滤，避免分页和时区问题）
+    const sessions = sessionsRes?.results ?? [];
+    const todaySessionsCount = todaySessionsRes?.count ?? 0;
+    
+    // 计算平均出勤率
+    const sessionsWithRate = sessions.filter((s: any) => s.attendance_rate > 0);
+    const avgAttendance = sessionsWithRate.length > 0 
+      ? (sessionsWithRate.reduce((sum: number, s: any) => sum + (s.attendance_rate || 0), 0) / sessionsWithRate.length).toFixed(1)
+      : '0';
+
+    // 更新统计数据
+    stats.value = [
+      { label: 'Total Students', value: totalStudents.toLocaleString(), sub: 'Across all intakes' },
+      { label: 'Total Staffs', value: (totalLecturers + totalAdmins).toLocaleString(), sub: 'Lecturer and admins' },
+      { label: 'Active Modules', value: totalModules.toLocaleString(), sub: 'Running this semester' },
+      { label: "Today's Classes", value: todaySessionsCount.toString(), sub: 'Scheduled sessions' },
+      { label: 'Avg Attendance', value: `${avgAttendance}%`, sub: 'Last 7 days' }
+    ];
+
+    // 生成低出勤率警报
+    const lowAttendanceSessions = sessions
+      .filter((s: any) => s.attendance_rate > 0 && s.attendance_rate < alertThreshold)
+      .slice(0, 5)
+      .map((s: any, index: number) => ({
+        id: index + 1,
+        className: s.name || `Session ${s.id}`,
+        attendance: s.attendance_rate?.toFixed(1) || 0,
+        module: s.module_details?.name || s.module_details?.code || 'Unknown Module',
+        time: s.date ? new Date(s.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '-'
+      }));
+    
+    alerts.value = lowAttendanceSessions;
+
+    // 最近活动 (暂时使用静态数据，因为后端没有活动日志API)
+    activities.value = [
+      { id: 1, user: 'System', action: 'loaded', target: 'Dashboard', detail: 'Statistics refreshed', time: 'Just now' }
+    ];
+
+  } catch (error) {
+    console.error('Failed to load dashboard stats:', error);
+  } finally {
+    loading.value = false;
+  }
+};
+
+onMounted(() => {
+  loadDashboardStats();
+});
 </script>
 
 <style lang="scss" scoped>
@@ -189,5 +260,4 @@ const activities = [
   color: #9ca3af;
 }
 </style>
-
 
