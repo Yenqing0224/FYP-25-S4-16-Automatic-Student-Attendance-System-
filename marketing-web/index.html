@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Attendify - Smart Attendance Management System</title>
+  <meta name="description" content="Attendify provides an effective and powerful way to manage your school attendance. Track, manage, and succeed with our smart attendance system.">
+  <meta name="keywords" content="attendance, school management, student tracking, education software">
+  <link rel="icon" type="image/png" href="images/logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Lightbox Modal -->
+  <div id="lightbox" class="lightbox" onclick="closeLightbox()" role="dialog" aria-modal="true" aria-label="Image preview" tabindex="-1">
+    <span class="lightbox-close" aria-label="Close image preview">&times;</span>
+    <img id="lightbox-img" class="lightbox-content" src="" alt="Screenshot preview">
+    <p id="lightbox-caption" class="lightbox-caption"></p>
+  </div>
+
+  <!-- Navigation -->
+  <nav class="navbar">
+    <div class="navbar-container">
+      <div class="navbar-brand">
+        <div class="navbar-logo">
+          <img src="images/logo.png" alt="Attendify Logo">
+        </div>
+        <div class="navbar-brand-text">
+          <span class="navbar-title">Attendify</span>
+          <span class="navbar-tagline">Smart Attendance System</span>
+        </div>
+      </div>
+      <div class="navbar-links">
+        <a href="#" class="navbar-link active">Home</a>
+        <a href="#features" class="navbar-link">Product</a>
+        <a href="#demo" class="navbar-link">Demo</a>
+        <a href="#screenshots" class="navbar-link">Screenshots</a>
+        <a href="#contact" class="navbar-link">Contact</a>
+      </div>
+      <div class="navbar-actions">
+        <a href="#contact" class="btn-get-started">Contact Us</a>
+      </div>
+      <button class="mobile-menu-btn" onclick="toggleMenu()" aria-label="Toggle navigation menu" aria-expanded="false">
+        <span class="menu-icon" aria-hidden="true"></span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <section class="hero-section">
+    <div class="hero-container">
+      <div class="hero-content">
+        <div class="hero-badge">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+          School Attendance Management System
+        </div>
+        <h1 class="hero-headline">Track.<br/>Manage.<br/>Succeed.</h1>
+        <p class="hero-subtitle">The complete attendance solution for schools and universities.<br/>Streamline check-ins, manage leaves, and gain real-time insights.</p>
+        
+        <!-- Key Benefits -->
+        <div class="hero-benefits">
+          <div class="benefit-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+            <span>Real-time Attendance Tracking</span>
+          </div>
+          <div class="benefit-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            <span>Leave & Appeal Management</span>
+          </div>
+          <div class="benefit-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+            <span>Analytics Dashboard</span>
+          </div>
+        </div>
+        
+        <a href="#contact" class="btn-get-started">Request Demo</a>
+        
+        <div class="hero-features">
+          <div class="hero-feature">
+            <div class="feature-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+              </svg>
+            </div>
+            <div class="feature-text">
+              <span class="feature-title">Speed &</span>
+              <span class="feature-desc">Efficiency</span>
+            </div>
+          </div>
+          <div class="hero-feature">
+            <div class="feature-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                <line x1="3" y1="9" x2="21" y2="9"/>
+                <line x1="9" y1="21" x2="9" y2="9"/>
+              </svg>
+            </div>
+            <div class="feature-text">
+              <span class="feature-title">Flexibility &</span>
+              <span class="feature-desc">Scalability</span>
+            </div>
+          </div>
+          <div class="hero-feature">
+            <div class="feature-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+              </svg>
+            </div>
+            <div class="feature-text">
+              <span class="feature-title">Better</span>
+              <span class="feature-desc">Collaboration</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="hero-visual">
+        <div class="illustration-container">
+          <div class="illustration-bg"></div>
+          <!-- Dashboard Preview Card -->
+          <div class="dashboard-card">
+            <div class="dashboard-header">
+              <span class="dot red"></span>
+              <span class="dot yellow"></span>
+              <span class="dot green"></span>
+              <span class="dashboard-title">Attendance Dashboard</span>
+            </div>
+            <div class="dashboard-body">
+              <div class="dashboard-stat-row">
+                <div class="dashboard-stat-item">
+                  <div class="stat-icon green">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+                  </div>
+                  <div class="stat-info">
+                    <span class="stat-number">1,234</span>
+                    <span class="stat-text">Students</span>
+                  </div>
+                </div>
+                <div class="dashboard-stat-item">
+                  <div class="stat-icon blue">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                  </div>
+                  <div class="stat-info">
+                    <span class="stat-number">95%</span>
+                    <span class="stat-text">Attendance</span>
+                  </div>
+                </div>
+              </div>
+              <div class="dashboard-chart">
+                <div class="chart-bar" style="height: 60%"></div>
+                <div class="chart-bar" style="height: 80%"></div>
+                <div class="chart-bar" style="height: 70%"></div>
+                <div class="chart-bar" style="height: 90%"></div>
+                <div class="chart-bar" style="height: 85%"></div>
+                <div class="chart-bar active" style="height: 95%"></div>
+              </div>
+              <div class="dashboard-label">Weekly Attendance Rate</div>
+            </div>
+          </div>
+          <!-- Floating Elements -->
+          <div class="floating-card card-checkin">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/></svg>
+            <span>Check-in Success!</span>
+          </div>
+          <div class="floating-card card-alert">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/></svg>
+            <span>3 New Alerts</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="hero-bottom-bar"></div>
+  </section>
+
+  <!-- Product Demo Section -->
+  <section id="demo" class="demo-section">
+    <div class="demo-container">
+      <div class="demo-header">
+        <span class="demo-label">Product Demo</span>
+        <h2 class="demo-title">See Attendify in Action</h2>
+        <p class="demo-subtitle">See how face recognition captures classroom attendance and syncs to Attendify instantly.</p>
+      </div>
+      <div class="demo-content">
+        <div class="demo-video-shell">
+          <div class="demo-video-frame">
+            <video src="0212_1.mp4" controls preload="metadata" playsinline aria-label="Attendify product demo video">
+              Sorry, your browser doesn't support embedded videos.
+            </video>
+          </div>
+        </div>
+        <div class="demo-details">
+          <h3>What you'll see</h3>
+          <ul class="demo-list">
+            <li>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+              Recognition: faces are matched as students enter
+            </li>
+            <li>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+              Auto record: attendance is captured instantly
+            </li>
+            <li>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+              Backend view: lecturers and admins see updates
+            </li>
+          </ul>
+          <div class="demo-actions">
+            <a href="#contact" class="btn-get-started">Request a Demo</a>
+            <p class="demo-note">Want a tailored walkthrough? We'll customize it for your school.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Trust Section -->
+  <section class="trust-section">
+    <div class="trust-container">
+      <p class="trust-text">Trusted by leading educational institutions</p>
+      <div class="trust-stats">
+        <div class="trust-stat">
+          <span class="trust-number" data-target="50">0</span><span class="trust-suffix">+</span>
+          <span class="trust-label">Schools</span>
+        </div>
+        <div class="trust-stat">
+          <span class="trust-number" data-target="10000">0</span><span class="trust-suffix">+</span>
+          <span class="trust-label">Students</span>
+        </div>
+        <div class="trust-stat">
+          <span class="trust-number" data-target="99">0</span><span class="trust-suffix">%</span>
+          <span class="trust-label">Uptime</span>
+        </div>
+        <div class="trust-stat">
+          <span class="trust-number" data-target="24">0</span><span class="trust-suffix">/7</span>
+          <span class="trust-label">Support</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features Section -->
+  <section id="features" class="features-section">
+    <div class="features-container">
+      <div class="features-header">
+        <span class="features-label">Features</span>
+        <h2 class="features-title">Everything you need to manage attendance</h2>
+        <p class="features-subtitle">Powerful tools designed for students, teachers, and administrators</p>
+      </div>
+
+      <!-- Hero Feature - Dashboard -->
+      <div class="hero-feature-card">
+        <div class="hero-feature-content">
+          <div class="hero-feature-badge">Core Feature</div>
+          <h3>Real-time Analytics Dashboard</h3>
+          <p>Get instant insights into attendance patterns with beautiful visualizations. Track trends, identify issues early, and make data-driven decisions.</p>
+          <ul class="hero-feature-list">
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg> Live attendance statistics</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg> Trend analysis & reports</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg> Customizable widgets</li>
+          </ul>
+        </div>
+        <div class="hero-feature-visual">
+          <div class="dashboard-preview">
+            <div class="preview-stat green">
+              <span class="stat-value">95%</span>
+              <span class="stat-label">Attendance Rate</span>
+            </div>
+            <div class="preview-stat blue">
+              <span class="stat-value">1,234</span>
+              <span class="stat-label">Students</span>
+            </div>
+            <div class="preview-stat yellow">
+              <span class="stat-value">48</span>
+              <span class="stat-label">Classes Today</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Role-based Features -->
+      <div class="role-features">
+        <!-- For Students -->
+        <div class="role-section">
+          <div class="role-header">
+            <div class="role-icon student">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+                <path d="M6 12v5c3 3 9 3 12 0v-5"/>
+              </svg>
+            </div>
+            <div class="role-info">
+              <h4>For Students</h4>
+              <p>Easy access to your attendance records</p>
+            </div>
+          </div>
+          <div class="role-features-grid">
+            <div class="mini-feature">
+              <span class="mini-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              </span>
+              <span>View Timetable</span>
+            </div>
+            <div class="mini-feature">
+              <span class="mini-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+              </span>
+              <span>Check-in to Classes</span>
+            </div>
+            <div class="mini-feature">
+              <span class="mini-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+              </span>
+              <span>Apply for Leave</span>
+            </div>
+            <div class="mini-feature">
+              <span class="mini-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+              </span>
+              <span>Get Notifications</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- For Teachers -->
+        <div class="role-section">
+          <div class="role-header">
+            <div class="role-icon teacher">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+              </svg>
+            </div>
+            <div class="role-info">
+              <h4>For Teachers</h4>
+              <p>Manage classes efficiently</p>
+            </div>
+          </div>
+          <div class="role-features-grid">
+            <div class="mini-feature">
+              <span class="mini-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 14l2 2 4-4"/></svg>
+              </span>
+              <span>Take Attendance</span>
+            </div>
+            <div class="mini-feature">
+              <span class="mini-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+              </span>
+              <span>Approve Leave</span>
+            </div>
+            <div class="mini-feature">
+              <span class="mini-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+              </span>
+              <span>View Reports</span>
+            </div>
+            <div class="mini-feature">
+              <span class="mini-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+              </span>
+              <span>Send Announcements</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- For Admins -->
+        <div class="role-section">
+          <div class="role-header">
+            <div class="role-icon admin">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+              </svg>
+            </div>
+            <div class="role-info">
+              <h4>For Administrators</h4>
+              <p>Full control over the system</p>
+            </div>
+          </div>
+          <div class="role-features-grid">
+            <div class="mini-feature">
+              <span class="mini-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              </span>
+              <span>Manage Users</span>
+            </div>
+            <div class="mini-feature">
+              <span class="mini-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+              </span>
+              <span>Setup Modules</span>
+            </div>
+            <div class="mini-feature">
+              <span class="mini-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+              </span>
+              <span>System Settings</span>
+            </div>
+            <div class="mini-feature">
+              <span class="mini-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>
+              </span>
+              <span>Analytics</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Additional Features Grid -->
+      <div class="additional-features">
+        <h3 class="additional-title">More Powerful Features</h3>
+        <div class="features-grid-compact">
+          <div class="feature-item">
+            <div class="feature-item-icon orange">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+              </svg>
+            </div>
+            <div class="feature-item-text">
+              <h4>Leave Management</h4>
+              <p>Online leave applications with approval workflow</p>
+            </div>
+          </div>
+          <div class="feature-item">
+            <div class="feature-item-icon purple">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+                <line x1="12" y1="17" x2="12.01" y2="17"/>
+              </svg>
+            </div>
+            <div class="feature-item-text">
+              <h4>Appeal System</h4>
+              <p>Fair and transparent attendance dispute resolution</p>
+            </div>
+          </div>
+          <div class="feature-item">
+            <div class="feature-item-icon teal">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+              </svg>
+            </div>
+            <div class="feature-item-text">
+              <h4>Email Alerts</h4>
+              <p>Automated email notifications for important updates</p>
+            </div>
+          </div>
+          <div class="feature-item">
+            <div class="feature-item-icon pink">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                <line x1="16" y1="2" x2="16" y2="6"/>
+                <line x1="8" y1="2" x2="8" y2="6"/>
+                <line x1="3" y1="10" x2="21" y2="10"/>
+              </svg>
+            </div>
+            <div class="feature-item-text">
+              <h4>Event Management</h4>
+              <p>Create and manage school events with attendance tracking</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Screenshots Section -->
+  <section id="screenshots" class="screenshots-section">
+    <div class="screenshots-container">
+      <div class="screenshots-header">
+        <span class="screenshots-label">Preview</span>
+        <h2 class="screenshots-title">Available on Web & Mobile</h2>
+        <p class="screenshots-subtitle">Access your attendance data anywhere, anytime</p>
+      </div>
+      
+      <!-- Web App Screenshots -->
+      <div class="platform-section">
+        <h3 class="platform-title">
+          <span class="platform-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          </span>
+          Web Dashboard
+        </h3>
+        <div class="web-screenshots">
+          <div class="web-screenshot-item">
+            <div class="screenshot-frame">
+              <!-- 替换为真实截图: images/web-dashboard.png -->
+              <img src="images/web-dashboard.png" alt="Dashboard" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+              <div class="screenshot-placeholder">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                <p>Dashboard Screenshot</p>
+                <small>Place: images/web-dashboard.png</small>
+              </div>
+            </div>
+            <p class="screenshot-caption">Real-time Dashboard</p>
+          </div>
+          <div class="web-screenshot-item">
+            <div class="screenshot-frame">
+              <!-- 替换为真实截图: images/web-students.png -->
+              <img src="images/web-students.png" alt="Students" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+              <div class="screenshot-placeholder">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                <p>Students Screenshot</p>
+                <small>Place: images/web-students.png</small>
+              </div>
+            </div>
+            <p class="screenshot-caption">Student Management</p>
+          </div>
+          <div class="web-screenshot-item">
+            <div class="screenshot-frame">
+              <!-- 替换为真实截图: images/web-attendance.png -->
+              <img src="images/web-attendance.png" alt="Attendance" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+              <div class="screenshot-placeholder">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                <p>Attendance Screenshot</p>
+                <small>Place: images/web-attendance.png</small>
+              </div>
+            </div>
+            <p class="screenshot-caption">Attendance Records</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Mobile App Screenshots -->
+      <div class="platform-section">
+        <h3 class="platform-title">
+          <span class="platform-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+          </span>
+          Mobile App
+        </h3>
+        <div class="mobile-screenshots">
+          <div class="mobile-screenshot-item">
+            <div class="phone-frame">
+              <!-- 替换为真实截图: images/app-home.png -->
+              <img src="images/app-home.png" alt="App Home" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+              <div class="screenshot-placeholder mobile">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                <p>Dashboard</p>
+                <small>app-home.png</small>
+              </div>
+            </div>
+            <p class="screenshot-caption">Attendance Dashboard</p>
+          </div>
+          <div class="mobile-screenshot-item">
+            <div class="phone-frame">
+              <!-- 替换为真实截图: images/app-schedule.png -->
+              <img src="images/app-schedule.png" alt="App Timetable" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+              <div class="screenshot-placeholder mobile">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                <p>Timetable</p>
+                <small>app-schedule.png</small>
+              </div>
+            </div>
+            <p class="screenshot-caption">Class Timetable</p>
+          </div>
+          <div class="mobile-screenshot-item">
+            <div class="phone-frame">
+              <!-- 替换为真实截图: images/app-news.png -->
+              <img src="images/app-news.png" alt="App News" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+              <div class="screenshot-placeholder mobile">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                <p>News</p>
+                <small>app-news.png</small>
+              </div>
+            </div>
+            <p class="screenshot-caption">News & Events</p>
+          </div>
+          <div class="mobile-screenshot-item">
+            <div class="phone-frame">
+              <!-- 替换为真实截图: images/app-profile.png -->
+              <img src="images/app-profile.png" alt="App Profile" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+              <div class="screenshot-placeholder mobile">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                <p>Profile</p>
+                <small>app-profile.png</small>
+              </div>
+            </div>
+            <p class="screenshot-caption">Profile & Settings</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Download Buttons -->
+      <div class="download-section">
+        <p class="download-text">Download the mobile app</p>
+        <div class="download-buttons">
+          <a href="#" class="download-btn">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/></svg>
+            App Store
+          </a>
+          <a href="#" class="download-btn">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3.609 1.814L13.792 12 3.61 22.186a.996.996 0 0 1-.61-.92V2.734a1 1 0 0 1 .609-.92zm10.89 10.893l2.302 2.302-10.937 6.333 8.635-8.635zm3.199-3.198l2.807 1.626a1 1 0 0 1 0 1.73l-2.808 1.626L15.206 12l2.492-2.491zM5.864 2.658L16.8 8.99l-2.302 2.302-8.634-8.634z"/></svg>
+            Google Play
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Testimonials Section -->
+  <section class="testimonials-section">
+    <div class="testimonials-container">
+      <div class="testimonials-header">
+        <span class="testimonials-label">Testimonials</span>
+        <h2 class="testimonials-title">What educators say about us</h2>
+        <p class="testimonials-subtitle">Hear from schools that transformed their attendance management</p>
+      </div>
+      <div class="testimonials-grid">
+        <div class="testimonial-card">
+          <div class="testimonial-rating">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+          </div>
+          <p class="testimonial-text">"Attendify has completely transformed how we manage attendance. The real-time dashboard gives us instant insights, and the mobile app makes it easy for students to check in."</p>
+          <div class="testimonial-author">
+            <div class="author-avatar">JT</div>
+            <div class="author-info">
+              <span class="author-name">James Tan</span>
+              <span class="author-role">Principal, Singapore Polytechnic</span>
+            </div>
+          </div>
+        </div>
+        <div class="testimonial-card featured">
+          <div class="testimonial-rating">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+          </div>
+          <p class="testimonial-text">"The leave management and appeal system saved us countless hours of paperwork. Our teachers love how easy it is to approve requests with just one click. Highly recommended!"</p>
+          <div class="testimonial-author">
+            <div class="author-avatar">SL</div>
+            <div class="author-info">
+              <span class="author-name">Sarah Lim</span>
+              <span class="author-role">IT Director, Temasek Secondary</span>
+            </div>
+          </div>
+        </div>
+        <div class="testimonial-card">
+          <div class="testimonial-rating">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+          </div>
+          <p class="testimonial-text">"As a student, I love how easy it is to view my attendance and apply for leave through the app. The notifications keep me informed about my classes."</p>
+          <div class="testimonial-author">
+            <div class="author-avatar">AM</div>
+            <div class="author-info">
+              <span class="author-name">Alice Morgan</span>
+              <span class="author-role">Student, Business Administration</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ Section -->
+  <section class="faq-section">
+    <div class="faq-container">
+      <div class="faq-header">
+        <span class="faq-label">FAQ</span>
+        <h2 class="faq-title">Frequently Asked Questions</h2>
+        <p class="faq-subtitle">Everything you need to know about Attendify</p>
+      </div>
+      <div class="faq-list">
+        <div class="faq-item">
+          <button class="faq-question" onclick="toggleFaq(this)">
+            <span>How does Attendify track attendance?</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+          </button>
+          <div class="faq-answer">
+            <p>Attendify provides flexible attendance tracking through the web dashboard and mobile app. Teachers can take attendance directly from their devices, and students can check in to classes. The system also supports event-based attendance for special activities.</p>
+          </div>
+        </div>
+        <div class="faq-item">
+          <button class="faq-question" onclick="toggleFaq(this)">
+            <span>Is Attendify suitable for my school size?</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+          </button>
+          <div class="faq-answer">
+            <p>Yes! Attendify is designed to scale from small institutions with 100 students to large universities with 10,000+ students. Our infrastructure automatically scales to meet your needs.</p>
+          </div>
+        </div>
+        <div class="faq-item">
+          <button class="faq-question" onclick="toggleFaq(this)">
+            <span>Can I integrate Attendify with existing systems?</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+          </button>
+          <div class="faq-answer">
+            <p>Absolutely! Attendify provides REST APIs for integration with Student Information Systems (SIS), Learning Management Systems (LMS), and other educational software.</p>
+          </div>
+        </div>
+        <div class="faq-item">
+          <button class="faq-question" onclick="toggleFaq(this)">
+            <span>What kind of support do you offer?</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+          </button>
+          <div class="faq-answer">
+            <p>We offer 24/7 email support, live chat during business hours, comprehensive documentation, video tutorials, and dedicated account managers for enterprise clients.</p>
+          </div>
+        </div>
+        <div class="faq-item">
+          <button class="faq-question" onclick="toggleFaq(this)">
+            <span>Is my data secure with Attendify?</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+          </button>
+          <div class="faq-answer">
+            <p>Security is our top priority. We use industry-standard encryption, regular security audits, and comply with data protection regulations. Your data is stored securely in Singapore-based servers.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA Section -->
+  <section class="cta-section">
+    <div class="cta-container">
+      <div class="cta-content">
+        <h2 class="cta-title">Ready to get started?</h2>
+        <p class="cta-subtitle">Join thousands of schools already using Attendify</p>
+        <div class="cta-actions">
+          <a href="#contact" class="btn-cta-primary">Request a Demo</a>
+          <a href="#contact" class="btn-cta-secondary">Contact Sales</a>
+        </div>
+        <p class="cta-note">Free consultation · Customized solutions for your school</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Contact Section -->
+  <section id="contact" class="contact-section">
+    <div class="contact-container">
+      <div class="contact-header">
+        <span class="contact-label">Contact</span>
+        <h2 class="contact-title">Request a Demo</h2>
+        <p class="contact-subtitle">Leave your details and we'll get back to you within 24 hours</p>
+      </div>
+      <div class="contact-content">
+        <div class="contact-info">
+          <div class="info-card">
+            <div class="info-icon yellow">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                <polyline points="22,6 12,13 2,6"/>
+              </svg>
+            </div>
+            <h4>Email</h4>
+            <p>bsun005@mymail.sim.edu.sg</p>
+          </div>
+          <div class="info-card">
+            <div class="info-icon green">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+              </svg>
+            </div>
+            <h4>Phone</h4>
+            <p>+65 98874541</p>
+          </div>
+          <div class="info-card">
+            <div class="info-icon blue">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                <circle cx="12" cy="10" r="3"/>
+              </svg>
+            </div>
+            <h4>Location</h4>
+            <p>Singapore</p>
+          </div>
+        </div>
+        <form class="contact-form" id="contactForm" novalidate>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="name">Name *</label>
+              <input type="text" id="name" placeholder="Your name" required>
+            </div>
+            <div class="form-group">
+              <label for="email">Email *</label>
+              <input type="email" id="email" placeholder="your@email.com" required>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="school">School Name</label>
+            <input type="text" id="school" placeholder="Your school (optional)">
+          </div>
+          <div class="form-group">
+            <label for="message">Message *</label>
+            <textarea id="message" rows="4" placeholder="How can we help you?" required></textarea>
+          </div>
+          <button type="submit" class="btn-submit">Send Message</button>
+          <p class="success-message" id="successMessage" style="display: none;">Thanks! We'll get back to you soon.</p>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer-section">
+    <div class="footer-container">
+      <div class="footer-main">
+        <div class="footer-brand">
+          <div class="footer-logo">
+            <img src="images/logo.png" alt="Attendify Logo">
+          </div>
+          <div class="footer-brand-text">
+            <span class="footer-title">Attendify</span>
+            <span class="footer-tagline">Smart Attendance System</span>
+          </div>
+        </div>
+        <div class="footer-links">
+          <div class="footer-column">
+            <h4>Product</h4>
+            <a href="#features">Features</a>
+            <a href="#screenshots">Screenshots</a>
+            <a href="#contact">Request Demo</a>
+          </div>
+          <div class="footer-column">
+            <h4>Support</h4>
+            <a href="#contact">Contact Us</a>
+            <a href="#">Help Center</a>
+            <a href="#">FAQ</a>
+          </div>
+          <div class="footer-column">
+            <h4>Company</h4>
+            <a href="#">About</a>
+            <a href="#">Privacy</a>
+            <a href="#">Terms</a>
+          </div>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p class="copyright">© 2024 Attendify. All rights reserved.</p>
+        <div class="social-links">
+          <a href="#" class="social-link" aria-label="Twitter">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <path d="M23 3a10.9 10.9 0 0 1-3.14 1.53 4.48 4.48 0 0 0-7.86 3v1A10.66 10.66 0 0 1 3 4s-4 9 5 13a11.64 11.64 0 0 1-7 2c9 5 20 0 20-11.5a4.5 4.5 0 0 0-.08-.83A7.72 7.72 0 0 0 23 3z"/>
+            </svg>
+          </a>
+          <a href="#" class="social-link" aria-label="LinkedIn">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/>
+              <rect x="2" y="9" width="4" height="12"/>
+              <circle cx="4" cy="4" r="2"/>
+            </svg>
+          </a>
+        </div>
+      </div>
+    </div>
+    <div class="footer-accent"></div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
