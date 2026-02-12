@@ -210,7 +210,7 @@ const ProfileScreen = ({ navigation }) => {
 
             <MenuItem
               icon="time-outline"
-              title="Leave Status"
+              title=" View Leave Status"
               subtitle="Track approval status for your leave submissions."
               onPress={() => navigation.navigate("LeaveStatus")}
             />

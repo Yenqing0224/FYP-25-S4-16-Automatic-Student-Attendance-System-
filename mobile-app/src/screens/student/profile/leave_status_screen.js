@@ -103,7 +103,7 @@ const LeaveStatusScreen = ({ navigation }) => {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerIconBox}>
           <Ionicons name="chevron-back" size={24} color={COLORS.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Leave Status</Text>
+        <Text style={styles.headerTitle}>View Leave Status</Text>
         <View style={styles.headerIconBox} />
       </View>
 
