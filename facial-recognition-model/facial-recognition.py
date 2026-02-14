@@ -42,8 +42,6 @@ class ThreadedCamera:
         self.results = {}
         self.last_recog_time = datetime.now(timezone.utc)  # stores in datetime format
         self.attendance_state = {}              # For writing to DB
-        #self.capture = cv2.VideoCapture(0)     # for local webcam
-        # for multiple ip cameras
         self.capture = {}
         for cam in cameras:
             cam_id = cam.get("id", f"cam_{len(self.capture)}")

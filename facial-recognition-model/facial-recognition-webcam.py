@@ -49,7 +49,7 @@ class ThreadedCamera:
             "limit": 0,
             "det_prob_threshold": 0.8,
             "prediction_count": 1,
-            "face_plugins": "age,gender",
+            "face_plugins": "age",
             "status": False
         })
 
@@ -225,10 +225,10 @@ class ThreadedCamera:
             face_crop = [self.frame[y_min:y_max, x_min:x_max]]
             liveness = self.liveness_predictor.predict(face_crop)
             if liveness[0][0] > liveness[0][1]:
-                print("Live", student_id)   # for debug
+                #print("Live", student_id)   # for debug
                 isLive = 0
             else:
-                print("Spoof", student_id)  # for debug
+                #print("Spoof", student_id)  # for debug
                 isLive = 1
             
             live_hist = student_state["liveness_history"]
