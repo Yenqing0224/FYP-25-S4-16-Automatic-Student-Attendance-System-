@@ -5,6 +5,7 @@ from collections import deque
 import requests
 from datetime import datetime, timezone
 import sys
+import json
 from pathlib import Path 
 from liveness_detection.tsn_predict import TSNPredictor
 
@@ -19,13 +20,17 @@ absence_threshold = 5       # y seconds of not seen, will update leave time, RMB
 liveness_history_len = 5    # stores how many history??
 spoof_threshold = 0.2       # can only be detected as spoof x% of the time
 
-def load_venue():
-    with open('venue.txt', 'r') as f:
-        venue = f.read().strip()
-    return venue
+def load_config():
+    config_file = Path("config.json")
+    with open(config_file, 'r') as f:
+        config = json.load(f)
+
+    venue = config.get("venue", "Unknown")  # venue = unknow if no venue
+    cameras = config.get("cameras", [])
+    return venue , cameras
 
 class ThreadedCamera:
-    def __init__(self, venue):
+    def __init__(self, venue, cameras):
         self.active = True
         self.results = []
         self.last_recog_time = datetime.now(timezone.utc)  # stores in datetime format
@@ -268,8 +273,8 @@ class ThreadedCamera:
 if __name__ == '__main__':
     #args = parseArguments()
     #threaded_camera = ThreadedCamera(args.api_key, args.host, args.port)
-    venue = load_venue()
-    threaded_camera = ThreadedCamera(venue)
+    venue, cameras = load_config()
+    threaded_camera = ThreadedCamera(venue, cameras)
     while threaded_camera.is_active():
         threaded_camera.update()
         time.sleep(0.1)     # limits main loop

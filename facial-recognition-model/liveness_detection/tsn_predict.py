@@ -30,6 +30,8 @@ class TSNPredictor(CelebASpoofDetector):
     def __init__(self):
         self.num_class = 2
         self.net = AENet(num_classes = self.num_class)
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
         checkpoint = torch.load('./liveness_detection/ckpt_iter.pth.tar')
 
         pretrain(self.net,checkpoint['state_dict'])
@@ -41,8 +43,7 @@ class TSNPredictor(CelebASpoofDetector):
             torchvision.transforms.ToTensor(),
             ])
 
-        
-        self.net.cuda()
+        self.net.to(self.device)
         self.net.eval()
 
     def preprocess_data(self, image):

@@ -271,7 +271,6 @@ if __name__ == '__main__':
     #args = parseArguments()
     #threaded_camera = ThreadedCamera(args.api_key, args.host, args.port)
     venue, cameras = load_config()
-    print(venue, cameras)
     threaded_camera = ThreadedCamera(venue, cameras)
     while threaded_camera.is_active():
         threaded_camera.update()
